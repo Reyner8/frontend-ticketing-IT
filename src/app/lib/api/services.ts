@@ -23,6 +23,8 @@ import {
   mapActivityLog,
   mapComment,
   mapAttachment,
+  mapMilestone,
+  mapTimelineEntry,
   computeDashboardStats,
   preferencesToApi,
 } from './mappers';
@@ -38,6 +40,8 @@ import {
   UserPreferences,
   Comment,
   Attachment,
+  Milestone,
+  TimelineEntry,
 } from '../../types';
 
 let usersCache: User[] = [];
@@ -342,6 +346,22 @@ export async function createFeatureRequest(payload: {
     { ...payload, is_direct_input: true }
   );
   return mapFeatureDetail(response.data);
+}
+
+export async function fetchFeatureMilestones(featureId: string): Promise<Milestone[]> {
+  const { data } = await apiGetPaginated<Record<string, unknown>[]>(
+    `/feature-requests/${featureId}/milestones`,
+    { per_page: 100 }
+  );
+  return (data as unknown as Record<string, unknown>[]).map(mapMilestone);
+}
+
+export async function fetchFeatureTimeline(featureId: string): Promise<TimelineEntry[]> {
+  const { data } = await apiGetPaginated<Record<string, unknown>[]>(
+    `/feature-requests/${featureId}/timelines`,
+    { per_page: 100 }
+  );
+  return (data as unknown as Record<string, unknown>[]).map(mapTimelineEntry);
 }
 
 export async function fetchDowntimeRecords(params?: Record<string, string | number>): Promise<{

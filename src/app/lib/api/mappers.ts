@@ -14,6 +14,8 @@ import {
   ActivityLogEntry,
   Comment,
   Attachment,
+  Milestone,
+  TimelineEntry,
 } from '../../types';
 
 type WrappedValue<T extends string = string> = T | { value: T; label: string };
@@ -307,6 +309,44 @@ export function mapStatusHistory(data: Record<string, unknown>): StatusHistoryEn
     changedAt: parseDate((data.changed_at ?? data.created_at) as string),
     reason: data.reason as string | undefined,
     notes: data.notes as string | undefined,
+  };
+}
+
+export function mapMilestone(data: Record<string, unknown>): Milestone {
+  return {
+    id: String(data.id),
+    title: String(data.title ?? ''),
+    description: (data.description as string) ?? undefined,
+    targetDate: data.target_date ? parseDate(data.target_date as string) : new Date(),
+    completedDate: data.completed_date ? parseDate(data.completed_date as string) : undefined,
+    isCompleted: Boolean(data.is_completed),
+    progress: Number(data.progress ?? 0),
+    createdBy: String(data.created_by ?? ''),
+    createdAt: parseDate(data.created_at as string),
+  };
+}
+
+export function mapTimelineEntry(data: Record<string, unknown>): TimelineEntry {
+  const rawPhase = String(data.phase ?? '').toLowerCase().replace(/\s+/g, '_');
+  const allowed: TimelineEntry['phase'][] = [
+    'submission', 'approval', 'assignment', 'development',
+    'testing', 'validation', 'completion', 'review',
+  ];
+  const phase = (allowed.includes(rawPhase as TimelineEntry['phase'])
+    ? rawPhase
+    : 'submission') as TimelineEntry['phase'];
+
+  return {
+    id: String(data.id),
+    phase,
+    title: String(data.title ?? ''),
+    description: String(data.description ?? ''),
+    startDate: data.start_date ? parseDate(data.start_date as string) : undefined,
+    endDate: data.end_date ? parseDate(data.end_date as string) : undefined,
+    isCompleted: Boolean(data.is_completed),
+    progress: Number(data.progress ?? 0),
+    assignedTo: (data.assigned_to as string) ?? undefined,
+    notes: (data.notes as string) ?? undefined,
   };
 }
 
