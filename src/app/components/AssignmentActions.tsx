@@ -30,7 +30,7 @@ import { useApp } from "../lib/store";
 import type { TeamType } from "../types";
 
 interface AssignmentActionsProps {
-  target: "errors" | "features";
+  target: "tickets" | "errors" | "features";
   resourceId: string;
   currentAssigneeId?: string;
   currentTeam?: TeamType;

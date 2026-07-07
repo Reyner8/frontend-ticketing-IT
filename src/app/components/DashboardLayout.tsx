@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
 import { SidebarProvider, SidebarInset } from "./ui/sidebar";
@@ -13,6 +13,7 @@ import { Settings } from "./Settings";
 import { PublicFormLanding } from "./PublicFormLanding";
 import { UserManagement } from "./UserManagement";
 import { CalendarView } from "./CalendarView";
+import { Tickets } from "./Tickets";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -28,6 +29,9 @@ import {
   fetchFeatureRequests,
   fetchDowntimeRecords,
   fetchUsers,
+  downloadServerExport,
+  fetchTickets as fetchTicketsForAssign,
+  assignUser,
 } from "../lib/api/services";
 import {
   exportTicketsCsv,
@@ -46,6 +50,8 @@ export default function DashboardLayout() {
     switch (activeView) {
       case "/":
         return <Dashboard />;
+      case "/tickets":
+        return <Tickets />;
       case "/error-reports":
         return <ErrorReports />;
       case "/feature-requests":
@@ -57,22 +63,11 @@ export default function DashboardLayout() {
       case "/public-form":
         return <PublicFormLanding />;
       case "/calendar":
-        return (
-          <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <h2 className="text-3xl tracking-tight">Calendar View</h2>
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                Interactive calendar for planned maintenance and deadlines coming soon...
-              </p>
-            </div>
-          </div>
-        );
+        return <CalendarView />;
       case "/settings":
         return <Settings />;
       case "/users":
         return <UserManagement />;
-      case "/calendar":
-        return <CalendarView />;
       default:
         return <Dashboard />;
     }
@@ -387,13 +382,82 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
 }
 
 function QuickAssignForm({ onClose }: { onClose: () => void }) {
+  const [tickets, setTickets] = useState<{ id: string; title: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
+  const [ticketId, setTicketId] = useState("");
+  const [userId, setUserId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetchTicketsForAssign({ per_page: 50, status: "pending_approval" }).catch(() => ({ tickets: [] })),
+      fetchUsers({ per_page: 100 }).catch(() => []),
+    ]).then(([ticketResult, userList]) => {
+      setTickets(ticketResult.tickets.map((t) => ({ id: t.id, title: t.title })));
+      setUsers(
+        userList
+          .filter((u) => u.role === "it_staff" && u.isActive)
+          .map((u) => ({ id: u.id, name: u.name }))
+      );
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const handleAssign = async () => {
+    if (!ticketId || !userId) return;
+    setSubmitting(true);
+    try {
+      await assignUser("tickets", ticketId, userId);
+      toast.success("Ticket assigned");
+      onClose();
+    } catch {
+      toast.error("Failed to assign ticket");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">Loading...</p>;
+  }
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Quick assign functionality would be implemented here, allowing team leads and admins to quickly assign tickets to team members.
-      </p>
-      <div className="flex justify-end">
-        <Button onClick={onClose}>Close</Button>
+      <div className="space-y-2">
+        <Label>Ticket</Label>
+        <Select value={ticketId} onValueChange={setTicketId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select ticket" />
+          </SelectTrigger>
+          <SelectContent>
+            {tickets.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.id} — {t.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Assign to</Label>
+        <Select value={userId} onValueChange={setUserId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select IT staff" />
+          </SelectTrigger>
+          <SelectContent>
+            {users.map((u) => (
+              <SelectItem key={u.id} value={u.id}>
+                {u.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button onClick={handleAssign} disabled={submitting || !ticketId || !userId}>
+          {submitting ? "Assigning..." : "Assign"}
+        </Button>
       </div>
     </div>
   );
@@ -408,28 +472,40 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
   const handleExport = async () => {
     setLoading(true);
     try {
-      if (dataset === "tickets") {
-        const { tickets } = await fetchTickets({ per_page: 500 });
-        exportTicketsCsv(tickets);
-      } else if (dataset === "errors") {
-        const { reports } = await fetchErrorReports({ per_page: 500 });
-        exportErrorsCsv(reports);
-      } else if (dataset === "features") {
-        const { features } = await fetchFeatureRequests({ per_page: 500 });
-        exportFeaturesCsv(features);
-      } else if (dataset === "downtimes") {
-        const { records } = await fetchDowntimeRecords({ per_page: 500 });
-        exportDowntimesCsv(records);
-      } else {
-        const users = await fetchUsers({ per_page: 500 });
-        exportUsersCsv(users);
-      }
-      toast.success("Export downloaded");
+      const { blob, filename } = await downloadServerExport(dataset);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Export downloaded from server");
       onClose();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to export data"
-      );
+    } catch {
+      try {
+        if (dataset === "tickets") {
+          const { tickets } = await fetchTickets({ per_page: 500 });
+          exportTicketsCsv(tickets);
+        } else if (dataset === "errors") {
+          const { reports } = await fetchErrorReports({ per_page: 500 });
+          exportErrorsCsv(reports);
+        } else if (dataset === "features") {
+          const { features } = await fetchFeatureRequests({ per_page: 500 });
+          exportFeaturesCsv(features);
+        } else if (dataset === "downtimes") {
+          const { records } = await fetchDowntimeRecords({ per_page: 500 });
+          exportDowntimesCsv(records);
+        } else {
+          const users = await fetchUsers({ per_page: 500 });
+          exportUsersCsv(users);
+        }
+        toast.success("Export downloaded (client fallback)");
+        onClose();
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to export data"
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -438,8 +514,8 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Backend export endpoints are not available yet. This client-side export
-        fetches the latest data and saves it as CSV in your browser.
+        Downloads CSV from the server when available. Falls back to client-side
+        export if the server endpoint is unreachable.
       </p>
       <div className="space-y-2">
         <Label>Dataset</Label>
