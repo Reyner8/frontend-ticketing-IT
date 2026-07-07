@@ -16,12 +16,14 @@ import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
-import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, getCachedUsers } from "../lib/api/services";
-import type { Milestone, TimelineEntry } from "../types";
+import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, fetchComments, createComment, getCachedUsers } from "../lib/api/services";
+import type { Milestone, TimelineEntry, Comment } from "../types";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
 import { StatusChangeActions } from "./StatusChangeActions";
+import { TagManager } from "./TagManager";
+import { Send } from "lucide-react";
 
 const FEATURE_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "submission", label: "Submission" },
@@ -718,6 +720,32 @@ function FeatureRequestDetailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  useEffect(() => {
+    fetchComments("features", ticket.id)
+      .then(setComments)
+      .catch(() => setComments([]));
+  }, [ticket.id]);
+
+  const handleAddComment = async () => {
+    const content = newComment.trim();
+    if (!content) return;
+    setSubmittingComment(true);
+    try {
+      const created = await createComment("features", ticket.id, content);
+      setComments((prev) => [...prev, created]);
+      setNewComment("");
+      toast.success("Comment added");
+    } catch {
+      toast.error("Failed to add comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
   const progress = ticket.progress > 0 ? ticket.progress :
                   ticket.status === 'completed' ? 100 :
                   ['development', 'testing', 'validation'].includes(ticket.status) ? 60 :
@@ -803,9 +831,10 @@ function FeatureRequestDetailDialog({
         </div>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="progress">Progress Timeline</TabsTrigger>
+            <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
@@ -919,19 +948,11 @@ function FeatureRequestDetailDialog({
                   </div>
                 </div>
 
-                {/* Tags */}
-                {ticket.tags && ticket.tags.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-2">Tags</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {ticket.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <TagManager
+                  resourceType="features"
+                  resourceId={ticket.id}
+                  initialTags={ticket.tags}
+                />
               </div>
             </ScrollArea>
           </TabsContent>
@@ -1060,6 +1081,38 @@ function FeatureRequestDetailDialog({
                   )}
               </div>
             </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="comments" className="mt-4">
+            <ScrollArea className="h-[320px] pr-4">
+              <div className="space-y-4">
+                {comments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No comments yet</p>
+                ) : (
+                  comments.map((c) => (
+                    <div key={c.id} className="rounded-lg border p-3">
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>{getUserName(c.userId)}</span>
+                        <span>{formatDate(c.createdAt)}</span>
+                      </div>
+                      <p className="text-sm">{c.content}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+            <div className="flex gap-2 mt-3">
+              <Textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                rows={2}
+                className="flex-1"
+              />
+              <Button onClick={handleAddComment} disabled={submittingComment}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="activity" className="mt-4">

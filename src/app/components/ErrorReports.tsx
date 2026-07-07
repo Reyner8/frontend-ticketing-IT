@@ -21,6 +21,7 @@ import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
 import { StatusChangeActions } from "./StatusChangeActions";
+import { TagManager } from "./TagManager";
 
 const ERROR_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "pending_approval", label: "Pending Approval" },
@@ -1170,19 +1171,11 @@ function ErrorReportDetailDialog({
                   </div>
                 </div>
 
-                {/* Tags */}
-                {report.tags.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-3">Tags</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {report.tags.map((tag, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <TagManager
+                  resourceType="errors"
+                  resourceId={report.id}
+                  initialTags={report.tags}
+                />
 
                 {/* Attachments */}
                 <div>
