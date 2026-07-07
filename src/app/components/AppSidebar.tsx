@@ -32,6 +32,7 @@ import {
   Clock,
   AlertTriangle,
   ExternalLink,
+  Ticket as TicketIcon,
 } from "lucide-react";
 
 interface AppSidebarProps {
@@ -77,6 +78,12 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           title: 'Dashboard',
           icon: Home,
           description: 'Overview and analytics',
+        },
+        {
+          id: '/tickets',
+          title: 'Tickets',
+          icon: TicketIcon,
+          description: 'All tickets and public submissions',
         },
         {
           id: '/error-reports',

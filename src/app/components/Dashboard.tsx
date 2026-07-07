@@ -8,8 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { useApp } from '../lib/store';
-import { fetchDashboardData, getCachedUsers } from '../lib/api/services';
-import { Ticket, DowntimeRecord, DashboardStats, TeamWorkload } from '../types';
+import { fetchDashboardData, getCachedUsers, fetchGlobalActivityLogs } from '../lib/api/services';
+import { Ticket, DowntimeRecord, DashboardStats, TeamWorkload, ActivityLogEntry } from '../types';
 import { AlertTriangle, CheckCircle, Clock, TrendingUp, Zap, Users, Target, Star, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -20,6 +20,7 @@ export function Dashboard() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [downtimes, setDowntimes] = useState<DowntimeRecord[]>([]);
   const [teamWorkload, setTeamWorkload] = useState<TeamWorkload[]>([]);
+  const [globalActivity, setGlobalActivity] = useState<ActivityLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   
   const currentUser = state.currentUser;
@@ -33,6 +34,9 @@ export function Dashboard() {
         setTickets(data.tickets);
         setDowntimes(data.downtimes);
         setTeamWorkload(data.teamWorkload);
+        fetchGlobalActivityLogs({ per_page: 20 })
+          .then(setGlobalActivity)
+          .catch(() => setGlobalActivity([]));
       } catch {
         setStats({
           totalTickets: 0, openTickets: 0, resolvedToday: 0, overdueTickets: 0,
@@ -89,11 +93,20 @@ export function Dashboard() {
   const userSpecificData = getUserSpecificData();
   const recentTickets = userSpecificData.tickets.slice(0, 5);
 
-  const recentActivity = recentTickets.map((ticket) => ({
-    type: 'ticket_created' as const,
-    message: `${ticket.title} — ${ticket.status.replace(/_/g, ' ')}`,
-    time: ticket.dateReported,
-  }));
+  const recentActivity =
+    globalActivity.length > 0
+      ? globalActivity.map((entry) => ({
+          type: entry.action as string,
+          message: entry.loggableId
+            ? `[${entry.loggableType ?? "Resource"} ${entry.loggableId}] ${entry.description}`
+            : entry.description,
+          time: entry.performedAt,
+        }))
+      : recentTickets.map((ticket) => ({
+          type: 'ticket_created' as const,
+          message: `${ticket.title} — ${ticket.status.replace(/_/g, ' ')}`,
+          time: ticket.dateReported,
+        }));
   
   // Active downtimes
   const activeDowntimes = downtimes.filter(d => d.status === 'ongoing');
