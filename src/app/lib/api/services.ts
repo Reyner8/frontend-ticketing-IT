@@ -3,6 +3,7 @@ import {
   apiPost,
   apiPatch,
   apiDelete,
+  apiRequest,
   apiGetPaginated,
   setToken,
   clearToken,
@@ -92,6 +93,50 @@ export async function fetchUsers(params?: Record<string, string | number>): Prom
   });
   usersCache = (data as unknown as Record<string, unknown>[]).map(mapUser);
   return usersCache;
+}
+
+export interface UserPayload {
+  name: string;
+  username: string;
+  email: string;
+  password?: string;
+  role: string;
+  team?: string | null;
+  is_active?: boolean;
+}
+
+export async function fetchUserDetail(id: string): Promise<User> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown> }>(
+    `/users/${id}`
+  );
+  return mapUser(response.data);
+}
+
+export async function createUser(payload: UserPayload): Promise<User> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/users',
+    payload
+  );
+  return mapUser(response.data);
+}
+
+export async function updateUser(id: string, payload: Partial<UserPayload>): Promise<User> {
+  const response = await apiRequest<{ success: boolean; data: Record<string, unknown> }>(
+    `/users/${id}`,
+    { method: 'PUT', body: payload }
+  );
+  return mapUser(response.data);
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  await apiDelete(`/users/${id}`);
+}
+
+export async function toggleUserActive(id: string): Promise<User> {
+  const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
+    `/users/${id}/toggle-active`
+  );
+  return mapUser(response.data);
 }
 
 export async function fetchTickets(params?: Record<string, string | number>): Promise<{
