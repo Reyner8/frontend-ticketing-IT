@@ -25,6 +25,7 @@ import {
   mapAttachment,
   mapMilestone,
   mapTimelineEntry,
+  mapCalendarEvent,
   computeDashboardStats,
   preferencesToApi,
 } from './mappers';
@@ -42,6 +43,7 @@ import {
   Attachment,
   Milestone,
   TimelineEntry,
+  CalendarEvent,
 } from '../../types';
 
 let usersCache: User[] = [];
@@ -362,6 +364,26 @@ export async function fetchFeatureTimeline(featureId: string): Promise<TimelineE
     { per_page: 100 }
   );
   return (data as unknown as Record<string, unknown>[]).map(mapTimelineEntry);
+}
+
+export async function fetchCalendarEvents(params?: {
+  from?: string;
+  to?: string;
+  type?: string;
+}): Promise<CalendarEvent[]> {
+  const { data } = await apiGetPaginated<Record<string, unknown>[]>('/calendar-events', {
+    per_page: 200,
+    ...(params ?? {}),
+  });
+  return (data as unknown as Record<string, unknown>[]).map(mapCalendarEvent);
+}
+
+export async function fetchUpcomingEvents(days = 7): Promise<CalendarEvent[]> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    '/calendar-events/upcoming',
+    { days }
+  );
+  return (response.data ?? []).map(mapCalendarEvent);
 }
 
 export async function fetchDowntimeRecords(params?: Record<string, string | number>): Promise<{

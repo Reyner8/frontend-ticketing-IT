@@ -16,6 +16,7 @@ import {
   Attachment,
   Milestone,
   TimelineEntry,
+  CalendarEvent,
 } from '../../types';
 
 type WrappedValue<T extends string = string> = T | { value: T; label: string };
@@ -309,6 +310,45 @@ export function mapStatusHistory(data: Record<string, unknown>): StatusHistoryEn
     changedAt: parseDate((data.changed_at ?? data.created_at) as string),
     reason: data.reason as string | undefined,
     notes: data.notes as string | undefined,
+  };
+}
+
+export function mapCalendarEvent(data: Record<string, unknown>): CalendarEvent {
+  const type = data.type as { value?: string } | string | null | undefined;
+  const rawType = typeof type === 'object' && type ? type.value : (type as string);
+  const allowed: CalendarEvent['type'][] = ['planned_downtime', 'maintenance', 'deadline'];
+  const parsedType = (allowed.includes(rawType as CalendarEvent['type'])
+    ? rawType
+    : 'maintenance') as CalendarEvent['type'];
+
+  const recurring = data.recurring as
+    | { frequency?: string; interval?: number; end_date?: string | null }
+    | null;
+
+  const allowedFrequencies = ['daily', 'weekly', 'monthly'] as const;
+  type Frequency = (typeof allowedFrequencies)[number];
+  const parsedFrequency: Frequency = allowedFrequencies.includes(
+    recurring?.frequency as Frequency
+  )
+    ? (recurring!.frequency as Frequency)
+    : 'weekly';
+
+  return {
+    id: String(data.id),
+    title: String(data.title ?? ''),
+    start: parseDate(data.start as string),
+    end: parseDate(data.end as string),
+    type: parsedType,
+    description: (data.description as string) ?? undefined,
+    color: String(data.color ?? '#3b82f6'),
+    allDay: Boolean(data.all_day ?? true),
+    recurring: recurring
+      ? {
+          frequency: parsedFrequency,
+          interval: recurring.interval ?? 1,
+          endDate: recurring.end_date ? parseDate(recurring.end_date) : undefined,
+        }
+      : undefined,
   };
 }
 
