@@ -5,6 +5,7 @@ import {
   apiDelete,
   apiRequest,
   apiGetPaginated,
+  apiDownload,
   setToken,
   clearToken,
 } from './client';
@@ -28,6 +29,10 @@ import {
   mapCalendarEvent,
   computeDashboardStats,
   preferencesToApi,
+  mapTag,
+  mapTicketWatcher,
+  mapConversionHistory,
+  mapSystemConfigItem,
 } from './mappers';
 import {
   User,
@@ -44,6 +49,11 @@ import {
   Milestone,
   TimelineEntry,
   CalendarEvent,
+  Tag,
+  TicketWatcher,
+  ConversionHistoryEntry,
+  SystemConfigItem,
+  ActivityLogEntry,
 } from '../../types';
 
 let usersCache: User[] = [];
@@ -173,6 +183,38 @@ export async function createTicket(payload: {
   return mapTicketDetail(response.data);
 }
 
+export async function fetchTicketDetail(id: string): Promise<Ticket> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown> }>(
+    `/tickets/${id}`
+  );
+  return mapTicketDetail(response.data);
+}
+
+export async function fetchTicketStatusHistory(id: string) {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/tickets/${id}/status`
+  );
+  return (response.data ?? []).map(mapStatusHistory);
+}
+
+export async function fetchTicketActivityLogs(id: string) {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/tickets/${id}/activity-logs`
+  );
+  return (response.data ?? []).map(mapActivityLog);
+}
+
+export async function fetchGlobalActivityLogs(params?: {
+  per_page?: number;
+  action?: string;
+}): Promise<ActivityLogEntry[]> {
+  const { data } = await apiGetPaginated<Record<string, unknown>[]>('/activity-logs', {
+    per_page: params?.per_page ?? 30,
+    action: params?.action,
+  });
+  return (data as unknown as Record<string, unknown>[]).map(mapActivityLog);
+}
+
 export async function fetchErrorReports(params?: Record<string, string | number>): Promise<{
   reports: ErrorReport[];
   total: number;
@@ -263,17 +305,27 @@ export interface PublicSubmissionResult {
 }
 
 export async function submitPublicRequest(
-  payload: PublicSubmissionPayload
+  payload: PublicSubmissionPayload,
+  files: File[] = []
 ): Promise<PublicSubmissionResult> {
   const apiKey = import.meta.env.VITE_PUBLIC_API_KEY;
   if (!apiKey) {
     throw new Error('Public submissions are not configured on this deployment.');
   }
+
+  const form = new FormData();
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      form.append(key, String(value));
+    }
+  });
+  files.forEach((file) => form.append('files[]', file));
+
   const response = await apiRequest<{ success: boolean; data: PublicSubmissionResult }>(
     '/public/submit',
     {
       method: 'POST',
-      body: payload,
+      body: form,
       auth: false,
       headers: { 'X-API-Key': apiKey },
     }
@@ -305,7 +357,7 @@ export async function rejectResource(
   await apiPost(`/${target}/${id}/reject`, { rejection_reason: rejectionReason });
 }
 
-type AssignmentTarget = 'errors' | 'features';
+type AssignmentTarget = 'tickets' | 'errors' | 'features';
 
 export async function assignUser(
   target: AssignmentTarget,
@@ -550,4 +602,135 @@ export async function searchUsers(query: string): Promise<User[]> {
       u.name.toLowerCase().includes(lower) ||
       u.email.toLowerCase().includes(lower)
   );
+}
+
+type TagResourceType = 'tickets' | 'errors' | 'features';
+
+export async function fetchTags(params?: Record<string, string | number>): Promise<Tag[]> {
+  const { data } = await apiGetPaginated<Record<string, unknown>[]>('/tags', {
+    per_page: 100,
+    ...params,
+  });
+  return (data as unknown as Record<string, unknown>[]).map(mapTag);
+}
+
+export async function createTag(name: string): Promise<Tag> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/tags',
+    { name }
+  );
+  return mapTag(response.data);
+}
+
+export async function syncResourceTags(
+  resourceType: TagResourceType,
+  resourceId: string,
+  tagIds: number[]
+): Promise<Tag[]> {
+  const response = await apiRequest<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/${resourceType}/${resourceId}/tags/sync`,
+    { method: 'PUT', body: { tag_ids: tagIds } }
+  );
+  return (response.data ?? []).map(mapTag);
+}
+
+export async function fetchTicketWatchers(ticketId: string): Promise<TicketWatcher[]> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/tickets/${ticketId}/watchers`
+  );
+  return (response.data ?? []).map(mapTicketWatcher);
+}
+
+export async function fetchWatchStatus(ticketId: string): Promise<{ isWatching: boolean; watchersCount: number }> {
+  const response = await apiGet<{ success: boolean; data: { is_watching: boolean; watchers_count: number } }>(
+    `/tickets/${ticketId}/watch/status`
+  );
+  return {
+    isWatching: response.data?.is_watching ?? false,
+    watchersCount: response.data?.watchers_count ?? 0,
+  };
+}
+
+export async function toggleTicketWatch(ticketId: string): Promise<boolean> {
+  const response = await apiPost<{ success: boolean; data: { is_watching: boolean } }>(
+    `/tickets/${ticketId}/watch`
+  );
+  return response.data?.is_watching ?? false;
+}
+
+export async function addTicketWatcher(ticketId: string, userId: string): Promise<TicketWatcher[]> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/tickets/${ticketId}/watchers`,
+    { user_id: Number(userId) }
+  );
+  return (response.data ?? []).map(mapTicketWatcher);
+}
+
+export async function removeTicketWatcher(ticketId: string, userId: string): Promise<TicketWatcher[]> {
+  const response = await apiDelete<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/tickets/${ticketId}/watchers/${userId}`
+  );
+  return (response.data ?? []).map(mapTicketWatcher);
+}
+
+export async function fetchTicketConversionHistory(ticketId: string): Promise<ConversionHistoryEntry | null> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown> | null }>(
+    `/tickets/${ticketId}/conversion-history`
+  );
+  return response.data ? mapConversionHistory(response.data) : null;
+}
+
+export async function convertTicketToError(
+  ticketId: string,
+  payload: { category: string; conversion_reason: string; priority?: string }
+): Promise<void> {
+  await apiPost(`/tickets/${ticketId}/convert/error-report`, payload);
+}
+
+export async function convertTicketToFeature(
+  ticketId: string,
+  payload: { request_type: string; conversion_reason: string; priority?: string }
+): Promise<void> {
+  await apiPost(`/tickets/${ticketId}/convert/feature-request`, payload);
+}
+
+export async function fetchSystemConfigs(params?: Record<string, string | number>): Promise<SystemConfigItem[]> {
+  const { data } = await apiGetPaginated<Record<string, unknown>[]>('/system-configuration', {
+    per_page: 100,
+    ...params,
+  });
+  return (data as unknown as Record<string, unknown>[]).map(mapSystemConfigItem);
+}
+
+export async function createSystemConfig(payload: {
+  config_key: string;
+  config_value: string;
+  description?: string;
+}): Promise<SystemConfigItem> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/system-configuration',
+    payload
+  );
+  return mapSystemConfigItem(response.data);
+}
+
+export async function updateSystemConfig(
+  id: string,
+  payload: { config_value?: string; description?: string }
+): Promise<SystemConfigItem> {
+  const response = await apiRequest<{ success: boolean; data: Record<string, unknown> }>(
+    `/system-configuration/${id}`,
+    { method: 'PUT', body: payload }
+  );
+  return mapSystemConfigItem(response.data);
+}
+
+export async function deleteSystemConfig(id: string): Promise<void> {
+  await apiDelete(`/system-configuration/${id}`);
+}
+
+export type ExportDataset = 'tickets' | 'errors' | 'features' | 'downtimes' | 'users';
+
+export async function downloadServerExport(dataset: ExportDataset): Promise<{ blob: Blob; filename: string }> {
+  return apiDownload(`/exports/${dataset}`);
 }

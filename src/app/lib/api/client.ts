@@ -134,3 +134,33 @@ export async function apiGetPaginated<T>(
     },
   };
 }
+
+export async function apiDownload(
+  path: string,
+  params?: RequestOptions['params']
+): Promise<{ blob: Blob; filename: string }> {
+  const url = buildUrl(path, params);
+  const headers: Record<string, string> = { Accept: 'text/csv' };
+  const token = getToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    let message = `Request failed (${response.status})`;
+    try {
+      const body = await response.json();
+      message = body.message ?? message;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(message, response.status);
+  }
+
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  const filename = match?.[1] ?? 'export.csv';
+
+  return { blob: await response.blob(), filename };
+}

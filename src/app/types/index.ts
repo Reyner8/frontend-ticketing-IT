@@ -185,12 +185,49 @@ export interface StatusHistoryEntry {
 
 export interface ActivityLogEntry {
   id: string;
-  action: 'created' | 'updated' | 'assigned' | 'commented' | 'status_changed' | 'attachment_added' | 'milestone_reached';
+  action: 'created' | 'updated' | 'assigned' | 'commented' | 'status_changed' | 'attachment_added' | 'milestone_reached' | 'converted' | 'mention_added' | string;
   description: string;
   performedBy: string;
   performedAt: Date;
-  details?: Record<string, any>;
-  targetUserId?: string; // for mentions
+  details?: Record<string, unknown>;
+  targetUserId?: string;
+  loggableId?: string;
+  loggableType?: string;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  createdAt?: Date;
+}
+
+export interface TicketWatcher {
+  id: string;
+  name: string;
+  username?: string;
+  watchingSince?: Date;
+}
+
+export interface ConversionHistoryEntry {
+  id: string;
+  sourceTicketId: string;
+  sourceTicketTitle: string;
+  targetType: string;
+  targetId: string;
+  targetTitle?: string;
+  convertedBy?: string;
+  convertedAt: Date;
+  reason?: string;
+  notes?: string;
+}
+
+export interface SystemConfigItem {
+  id: string;
+  key: string;
+  value: string;
+  description?: string;
+  updatedBy?: string;
+  updatedAt?: Date;
 }
 
 export interface Milestone {

@@ -420,14 +420,79 @@ export function mapComment(data: Record<string, unknown>): Comment {
 }
 
 export function mapActivityLog(data: Record<string, unknown>): ActivityLogEntry {
+  const actionRaw = data.action;
+  const actionValue =
+    typeof actionRaw === 'object' && actionRaw !== null
+      ? String((actionRaw as { value?: string }).value ?? 'updated')
+      : String(actionRaw ?? 'updated');
+
+  const performer = data.performed_by as { id?: number | string } | string | number | null;
+  const performedById =
+    typeof performer === 'object' && performer !== null
+      ? String(performer.id ?? '')
+      : String(performer ?? data.user_id ?? '');
+
+  const loggable = data.loggable as { id?: string | number; type?: string } | undefined;
+
   return {
     id: String(data.id),
-    action: (data.action as ActivityLogEntry['action']) ?? 'updated',
+    action: actionValue,
     description: String(data.description ?? data.message ?? ''),
-    performedBy: String(data.performed_by ?? data.user_id ?? ''),
+    performedBy: performedById,
     performedAt: parseDate((data.performed_at ?? data.created_at) as string),
     details: data.details as Record<string, unknown> | undefined,
     targetUserId: data.target_user_id ? String(data.target_user_id) : undefined,
+    loggableId: loggable?.id != null ? String(loggable.id) : undefined,
+    loggableType: loggable?.type ? String(loggable.type) : undefined,
+  };
+}
+
+export function mapTag(data: Record<string, unknown>): import('../../types').Tag {
+  return {
+    id: String(data.id),
+    name: String(data.name ?? ''),
+    createdAt: data.created_at ? parseDate(data.created_at as string) : undefined,
+  };
+}
+
+export function mapTicketWatcher(data: Record<string, unknown>): import('../../types').TicketWatcher {
+  return {
+    id: String(data.id),
+    name: String(data.name ?? ''),
+    username: data.username as string | undefined,
+    watchingSince: data.watching_since ? parseDate(data.watching_since as string) : undefined,
+  };
+}
+
+export function mapConversionHistory(data: Record<string, unknown>): import('../../types').ConversionHistoryEntry {
+  const source = (data.source_ticket ?? {}) as Record<string, unknown>;
+  const target = (data.target ?? {}) as Record<string, unknown>;
+  const targetDetail = (target.detail ?? {}) as Record<string, unknown>;
+  const converter = data.converted_by as { id?: number | string; name?: string } | null;
+
+  return {
+    id: String(data.id),
+    sourceTicketId: String(source.id ?? ''),
+    sourceTicketTitle: String(source.title ?? ''),
+    targetType: String(target.type ?? target.label ?? ''),
+    targetId: String(target.id ?? ''),
+    targetTitle: targetDetail.title ? String(targetDetail.title) : undefined,
+    convertedBy: converter?.name ? String(converter.name) : converter?.id ? String(converter.id) : undefined,
+    convertedAt: parseDate((data.converted_at ?? data.created_at) as string),
+    reason: data.reason as string | undefined,
+    notes: data.notes as string | undefined,
+  };
+}
+
+export function mapSystemConfigItem(data: Record<string, unknown>): import('../../types').SystemConfigItem {
+  const updater = data.updated_by as { name?: string } | null;
+  return {
+    id: String(data.id),
+    key: String(data.config_key ?? data.key ?? ''),
+    value: String(data.config_value ?? data.value ?? ''),
+    description: data.description as string | undefined,
+    updatedBy: updater?.name,
+    updatedAt: data.updated_at ? parseDate(data.updated_at as string) : undefined,
   };
 }
 
