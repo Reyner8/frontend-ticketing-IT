@@ -16,7 +16,8 @@ import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
-import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, getCachedUsers } from "../lib/api/services";
+import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, getCachedUsers } from "../lib/api/services";
+import type { Milestone, TimelineEntry } from "../types";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
@@ -78,8 +79,12 @@ export function FeatureRequests() {
 
   const handleSelectFeature = async (feature: FeatureRequest) => {
     try {
-      const detail = await fetchFeatureDetail(feature.id);
-      setSelectedTicket(detail);
+      const [detail, milestones, timeline] = await Promise.all([
+        fetchFeatureDetail(feature.id),
+        fetchFeatureMilestones(feature.id).catch(() => [] as Milestone[]),
+        fetchFeatureTimeline(feature.id).catch(() => [] as TimelineEntry[]),
+      ]);
+      setSelectedTicket({ ...detail, milestones, timeline });
     } catch {
       setSelectedTicket(feature);
     }
@@ -911,40 +916,126 @@ function FeatureRequestDetailDialog({
 
           <TabsContent value="progress" className="mt-4">
             <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-4">
-                <h4 className="font-medium">Development Timeline</h4>
-                <div className="space-y-4">
-                  {getProgressSteps().map((step, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className={`w-4 h-4 rounded-full mt-1 ${
-                        step.status === 'completed' ? 'bg-green-500' :
-                        step.status === 'current' ? 'bg-blue-500' :
-                        'bg-gray-300'
-                      }`} />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className={`font-medium ${
-                            step.status === 'completed' ? 'text-green-700' :
-                            step.status === 'current' ? 'text-blue-700' :
-                            'text-gray-500'
-                          }`}>
-                            {step.name}
-                          </span>
-                          {step.date && (
-                            <span className="text-xs text-muted-foreground">
-                              {formatDate(step.date)}
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-medium mb-3">Lifecycle</h4>
+                  <div className="space-y-4">
+                    {getProgressSteps().map((step, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className={`w-4 h-4 rounded-full mt-1 ${
+                          step.status === 'completed' ? 'bg-green-500' :
+                          step.status === 'current' ? 'bg-blue-500' :
+                          'bg-gray-300'
+                        }`} />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className={`font-medium ${
+                              step.status === 'completed' ? 'text-green-700' :
+                              step.status === 'current' ? 'text-blue-700' :
+                              'text-gray-500'
+                            }`}>
+                              {step.name}
                             </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {step.status === 'completed' ? 'Completed' :
-                           step.status === 'current' ? 'In Progress' :
-                           'Pending'}
+                            {step.date && (
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(step.date)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {step.status === 'completed' ? 'Completed' :
+                             step.status === 'current' ? 'In Progress' :
+                             'Pending'}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+
+                {ticket.timeline && ticket.timeline.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-3">Timeline Entries</h4>
+                    <div className="space-y-3">
+                      {ticket.timeline.map((entry) => (
+                        <div key={entry.id} className="flex items-start gap-3 border rounded-md p-3">
+                          <div
+                            className={`w-2 h-2 rounded-full mt-2 ${
+                              entry.isCompleted ? 'bg-green-500' : 'bg-blue-500'
+                            }`}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs capitalize">
+                                {entry.phase.replace(/_/g, ' ')}
+                              </Badge>
+                              <span className="font-medium text-sm">{entry.title}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {entry.description}
+                            </p>
+                            {(entry.startDate || entry.endDate) && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {entry.startDate && `Start: ${formatDate(entry.startDate)}`}
+                                {entry.startDate && entry.endDate && ' · '}
+                                {entry.endDate && `End: ${formatDate(entry.endDate)}`}
+                              </p>
+                            )}
+                            {entry.progress > 0 && (
+                              <div className="mt-2">
+                                <Progress value={entry.progress} className="h-1.5" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {ticket.milestones && ticket.milestones.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-3">Milestones</h4>
+                    <div className="space-y-3">
+                      {ticket.milestones.map((m) => (
+                        <div key={m.id} className="flex items-start gap-3 border rounded-md p-3">
+                          <div
+                            className={`w-2 h-2 rounded-full mt-2 ${
+                              m.isCompleted ? 'bg-green-500' : 'bg-yellow-500'
+                            }`}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm">{m.title}</span>
+                              {m.targetDate && (
+                                <span className="text-xs text-muted-foreground">
+                                  Target: {formatDate(m.targetDate)}
+                                </span>
+                              )}
+                            </div>
+                            {m.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {m.description}
+                              </p>
+                            )}
+                            {m.progress > 0 && (
+                              <div className="mt-2">
+                                <Progress value={m.progress} className="h-1.5" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(!ticket.timeline || ticket.timeline.length === 0) &&
+                  (!ticket.milestones || ticket.milestones.length === 0) && (
+                    <p className="text-sm text-muted-foreground italic">
+                      No timeline entries or milestones yet
+                    </p>
+                  )}
               </div>
             </ScrollArea>
           </TabsContent>
