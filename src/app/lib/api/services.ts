@@ -243,6 +243,16 @@ export async function createComment(
   return mapComment(data);
 }
 
+type StatusTarget = 'tickets' | 'errors' | 'features';
+
+export async function updateResourceStatus(
+  target: StatusTarget,
+  id: string,
+  payload: { status: string; reason?: string; notes?: string }
+): Promise<void> {
+  await apiPatch(`/${target}/${id}/status`, payload);
+}
+
 type ApprovalTarget = 'tickets' | 'errors' | 'features';
 
 export async function approveResource(target: ApprovalTarget, id: string): Promise<void> {
