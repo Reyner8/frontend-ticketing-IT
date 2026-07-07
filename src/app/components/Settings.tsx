@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
 import { useApp } from "../lib/store";
-import { updatePreferences } from "../lib/api/services";
-import type { UserPreferences } from "../types";
-import { User } from "lucide-react";
+import { updatePreferences, fetchSystemConfigs, createSystemConfig, updateSystemConfig, deleteSystemConfig } from "../lib/api/services";
+import type { UserPreferences, SystemConfigItem } from "../types";
+import { User, Trash2, Plus } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Textarea } from "./ui/textarea";
 
 export function Settings() {
   const { state, dispatch } = useApp();
@@ -53,6 +55,9 @@ export function Settings() {
 
   if (!currentUser) return null;
 
+  const canManageConfig =
+    currentUser.role === "admin" || currentUser.role === "it_staff";
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div>
@@ -63,10 +68,13 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${canManageConfig ? "grid-cols-4" : "grid-cols-3"}`}>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          {canManageConfig && (
+            <TabsTrigger value="system">System Config</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
@@ -217,7 +225,153 @@ export function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {canManageConfig && (
+          <TabsContent value="system" className="space-y-4">
+            <SystemConfigPanel />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
+  );
+}
+
+function SystemConfigPanel() {
+  const [configs, setConfigs] = useState<SystemConfigItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newKey, setNewKey] = useState("");
+  const [newValue, setNewValue] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setConfigs(await fetchSystemConfigs());
+    } catch {
+      toast.error("Failed to load system configuration");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const handleCreate = async () => {
+    if (!newKey.trim() || !newValue.trim()) return;
+    setSaving(true);
+    try {
+      await createSystemConfig({
+        config_key: newKey.trim(),
+        config_value: newValue.trim(),
+        description: newDescription.trim() || undefined,
+      });
+      setNewKey("");
+      setNewValue("");
+      setNewDescription("");
+      await load();
+      toast.success("Configuration created");
+    } catch {
+      toast.error("Failed to create configuration");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdate = async (item: SystemConfigItem, value: string) => {
+    try {
+      await updateSystemConfig(item.id, { config_value: value });
+      await load();
+      toast.success("Configuration updated");
+    } catch {
+      toast.error("Failed to update configuration");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteSystemConfig(id);
+      await load();
+      toast.success("Configuration deleted");
+    } catch {
+      toast.error("Failed to delete configuration");
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>System Configuration</CardTitle>
+        <CardDescription>
+          Manage application-wide settings stored in the backend
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-3 md:grid-cols-3">
+          <div>
+            <Label>Key</Label>
+            <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="sla.critical_hours" />
+          </div>
+          <div>
+            <Label>Value</Label>
+            <Input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="4" />
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Optional" />
+          </div>
+        </div>
+        <Button onClick={handleCreate} disabled={saving || !newKey.trim() || !newValue.trim()}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Configuration
+        </Button>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : configs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No configuration entries yet</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Key</TableHead>
+                <TableHead>Value</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {configs.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono text-sm">{item.key}</TableCell>
+                  <TableCell>
+                    <Textarea
+                      defaultValue={item.value}
+                      rows={1}
+                      className="min-h-[36px]"
+                      onBlur={(e) => {
+                        if (e.target.value !== item.value) {
+                          handleUpdate(item, e.target.value);
+                        }
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {item.description ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }
