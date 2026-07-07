@@ -127,7 +127,7 @@ export function PublicSubmissionForm() {
         submitter_email: formData.reporterEmail,
         submitter_phone: formData.reporterPhone || undefined,
         submitter_unit: formData.reporterUnit || undefined,
-      });
+      }, formData.attachments);
 
       setReferenceNumber(result.reference_number);
       toast.success('Submission received successfully!');
