@@ -18,6 +18,8 @@ import { useApp } from "../lib/store";
 import { toast } from "sonner";
 import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, getCachedUsers } from "../lib/api/services";
 import { AttachmentPanel } from "./AttachmentPanel";
+import { ApprovalActions } from "./ApprovalActions";
+import { AssignmentActions } from "./AssignmentActions";
 import { FeatureRequest, FeatureRequestStatus, TicketPriority } from "../types";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
 import { 
@@ -754,6 +756,24 @@ function FeatureRequestDetailDialog({
           </DialogTitle>
           <DialogDescription>{ticket.title}</DialogDescription>
         </DialogHeader>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+          <div className="flex flex-wrap gap-2">
+            <AssignmentActions
+              target="features"
+              resourceId={ticket.id}
+              currentAssigneeId={ticket.assignedToId}
+              currentTeam={ticket.assignedTeam}
+              onCompleted={() => onOpenChange(false)}
+            />
+          </div>
+          <ApprovalActions
+            target="features"
+            resourceId={ticket.id}
+            status={ticket.status}
+            onCompleted={() => onOpenChange(false)}
+          />
+        </div>
 
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-4">

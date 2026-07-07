@@ -18,6 +18,8 @@ import { Calendar } from "./ui/calendar";
 import { useApp } from "../lib/store";
 import { fetchErrorReports, fetchErrorReportDetail, createErrorReport, createTicket, fetchComments, createComment, fetchErrorStatusHistory, fetchErrorActivityLogs, getCachedUsers } from "../lib/api/services";
 import { AttachmentPanel } from "./AttachmentPanel";
+import { ApprovalActions } from "./ApprovalActions";
+import { AssignmentActions } from "./AssignmentActions";
 import { toast } from "sonner";
 import { ErrorReport, ErrorReportStatus, TicketPriority, TicketCategory, TeamType, Comment, ActivityLogEntry, StatusHistoryEntry } from "../types";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
@@ -974,6 +976,24 @@ function ErrorReportDetailDialog({
           </DialogTitle>
           <DialogDescription>{report.title}</DialogDescription>
         </DialogHeader>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+          <div className="flex flex-wrap gap-2">
+            <AssignmentActions
+              target="errors"
+              resourceId={report.id}
+              currentAssigneeId={report.assignedToId}
+              currentTeam={report.assignedTeam}
+              onCompleted={() => onOpenChange(false)}
+            />
+          </div>
+          <ApprovalActions
+            target="errors"
+            resourceId={report.id}
+            status={report.status}
+            onCompleted={() => onOpenChange(false)}
+          />
+        </div>
 
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
