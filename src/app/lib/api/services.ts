@@ -22,6 +22,7 @@ import {
   mapStatusHistory,
   mapActivityLog,
   mapComment,
+  mapAttachment,
   computeDashboardStats,
   preferencesToApi,
 } from './mappers';
@@ -36,6 +37,7 @@ import {
   DashboardStats,
   UserPreferences,
   Comment,
+  Attachment,
 } from '../../types';
 
 let usersCache: User[] = [];
@@ -233,6 +235,41 @@ export async function createComment(
   );
   const data = (response as { data?: Record<string, unknown> }).data ?? (response as unknown as Record<string, unknown>);
   return mapComment(data);
+}
+
+type AttachmentParent = 'tickets' | 'errors' | 'features' | 'comments';
+
+export async function fetchAttachments(
+  parent: AttachmentParent,
+  id: string
+): Promise<Attachment[]> {
+  const { data } = await apiGetPaginated<Record<string, unknown>[]>(
+    `/${parent}/${id}/attachments`,
+    { per_page: 100 }
+  );
+  return (data as unknown as Record<string, unknown>[]).map(mapAttachment);
+}
+
+export async function uploadAttachment(
+  parent: AttachmentParent,
+  id: string,
+  file: File
+): Promise<Attachment> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await apiRequest<{ success: boolean; data: Record<string, unknown> }>(
+    `/${parent}/${id}/attachments`,
+    { method: 'POST', body: form }
+  );
+  return mapAttachment(response.data);
+}
+
+export async function deleteAttachment(
+  parent: AttachmentParent,
+  parentId: string,
+  attachmentId: string
+): Promise<void> {
+  await apiDelete(`/${parent}/${parentId}/attachments/${attachmentId}`);
 }
 
 export async function fetchFeatureRequests(params?: Record<string, string | number>): Promise<{

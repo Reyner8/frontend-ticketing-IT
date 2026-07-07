@@ -13,6 +13,7 @@ import {
   StatusHistoryEntry,
   ActivityLogEntry,
   Comment,
+  Attachment,
 } from '../../types';
 
 type WrappedValue<T extends string = string> = T | { value: T; label: string };
@@ -306,6 +307,19 @@ export function mapStatusHistory(data: Record<string, unknown>): StatusHistoryEn
     changedAt: parseDate((data.changed_at ?? data.created_at) as string),
     reason: data.reason as string | undefined,
     notes: data.notes as string | undefined,
+  };
+}
+
+export function mapAttachment(data: Record<string, unknown>): Attachment {
+  const uploader = data.uploader as { id?: number | string; name?: string } | null;
+  return {
+    id: String(data.id),
+    name: String(data.name ?? ''),
+    size: Number(data.size ?? 0),
+    type: String(data.type ?? ''),
+    url: String(data.url ?? ''),
+    uploadedBy: uploader ? String(uploader.id ?? '') : String(data.uploaded_by ?? ''),
+    uploadedAt: parseDate(data.uploaded_at as string),
   };
 }
 
