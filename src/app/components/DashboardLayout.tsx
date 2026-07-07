@@ -12,6 +12,7 @@ import { TeamPerformance } from "./TeamPerformance";
 import { Settings } from "./Settings";
 import { PublicFormLanding } from "./PublicFormLanding";
 import { UserManagement } from "./UserManagement";
+import { CalendarView } from "./CalendarView";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -54,6 +55,8 @@ export default function DashboardLayout() {
         return <Settings />;
       case "/users":
         return <UserManagement />;
+      case "/calendar":
+        return <CalendarView />;
       default:
         return <Dashboard />;
     }
