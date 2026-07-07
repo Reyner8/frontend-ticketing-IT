@@ -10,9 +10,8 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Alert, AlertDescription } from "./ui/alert";
 import { CheckCircle2, Upload, X, FileIcon, AlertCircle } from "lucide-react";
 import { TicketPriority } from "../types";
-import { getToken } from "../lib/api/client";
-import { createTicket, createErrorReport, createFeatureRequest } from "../lib/api/services";
-import { useApp } from "../lib/store";
+import { submitPublicRequest } from "../lib/api/services";
+import { ApiError } from "../lib/api/client";
 
 type SubmissionType = 'error_report' | 'feature_request';
 
@@ -47,9 +46,9 @@ interface FormData {
 }
 
 export function PublicSubmissionForm() {
-  const { state } = useApp();
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [referenceNumber, setReferenceNumber] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     submissionType: 'error_report',
     title: '',
@@ -90,63 +89,63 @@ export function PublicSubmissionForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!getToken() || !state.currentUser) {
-      toast.error('Please sign in first to submit a request', {
-        action: {
-          label: 'Sign In',
-          onClick: () => { window.location.href = '/login'; },
-        },
-      });
-      return;
-    }
-
     setSubmitting(true);
 
     try {
-      if (formData.submissionType === 'error_report') {
-        if (['it_staff', 'admin'].includes(state.currentUser.role)) {
-          await createErrorReport({
-            title: formData.title,
-            description: formData.description,
-            category: formData.errorCategory || 'software',
-            priority: formData.priority,
-          });
-        } else {
-          const categoryMap: Record<string, string> = {
-            hardware: 'hardware_problem',
-            network: 'network_issue',
-            software: 'software_bug',
-          };
-          await createTicket({
-            title: formData.title,
-            description: formData.description,
-            category: categoryMap[formData.errorCategory || 'software'] || 'system_error',
-            priority: formData.priority,
-          });
-        }
-      } else {
-        if (['it_staff', 'admin'].includes(state.currentUser.role)) {
-          await createFeatureRequest({
-            title: formData.title,
-            description: formData.description,
-            request_type: formData.requestType || 'feature_request',
-            priority: formData.priority,
-          });
-        } else {
-          await createTicket({
-            title: formData.title,
-            description: formData.description,
-            category: 'feature_request',
-            priority: formData.priority,
-          });
-        }
-      }
-      
+      const category =
+        formData.submissionType === 'error_report'
+          ? ({
+              hardware: 'hardware_problem',
+              network: 'network_issue',
+              software: 'software_bug',
+            } as const)[formData.errorCategory ?? 'software'] ?? 'system_error'
+          : 'feature_request';
+
+      const contextLines: string[] = [];
+      if (formData.errorLocation) contextLines.push(`Location: ${formData.errorLocation}`);
+      if (formData.errorImpact) contextLines.push(`Impact: ${formData.errorImpact}`);
+      if (formData.errorStepsToReproduce)
+        contextLines.push(`Steps to reproduce:\n${formData.errorStepsToReproduce}`);
+      if (formData.businessJustification)
+        contextLines.push(`Business justification:\n${formData.businessJustification}`);
+      if (formData.expectedOutcome)
+        contextLines.push(`Expected outcome:\n${formData.expectedOutcome}`);
+      if (formData.affectedUsers)
+        contextLines.push(`Affected users: ${formData.affectedUsers}`);
+
+      const description = [formData.description, ...contextLines]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const result = await submitPublicRequest({
+        submission_type: formData.submissionType,
+        title: formData.title,
+        description,
+        category,
+        priority: formData.priority,
+        submitter_name: formData.reporterName,
+        submitter_email: formData.reporterEmail,
+        submitter_phone: formData.reporterPhone || undefined,
+        submitter_unit: formData.reporterUnit || undefined,
+      });
+
+      setReferenceNumber(result.reference_number);
       toast.success('Submission received successfully!');
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {
-      toast.error('Failed to submit. Please try again.');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        toast.error('Too many submissions. Please try again in a few minutes.');
+      } else if (err instanceof ApiError && err.status === 401) {
+        toast.error('This form is currently unavailable. Please contact IT support directly.');
+      } else if (err instanceof ApiError && err.errors) {
+        const first = Object.values(err.errors)[0]?.[0];
+        toast.error(first ?? err.message);
+      } else {
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to submit. Please try again.'
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -154,6 +153,7 @@ export function PublicSubmissionForm() {
 
   const resetForm = () => {
     setSubmitted(false);
+    setReferenceNumber(null);
     setFormData({
       submissionType: 'error_report',
       title: '',
@@ -197,7 +197,7 @@ export function PublicSubmissionForm() {
             
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <div className="text-sm text-gray-600">
-                <strong>Reference:</strong> #{Date.now().toString().slice(-8).toUpperCase()}
+                <strong>Reference:</strong> {referenceNumber ?? '—'}
               </div>
               <div className="text-sm text-gray-600">
                 <strong>Submitted by:</strong> {formData.reporterName}
