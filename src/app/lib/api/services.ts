@@ -237,6 +237,46 @@ export async function createComment(
   return mapComment(data);
 }
 
+type ApprovalTarget = 'tickets' | 'errors' | 'features';
+
+export async function approveResource(target: ApprovalTarget, id: string): Promise<void> {
+  await apiPost(`/${target}/${id}/approve`);
+}
+
+export async function rejectResource(
+  target: ApprovalTarget,
+  id: string,
+  rejectionReason: string
+): Promise<void> {
+  await apiPost(`/${target}/${id}/reject`, { rejection_reason: rejectionReason });
+}
+
+type AssignmentTarget = 'errors' | 'features';
+
+export async function assignUser(
+  target: AssignmentTarget,
+  id: string,
+  userId: string | number
+): Promise<void> {
+  await apiPost(`/${target}/${id}/assign/user`, { user_id: Number(userId) });
+}
+
+export async function assignTeam(
+  target: AssignmentTarget,
+  id: string,
+  team: string
+): Promise<void> {
+  await apiPost(`/${target}/${id}/assign/team`, { team });
+}
+
+export async function unassignUser(target: AssignmentTarget, id: string): Promise<void> {
+  await apiPost(`/${target}/${id}/unassign/user`);
+}
+
+export async function unassignTeam(target: AssignmentTarget, id: string): Promise<void> {
+  await apiPost(`/${target}/${id}/unassign/team`);
+}
+
 type AttachmentParent = 'tickets' | 'errors' | 'features' | 'comments';
 
 export async function fetchAttachments(
