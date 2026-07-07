@@ -11,6 +11,7 @@ import { DowntimeMonev } from "./DowntimeMonev";
 import { TeamPerformance } from "./TeamPerformance";
 import { Settings } from "./Settings";
 import { PublicFormLanding } from "./PublicFormLanding";
+import { UserManagement } from "./UserManagement";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -51,6 +52,8 @@ export default function DashboardLayout() {
         );
       case "/settings":
         return <Settings />;
+      case "/users":
+        return <UserManagement />;
       default:
         return <Dashboard />;
     }
