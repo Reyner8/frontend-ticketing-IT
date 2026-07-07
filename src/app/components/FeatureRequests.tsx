@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
 import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, getCachedUsers } from "../lib/api/services";
+import { AttachmentPanel } from "./AttachmentPanel";
 import { FeatureRequest, FeatureRequestStatus, TicketPriority } from "../types";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
 import { 
@@ -755,10 +756,11 @@ function FeatureRequestDetailDialog({
         </DialogHeader>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="progress">Progress Timeline</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="mt-4">
@@ -979,6 +981,17 @@ function FeatureRequestDetailDialog({
                   )}
                 </div>
               </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="files" className="mt-4">
+            <ScrollArea className="h-[400px]">
+              <AttachmentPanel
+                parent="features"
+                parentId={ticket.id}
+                canUpload
+                canDelete
+              />
             </ScrollArea>
           </TabsContent>
         </Tabs>

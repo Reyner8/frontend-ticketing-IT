@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { useApp } from "../lib/store";
 import { fetchErrorReports, fetchErrorReportDetail, createErrorReport, createTicket, fetchComments, createComment, fetchErrorStatusHistory, fetchErrorActivityLogs, getCachedUsers } from "../lib/api/services";
+import { AttachmentPanel } from "./AttachmentPanel";
 import { toast } from "sonner";
 import { ErrorReport, ErrorReportStatus, TicketPriority, TicketCategory, TeamType, Comment, ActivityLogEntry, StatusHistoryEntry } from "../types";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
@@ -1149,22 +1150,14 @@ function ErrorReportDetailDialog({
                 )}
 
                 {/* Attachments */}
-                {report.attachments.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-3">Attachments</h4>
-                    <div className="space-y-2">
-                      {report.attachments.map((attachment) => (
-                        <div key={attachment.id} className="flex items-center gap-2 p-2 border rounded">
-                          <Paperclip className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{attachment.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({(attachment.size / 1024).toFixed(1)} KB)
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <AttachmentPanel
+                    parent="errors"
+                    parentId={report.id}
+                    canUpload
+                    canDelete
+                  />
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>
