@@ -20,6 +20,14 @@ import { fetchErrorReports, fetchErrorReportDetail, createErrorReport, createTic
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
+import { StatusChangeActions } from "./StatusChangeActions";
+
+const ERROR_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "pending_approval", label: "Pending Approval" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+  { value: "overdue", label: "Overdue" },
+];
 import { toast } from "sonner";
 import { ErrorReport, ErrorReportStatus, TicketPriority, TicketCategory, TeamType, Comment, ActivityLogEntry, StatusHistoryEntry } from "../types";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
@@ -984,6 +992,13 @@ function ErrorReportDetailDialog({
               resourceId={report.id}
               currentAssigneeId={report.assignedToId}
               currentTeam={report.assignedTeam}
+              onCompleted={() => onOpenChange(false)}
+            />
+            <StatusChangeActions
+              target="errors"
+              resourceId={report.id}
+              currentStatus={report.status}
+              options={ERROR_STATUS_OPTIONS}
               onCompleted={() => onOpenChange(false)}
             />
           </div>

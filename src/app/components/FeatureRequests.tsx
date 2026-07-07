@@ -21,6 +21,21 @@ import type { Milestone, TimelineEntry } from "../types";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
+import { StatusChangeActions } from "./StatusChangeActions";
+
+const FEATURE_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "submission", label: "Submission" },
+  { value: "pending_approval", label: "Pending Approval" },
+  { value: "approved", label: "Approved" },
+  { value: "assigned", label: "Assigned" },
+  { value: "development", label: "Development" },
+  { value: "testing", label: "Testing" },
+  { value: "validation", label: "Validation" },
+  { value: "completed", label: "Completed" },
+  { value: "post_implementation_review", label: "Post-Implementation Review" },
+  { value: "rejected", label: "Rejected" },
+  { value: "cancelled", label: "Cancelled" },
+];
 import { FeatureRequest, FeatureRequestStatus, TicketPriority } from "../types";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
 import { 
@@ -769,6 +784,13 @@ function FeatureRequestDetailDialog({
               resourceId={ticket.id}
               currentAssigneeId={ticket.assignedToId}
               currentTeam={ticket.assignedTeam}
+              onCompleted={() => onOpenChange(false)}
+            />
+            <StatusChangeActions
+              target="features"
+              resourceId={ticket.id}
+              currentStatus={ticket.status}
+              options={FEATURE_STATUS_OPTIONS}
               onCompleted={() => onOpenChange(false)}
             />
           </div>
