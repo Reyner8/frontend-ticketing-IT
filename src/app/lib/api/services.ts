@@ -243,6 +243,44 @@ export async function createComment(
   return mapComment(data);
 }
 
+export interface PublicSubmissionPayload {
+  submission_type: 'error_report' | 'feature_request';
+  title: string;
+  description: string;
+  category: string;
+  priority: string;
+  submitter_name: string;
+  submitter_email: string;
+  submitter_phone?: string;
+  submitter_unit?: string;
+}
+
+export interface PublicSubmissionResult {
+  reference_number: string;
+  submission_type: string;
+  status: string;
+  submitted_at: string;
+}
+
+export async function submitPublicRequest(
+  payload: PublicSubmissionPayload
+): Promise<PublicSubmissionResult> {
+  const apiKey = import.meta.env.VITE_PUBLIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('Public submissions are not configured on this deployment.');
+  }
+  const response = await apiRequest<{ success: boolean; data: PublicSubmissionResult }>(
+    '/public/submit',
+    {
+      method: 'POST',
+      body: payload,
+      auth: false,
+      headers: { 'X-API-Key': apiKey },
+    }
+  );
+  return response.data;
+}
+
 type StatusTarget = 'tickets' | 'errors' | 'features';
 
 export async function updateResourceStatus(
