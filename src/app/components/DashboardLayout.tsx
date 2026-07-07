@@ -20,7 +20,23 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { TicketPriority, DowntimeType } from "../types";
-import { createTicket, createDowntimeRecord } from "../lib/api/services";
+import {
+  createTicket,
+  createDowntimeRecord,
+  fetchTickets,
+  fetchErrorReports,
+  fetchFeatureRequests,
+  fetchDowntimeRecords,
+  fetchUsers,
+} from "../lib/api/services";
+import {
+  exportTicketsCsv,
+  exportErrorsCsv,
+  exportFeaturesCsv,
+  exportDowntimesCsv,
+  exportUsersCsv,
+} from "../lib/export-utils";
+import { Download } from "lucide-react";
 
 export default function DashboardLayout() {
   const [activeView, setActiveView] = useState("/");
@@ -384,13 +400,73 @@ function QuickAssignForm({ onClose }: { onClose: () => void }) {
 }
 
 function QuickExportForm({ onClose }: { onClose: () => void }) {
+  const [dataset, setDataset] = useState<
+    "tickets" | "errors" | "features" | "downtimes" | "users"
+  >("tickets");
+  const [loading, setLoading] = useState(false);
+
+  const handleExport = async () => {
+    setLoading(true);
+    try {
+      if (dataset === "tickets") {
+        const { tickets } = await fetchTickets({ per_page: 500 });
+        exportTicketsCsv(tickets);
+      } else if (dataset === "errors") {
+        const { reports } = await fetchErrorReports({ per_page: 500 });
+        exportErrorsCsv(reports);
+      } else if (dataset === "features") {
+        const { features } = await fetchFeatureRequests({ per_page: 500 });
+        exportFeaturesCsv(features);
+      } else if (dataset === "downtimes") {
+        const { records } = await fetchDowntimeRecords({ per_page: 500 });
+        exportDowntimesCsv(records);
+      } else {
+        const users = await fetchUsers({ per_page: 500 });
+        exportUsersCsv(users);
+      }
+      toast.success("Export downloaded");
+      onClose();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to export data"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Export functionality would be implemented here, allowing admins to export reports in various formats (PDF, Excel, CSV).
+        Backend export endpoints are not available yet. This client-side export
+        fetches the latest data and saves it as CSV in your browser.
       </p>
-      <div className="flex justify-end">
-        <Button onClick={onClose}>Close</Button>
+      <div className="space-y-2">
+        <Label>Dataset</Label>
+        <Select
+          value={dataset}
+          onValueChange={(v) => setDataset(v as typeof dataset)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tickets">Tickets</SelectItem>
+            <SelectItem value="errors">Error Reports</SelectItem>
+            <SelectItem value="features">Feature Requests</SelectItem>
+            <SelectItem value="downtimes">Downtime Records</SelectItem>
+            <SelectItem value="users">Users</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={handleExport} disabled={loading}>
+          <Download className="mr-2 h-4 w-4" />
+          {loading ? "Preparing..." : "Download CSV"}
+        </Button>
       </div>
     </div>
   );
