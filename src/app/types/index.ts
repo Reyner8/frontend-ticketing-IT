@@ -208,6 +208,16 @@ export interface TicketWatcher {
   watchingSince?: Date;
 }
 
+export interface Mention {
+  id: string;
+  commentId: string;
+  userName?: string;
+  content?: string;
+  commentableId?: string;
+  commentableType?: string;
+  createdAt: Date;
+}
+
 export interface ConversionHistoryEntry {
   id: string;
   sourceTicketId: string;

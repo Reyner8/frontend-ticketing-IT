@@ -496,6 +496,35 @@ export function mapSystemConfigItem(data: Record<string, unknown>): import('../.
   };
 }
 
+export function mapDashboardStatsFromApi(data: Record<string, unknown>): import('../../types').DashboardStats {
+  return {
+    totalTickets: Number(data.total_tickets ?? 0),
+    openTickets: Number(data.open_tickets ?? 0),
+    resolvedToday: Number(data.resolved_today ?? 0),
+    overdueTickets: Number(data.overdue_tickets ?? 0),
+    criticalTickets: Number(data.critical_tickets ?? 0),
+    activeDowntimes: Number(data.active_downtimes ?? 0),
+    downtimeHours: Number(data.downtime_hours ?? 0),
+    averageResolutionTime: Number(data.average_resolution_time ?? 0),
+    slaCompliance: Number(data.sla_compliance ?? 0),
+    userSatisfactionScore: Number(data.user_satisfaction_score ?? 0),
+  };
+}
+
+export function mapMention(data: Record<string, unknown>): import('../../types').Mention {
+  const user = data.user as Record<string, unknown> | undefined;
+  const comment = data.comment as Record<string, unknown> | undefined;
+  return {
+    id: String(data.id),
+    commentId: String(data.comment_id ?? ''),
+    userName: user?.name ? String(user.name) : undefined,
+    content: comment?.content ? String(comment.content) : undefined,
+    commentableId: comment?.commentable_id ? String(comment.commentable_id) : undefined,
+    commentableType: comment?.commentable_type ? String(comment.commentable_type) : undefined,
+    createdAt: comment?.created_at ? parseDate(comment.created_at as string) : new Date(),
+  };
+}
+
 export function computeDashboardStats(
   tickets: Ticket[],
   downtimes: DowntimeRecord[],

@@ -33,6 +33,8 @@ import {
   mapTicketWatcher,
   mapConversionHistory,
   mapSystemConfigItem,
+  mapDashboardStatsFromApi,
+  mapMention,
 } from './mappers';
 import {
   User,
@@ -54,6 +56,7 @@ import {
   ConversionHistoryEntry,
   SystemConfigItem,
   ActivityLogEntry,
+  Mention,
 } from '../../types';
 
 let usersCache: User[] = [];
@@ -319,6 +322,7 @@ export async function submitPublicRequest(
       form.append(key, String(value));
     }
   });
+  form.append('website', '');
   files.forEach((file) => form.append('files[]', file));
 
   const response = await apiRequest<{ success: boolean; data: PublicSubmissionResult }>(
@@ -545,24 +549,34 @@ export async function fetchTeamWorkloadLatest(): Promise<TeamWorkload[]> {
   return (Array.isArray(data) ? data : [data]).map(mapTeamWorkload);
 }
 
+export async function fetchDashboardStats(): Promise<DashboardStats> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown> }>(
+    '/dashboard/stats'
+  );
+  return mapDashboardStatsFromApi(response.data ?? {});
+}
+
 export async function fetchDashboardData(): Promise<{
   stats: DashboardStats;
   tickets: Ticket[];
   downtimes: DowntimeRecord[];
   teamWorkload: TeamWorkload[];
 }> {
-  const [ticketsResult, downtimesResult, teamWorkload] = await Promise.all([
+  const [statsResult, ticketsResult, downtimesResult, teamWorkload] = await Promise.all([
+    fetchDashboardStats().catch(() => null),
     fetchTickets({ per_page: 50 }),
     fetchDowntimeRecords({ per_page: 50 }),
     fetchTeamWorkloadLatest().catch(() => [] as TeamWorkload[]),
   ]);
 
-  const stats = computeDashboardStats(
-    ticketsResult.tickets,
-    downtimesResult.records,
-    teamWorkload,
-    ticketsResult.total
-  );
+  const stats =
+    statsResult ??
+    computeDashboardStats(
+      ticketsResult.tickets,
+      downtimesResult.records,
+      teamWorkload,
+      ticketsResult.total
+    );
 
   return {
     stats,
@@ -730,7 +744,277 @@ export async function deleteSystemConfig(id: string): Promise<void> {
 }
 
 export type ExportDataset = 'tickets' | 'errors' | 'features' | 'downtimes' | 'users';
+export type ExportFormat = 'csv' | 'excel' | 'pdf';
 
-export async function downloadServerExport(dataset: ExportDataset): Promise<{ blob: Blob; filename: string }> {
-  return apiDownload(`/exports/${dataset}`);
+export async function downloadServerExport(
+  dataset: ExportDataset,
+  format: ExportFormat = 'csv'
+): Promise<{ blob: Blob; filename: string }> {
+  return apiDownload(`/exports/${dataset}`, { format });
+}
+
+export async function updateDowntimeRecord(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<DowntimeRecord> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/downtime-records/${id}`,
+    payload
+  );
+  return mapDowntimeRecord(response.data);
+}
+
+export async function resolveDowntimeRecord(
+  id: string,
+  payload: { root_cause?: string; preventive_measures?: string; end_time?: string }
+): Promise<DowntimeRecord> {
+  const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
+    `/downtime-records/${id}/resolve`,
+    payload
+  );
+  return mapDowntimeRecord(response.data);
+}
+
+export async function syncDowntimeAffectedSystems(
+  downtimeId: string,
+  systems: string[]
+): Promise<string[]> {
+  const response = await apiPut<{ success: boolean; data: { system_name: string }[] }>(
+    `/downtime-records/${downtimeId}/affected-systems`,
+    { systems }
+  );
+  return (response.data ?? []).map((s) => s.system_name);
+}
+
+export async function createMilestone(
+  featureId: string,
+  payload: { title: string; description?: string; target_date: string; progress?: number }
+): Promise<Milestone> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    `/feature-requests/${featureId}/milestones`,
+    payload
+  );
+  return mapMilestone(response.data);
+}
+
+export async function updateMilestone(
+  featureId: string,
+  milestoneId: string,
+  payload: Record<string, unknown>
+): Promise<Milestone> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/feature-requests/${featureId}/milestones/${milestoneId}`,
+    payload
+  );
+  return mapMilestone(response.data);
+}
+
+export async function completeMilestone(featureId: string, milestoneId: string): Promise<Milestone> {
+  const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
+    `/feature-requests/${featureId}/milestones/${milestoneId}/complete`
+  );
+  return mapMilestone(response.data);
+}
+
+export async function deleteMilestone(featureId: string, milestoneId: string): Promise<void> {
+  await apiDelete(`/feature-requests/${featureId}/milestones/${milestoneId}`);
+}
+
+export async function createTimelineEntry(
+  featureId: string,
+  payload: Record<string, unknown>
+): Promise<TimelineEntry> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    `/feature-requests/${featureId}/timelines`,
+    payload
+  );
+  return mapTimelineEntry(response.data);
+}
+
+export async function updateTimelineEntry(
+  featureId: string,
+  entryId: string,
+  payload: Record<string, unknown>
+): Promise<TimelineEntry> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/feature-requests/${featureId}/timelines/${entryId}`,
+    payload
+  );
+  return mapTimelineEntry(response.data);
+}
+
+export async function deleteTimelineEntry(featureId: string, entryId: string): Promise<void> {
+  await apiDelete(`/feature-requests/${featureId}/timelines/${entryId}`);
+}
+
+export async function fetchMergedTickets(ticketId: string): Promise<Ticket[]> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/tickets/${ticketId}/merge`
+  );
+  return (response.data ?? []).map(mapTicketListItem);
+}
+
+export async function mergeTickets(ticketId: string, mergedTicketIds: string[]): Promise<Ticket[]> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/tickets/${ticketId}/merge`,
+    { merged_ticket_ids: mergedTicketIds }
+  );
+  return (response.data ?? []).map(mapTicketListItem);
+}
+
+export async function unmergeTicket(ticketId: string, mergedTicketId: string): Promise<Ticket[]> {
+  const response = await apiDelete<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/tickets/${ticketId}/merge/${mergedTicketId}`
+  );
+  return (response.data ?? []).map(mapTicketListItem);
+}
+
+export async function fetchGlobalConversionHistory(params?: Record<string, string | number>): Promise<{
+  entries: ConversionHistoryEntry[];
+  total: number;
+}> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/conversion-history', {
+    per_page: 50,
+    ...params,
+  });
+  return {
+    entries: (data as unknown as Record<string, unknown>[]).map(mapConversionHistory),
+    total: meta.total,
+  };
+}
+
+export async function fetchWatchedTickets(params?: Record<string, string | number>): Promise<{
+  tickets: Ticket[];
+  total: number;
+}> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/me/watched-tickets', {
+    per_page: 50,
+    ...params,
+  });
+  return {
+    tickets: (data as unknown as Record<string, unknown>[]).map(mapTicketListItem),
+    total: meta.total,
+  };
+}
+
+export async function fetchMyMentions(): Promise<Mention[]> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    '/mentions/me',
+    { per_page: 50 }
+  );
+  return (response.data ?? []).map(mapMention);
+}
+
+export async function fetchFeatureActivityLogs(featureId: string): Promise<ActivityLogEntry[]> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/features/${featureId}/activity-logs`
+  );
+  return (response.data ?? []).map(mapActivityLog);
+}
+
+export async function createCalendarEvent(payload: Record<string, unknown>): Promise<CalendarEvent> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/calendar-events/',
+    payload
+  );
+  return mapCalendarEvent(response.data);
+}
+
+export async function updateCalendarEvent(
+  eventId: string,
+  payload: Record<string, unknown>
+): Promise<CalendarEvent> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    `/calendar-events/${eventId}`,
+    payload
+  );
+  return mapCalendarEvent(response.data);
+}
+
+export async function deleteCalendarEvent(eventId: string): Promise<void> {
+  await apiDelete(`/calendar-events/${eventId}`);
+}
+
+export async function updateTicket(id: string, payload: Record<string, unknown>): Promise<Ticket> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/tickets/${id}`,
+    payload
+  );
+  return mapTicketDetail(response.data);
+}
+
+export async function deleteTicket(id: string): Promise<void> {
+  await apiDelete(`/tickets/${id}`);
+}
+
+export async function updateErrorReport(id: string, payload: Record<string, unknown>): Promise<ErrorReport> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/error-reports/${id}`,
+    payload
+  );
+  return mapErrorReportDetail(response.data);
+}
+
+export async function deleteErrorReport(id: string): Promise<void> {
+  await apiDelete(`/error-reports/${id}`);
+}
+
+export async function updateFeatureRequest(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<FeatureRequest> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/feature-requests/${id}`,
+    payload
+  );
+  return mapFeatureDetail(response.data);
+}
+
+export async function deleteFeatureRequest(id: string): Promise<void> {
+  await apiDelete(`/feature-requests/${id}`);
+}
+
+export async function fetchTeamWorkloadCompare(date: string): Promise<TeamWorkload[]> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    '/team-workload/compare',
+    { date }
+  );
+  return (response.data ?? []).map(mapTeamWorkload);
+}
+
+export async function fetchTeamWorkloadHistory(
+  team: string,
+  from: string,
+  to: string
+): Promise<TeamWorkload[]> {
+  const { data } = await apiGetPaginated<Record<string, unknown>[]>(
+    `/team-workload/${team}/history`,
+    { from, to, per_page: 100 }
+  );
+  return (data as unknown as Record<string, unknown>[]).map(mapTeamWorkload);
+}
+
+export async function generateTeamWorkload(): Promise<TeamWorkload[]> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown>[] }>(
+    '/team-workload/generate'
+  );
+  return (response.data ?? []).map(mapTeamWorkload);
+}
+
+export async function registerUser(payload: {
+  name: string;
+  username: string;
+  email: string;
+  password: string;
+}): Promise<User> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/register',
+    { ...payload, role: 'reporter', is_active: true },
+    false
+  );
+  return mapUser(response.data);
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiPost('/forgot-password', { email }, false);
 }

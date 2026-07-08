@@ -140,7 +140,7 @@ export async function apiDownload(
   params?: RequestOptions['params']
 ): Promise<{ blob: Blob; filename: string }> {
   const url = buildUrl(path, params);
-  const headers: Record<string, string> = { Accept: 'text/csv' };
+  const headers: Record<string, string> = { Accept: '*/*' };
   const token = getToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
