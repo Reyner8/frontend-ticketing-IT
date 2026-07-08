@@ -1,11 +1,33 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
 import { AtSign } from "lucide-react";
 import { fetchMyMentions } from "../lib/api/services";
+import { setFocusResource } from "../lib/resource-focus";
 import type { Mention } from "../types";
 
-export function MentionsView() {
+interface MentionsViewProps {
+  onNavigate?: (view: string) => void;
+}
+
+function resolveMentionRoute(mention: Mention): { type: "ticket" | "error" | "feature"; path: string } | null {
+  if (!mention.commentableId || !mention.commentableType) return null;
+
+  const type = mention.commentableType.toLowerCase();
+  if (type.includes("ticket")) {
+    return { type: "ticket", path: "/tickets" };
+  }
+  if (type.includes("error")) {
+    return { type: "error", path: "/error-reports" };
+  }
+  if (type.includes("feature")) {
+    return { type: "feature", path: "/feature-requests" };
+  }
+  return null;
+}
+
+export function MentionsView({ onNavigate }: MentionsViewProps) {
   const [mentions, setMentions] = useState<Mention[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,6 +37,13 @@ export function MentionsView() {
       .catch(() => setMentions([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const openMention = (mention: Mention) => {
+    const route = resolveMentionRoute(mention);
+    if (!route || !mention.commentableId) return;
+    setFocusResource(route.type, mention.commentableId);
+    onNavigate?.(route.path);
+  };
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -35,15 +64,23 @@ export function MentionsView() {
           ) : mentions.length === 0 ? (
             <p className="text-sm text-muted-foreground">No mentions yet.</p>
           ) : (
-            mentions.map((m) => (
-              <div key={m.id} className="border rounded-md p-3 text-sm">
-                <p className="text-xs text-muted-foreground mb-1">
-                  {format(m.createdAt, "PPp")}
-                  {m.commentableId ? ` · ${m.commentableType} ${m.commentableId}` : ""}
-                </p>
-                <p>{m.content ?? "—"}</p>
-              </div>
-            ))
+            mentions.map((m) => {
+              const route = resolveMentionRoute(m);
+              return (
+                <div key={m.id} className="border rounded-md p-3 text-sm space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    {format(m.createdAt, "PPp")}
+                    {m.commentableId ? ` · ${m.commentableType} ${m.commentableId}` : ""}
+                  </p>
+                  <p>{m.content ?? "—"}</p>
+                  {route && (
+                    <Button variant="outline" size="sm" onClick={() => openMention(m)}>
+                      Open {route.type.replace(/_/g, " ")}
+                    </Button>
+                  )}
+                </div>
+              );
+            })
           )}
         </CardContent>
       </Card>

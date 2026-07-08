@@ -601,6 +601,24 @@ export async function searchDowntimes(query: string): Promise<DowntimeRecord[]> 
   );
 }
 
+export async function searchErrorReports(query: string): Promise<ErrorReport[]> {
+  const { reports } = await fetchErrorReports({ search: query, per_page: 10 });
+  return reports;
+}
+
+export async function searchFeatures(query: string): Promise<FeatureRequest[]> {
+  const { features } = await fetchFeatureRequests({ per_page: 100 });
+  const lower = query.toLowerCase();
+  return features
+    .filter(
+      (f) =>
+        f.title.toLowerCase().includes(lower) ||
+        f.id.toLowerCase().includes(lower) ||
+        (f.description?.toLowerCase().includes(lower) ?? false)
+    )
+    .slice(0, 10);
+}
+
 export async function searchUsers(query: string): Promise<User[]> {
   if (usersCache.length === 0) {
     try {
@@ -904,6 +922,13 @@ export async function fetchMyMentions(): Promise<Mention[]> {
   return (response.data ?? []).map(mapMention);
 }
 
+export async function fetchFeatureStatusHistory(featureId: string) {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    `/features/${featureId}/status`
+  );
+  return (response.data ?? []).map(mapStatusHistory);
+}
+
 export async function fetchFeatureActivityLogs(featureId: string): Promise<ActivityLogEntry[]> {
   const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
     `/features/${featureId}/activity-logs`
@@ -1016,4 +1041,13 @@ export async function registerUser(payload: {
 
 export async function requestPasswordReset(email: string): Promise<void> {
   await apiPost('/forgot-password', { email }, false);
+}
+
+export async function resetPassword(payload: {
+  token: string;
+  email: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<void> {
+  await apiPost('/reset-password', payload, false);
 }

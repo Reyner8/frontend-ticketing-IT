@@ -56,11 +56,11 @@ export default function DashboardLayout() {
       case "/tickets":
         return <Tickets />;
       case "/watched-tickets":
-        return <WatchedTicketsView />;
+        return <WatchedTicketsView onNavigate={setActiveView} />;
       case "/conversion-history":
         return <ConversionHistoryView />;
       case "/mentions":
-        return <MentionsView />;
+        return <MentionsView onNavigate={setActiveView} />;
       case "/error-reports":
         return <ErrorReports />;
       case "/feature-requests":

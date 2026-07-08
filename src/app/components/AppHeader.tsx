@@ -29,7 +29,8 @@ import {
 } from './ui/popover';
 import { ScrollArea } from './ui/scroll-area';
 import { useApp, useNotifications } from '../lib/store';
-import { searchTickets, searchDowntimes, searchUsers } from '../lib/api/services';
+import { searchTickets, searchDowntimes, searchUsers, searchErrorReports, searchFeatures } from '../lib/api/services';
+import { setFocusResource } from '../lib/resource-focus';
 import { SearchResult } from '../types';
 import { 
   Search, 
@@ -46,6 +47,7 @@ import {
   FileText,
   Bug,
   Wrench,
+  AlertTriangle,
   Calendar
 } from 'lucide-react';
 
@@ -70,8 +72,10 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
     }
 
     try {
-      const [tickets, downtimes, users] = await Promise.all([
+      const [tickets, errors, features, downtimes, users] = await Promise.all([
         searchTickets(query).catch(() => []),
+        searchErrorReports(query).catch(() => []),
+        searchFeatures(query).catch(() => []),
         searchDowntimes(query).catch(() => []),
         state.currentUser?.role === 'admin' ? searchUsers(query).catch(() => []) : Promise.resolve([]),
       ]);
@@ -82,9 +86,27 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
           type: 'ticket' as const,
           title: ticket.title,
           description: `${ticket.id} • ${ticket.status} • ${ticket.priority}`,
-          url: `/error-reports?id=${ticket.id}`,
+          url: `/tickets?id=${ticket.id}`,
           relevanceScore: 1,
           createdAt: ticket.dateReported,
+        })),
+        ...errors.map((report) => ({
+          id: report.id,
+          type: 'error' as const,
+          title: report.title,
+          description: `${report.id} • ${report.status} • ${report.priority}`,
+          url: `/error-reports?id=${report.id}`,
+          relevanceScore: 1,
+          createdAt: report.dateReported,
+        })),
+        ...features.map((feature) => ({
+          id: feature.id,
+          type: 'feature' as const,
+          title: feature.title,
+          description: `${feature.id} • ${feature.status} • ${feature.priority}`,
+          url: `/feature-requests?id=${feature.id}`,
+          relevanceScore: 1,
+          createdAt: feature.dateSubmitted,
         })),
         ...downtimes.map((downtime) => ({
           id: downtime.id,
@@ -159,21 +181,28 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
   const handleSearchSelect = (result: SearchResult) => {
     setSearchOpen(false);
     setSearchQuery('');
-    if (result.type === 'ticket') {
-      if (result.url.includes('feature')) {
-        onNavigate('/feature-requests');
-      } else {
-        onNavigate('/error-reports');
-      }
-    } else if (result.type === 'downtime') {
-      onNavigate('/downtime');
+
+    const routeByType: Record<SearchResult['type'], string> = {
+      ticket: '/tickets',
+      error: '/error-reports',
+      feature: '/feature-requests',
+      downtime: '/downtime',
+      user: '/settings',
+      comment: '/mentions',
+    };
+
+    if (result.type === 'ticket' || result.type === 'error' || result.type === 'feature') {
+      setFocusResource(result.type, result.id);
     }
+
+    onNavigate(routeByType[result.type] ?? '/');
   };
 
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
     if (notification.ticketId) {
-      onNavigate('/error-reports');
+      setFocusResource('ticket', notification.ticketId);
+      onNavigate('/tickets');
     } else if (notification.downtimeId) {
       onNavigate('/downtime');
     }
@@ -183,6 +212,8 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
   const getSearchIcon = (type: SearchResult['type']) => {
     switch (type) {
       case 'ticket': return Bug;
+      case 'error': return AlertTriangle;
+      case 'feature': return Wrench;
       case 'downtime': return Zap;
       case 'user': return User;
       default: return FileText;
@@ -396,7 +427,7 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
       {/* Global Search Dialog */}
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput 
-          placeholder="Search tickets, downtimes, users..." 
+          placeholder="Search tickets, errors, features, downtimes..."
           value={searchQuery}
           onValueChange={setSearchQuery}
         />

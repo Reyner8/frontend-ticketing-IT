@@ -2,12 +2,18 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Eye } from "lucide-react";
 import { fetchWatchedTickets } from "../lib/api/services";
+import { setFocusResource } from "../lib/resource-focus";
 import type { Ticket } from "../types";
 
-export function WatchedTicketsView() {
+interface WatchedTicketsViewProps {
+  onNavigate?: (view: string) => void;
+}
+
+export function WatchedTicketsView({ onNavigate }: WatchedTicketsViewProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,6 +23,11 @@ export function WatchedTicketsView() {
       .catch(() => setTickets([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const openTicket = (ticketId: string) => {
+    setFocusResource("ticket", ticketId);
+    onNavigate?.("/tickets");
+  };
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -45,6 +56,7 @@ export function WatchedTicketsView() {
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Reported</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -57,6 +69,11 @@ export function WatchedTicketsView() {
                     </TableCell>
                     <TableCell>{t.priority}</TableCell>
                     <TableCell>{format(t.dateReported, "PP")}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => openTicket(t.id)}>
+                        Open
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

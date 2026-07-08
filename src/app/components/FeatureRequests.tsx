@@ -16,8 +16,8 @@ import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
-import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, getCachedUsers, fetchFeatureActivityLogs, updateFeatureRequest, deleteFeatureRequest } from "../lib/api/services";
-import type { Milestone, TimelineEntry, ActivityLogEntry } from "../types";
+import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, getCachedUsers, fetchFeatureActivityLogs, fetchFeatureStatusHistory, updateFeatureRequest, deleteFeatureRequest } from "../lib/api/services";
+import type { Milestone, TimelineEntry, ActivityLogEntry, StatusHistoryEntry } from "../types";
 import { CommentThread } from "./CommentThread";
 import { MilestoneTimelinePanel } from "./MilestoneTimelinePanel";
 import { ResourceEditActions } from "./ResourceEditActions";
@@ -61,6 +61,8 @@ import {
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { format } from "date-fns";
+import { consumeFocusResource } from "../lib/resource-focus";
+import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
 
 export function FeatureRequests() {
   const { state } = useApp();
@@ -109,6 +111,22 @@ export function FeatureRequests() {
       setSelectedTicket(feature);
     }
   };
+
+  useEffect(() => {
+    if (isLoading) return;
+    const focus = consumeFocusResource();
+    if (focus?.type !== "feature") return;
+
+    const match = features.find((f) => f.id === focus.id);
+    if (match) {
+      void handleSelectFeature(match);
+      return;
+    }
+
+    void fetchFeatureDetail(focus.id)
+      .then((detail) => handleSelectFeature(detail))
+      .catch(() => {});
+  }, [isLoading, features]);
 
   const filteredTickets = useMemo(() => {
     let filtered = [...features];
@@ -1246,35 +1264,30 @@ function NewFeatureRequestDialog({
 }
 
 function FeatureActivityTab({ featureId }: { featureId: string }) {
-  const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
+  const [statusHistory, setStatusHistory] = useState<StatusHistoryEntry[]>([]);
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFeatureActivityLogs(featureId)
-      .then(setLogs)
-      .catch(() => setLogs([]))
+    Promise.all([
+      fetchFeatureStatusHistory(featureId).catch(() => []),
+      fetchFeatureActivityLogs(featureId).catch(() => []),
+    ])
+      .then(([history, logs]) => {
+        setStatusHistory(history);
+        setActivityLog(logs);
+      })
       .finally(() => setLoading(false));
   }, [featureId]);
 
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">Loading activity...</p>;
+  }
+
   return (
-    <ScrollArea className="h-[400px] pr-4">
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading activity...</p>
-      ) : logs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No activity logged yet.</p>
-      ) : (
-        <ul className="space-y-3 text-sm">
-          {logs.map((log) => (
-            <li key={log.id} className="border-l-2 pl-3">
-              <p className="font-medium">{log.action}</p>
-              <p className="text-muted-foreground">{log.description}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatDate(log.performedAt)} · {log.performedBy ?? "System"}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </ScrollArea>
+    <ActivityTimelinePanel
+      statusHistory={statusHistory}
+      activityLog={activityLog}
+    />
   );
 }

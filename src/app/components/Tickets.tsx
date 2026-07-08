@@ -34,6 +34,7 @@ import { MergeTicketPanel } from "./MergeTicketPanel";
 import { ResourceEditActions } from "./ResourceEditActions";
 import { TableSkeleton } from "./LoadingStates";
 import { Search, Eye, Ticket as TicketIcon, MessageSquare } from "lucide-react";
+import { consumeFocusResource } from "../lib/resource-focus";
 import type { Ticket, TicketStatus, TicketPriority, StatusHistoryEntry, ActivityLogEntry } from "../types";
 
 const TICKET_STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -143,6 +144,25 @@ export function Tickets() {
       setDetailOpen(true);
     }
   };
+
+  useEffect(() => {
+    if (loading) return;
+    const focus = consumeFocusResource();
+    if (focus?.type !== "ticket") return;
+
+    const match = tickets.find((t) => t.id === focus.id);
+    if (match) {
+      void openDetail(match);
+      return;
+    }
+
+    void fetchTicketDetail(focus.id)
+      .then((detail) => {
+        setSelected(detail);
+        setDetailOpen(true);
+      })
+      .catch(() => {});
+  }, [loading, tickets]);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">

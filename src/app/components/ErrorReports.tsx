@@ -23,17 +23,20 @@ import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
 import { StatusChangeActions } from "./StatusChangeActions";
+import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
 import { TagManager } from "./TagManager";
+import { consumeFocusResource } from "../lib/resource-focus";
+import { toast } from "sonner";
+import { ErrorReport, ErrorReportStatus, TicketPriority, TicketCategory, TeamType, Comment, ActivityLogEntry, StatusHistoryEntry } from "../types";
+import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
 
 const ERROR_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "pending_approval", label: "Pending Approval" },
+  { value: "assigned", label: "Assigned" },
   { value: "in_progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
   { value: "overdue", label: "Overdue" },
 ];
-import { toast } from "sonner";
-import { ErrorReport, ErrorReportStatus, TicketPriority, TicketCategory, TeamType, Comment, ActivityLogEntry, StatusHistoryEntry } from "../types";
-import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
 import { 
   Search, 
   Filter, 
@@ -113,6 +116,22 @@ export function ErrorReports() {
       setSelectedReport(report);
     }
   };
+
+  useEffect(() => {
+    if (isLoading) return;
+    const focus = consumeFocusResource();
+    if (focus?.type !== "error") return;
+
+    const match = reports.find((r) => r.id === focus.id);
+    if (match) {
+      void handleSelectReport(match);
+      return;
+    }
+
+    void fetchErrorReportDetail(focus.id)
+      .then((detail) => handleSelectReport(detail))
+      .catch(() => {});
+  }, [isLoading, reports]);
 
   const refreshReports = async () => {
     try {
@@ -214,7 +233,9 @@ export function ErrorReports() {
   // Summary statistics
   const summaryStats = useMemo(() => {
     const total = filteredReports.length;
-    const pending = filteredReports.filter(r => r.status === 'pending_approval').length;
+    const pending = filteredReports.filter(
+      (r) => r.status === "pending_approval" && r.approvalStatus !== "rejected"
+    ).length;
     const inProgress = filteredReports.filter(r => r.status === 'in_progress').length;
     const completed = filteredReports.filter(r => r.status === 'completed').length;
     const overdue = filteredReports.filter(r => r.status === 'overdue').length;
@@ -224,14 +245,21 @@ export function ErrorReports() {
   }, [filteredReports]);
 
   // Helper functions
-  const getStatusColor = (status: ErrorReportStatus) => {
+  const getStatusColor = (status: ErrorReportStatus, approvalStatus?: ErrorReport["approvalStatus"]) => {
+    if (approvalStatus === "rejected") return "text-red-600 bg-red-100";
     switch (status) {
       case 'pending_approval': return 'text-yellow-600 bg-yellow-100';
+      case 'assigned': return 'text-indigo-600 bg-indigo-100';
       case 'in_progress': return 'text-blue-600 bg-blue-100';
       case 'completed': return 'text-green-600 bg-green-100';
       case 'overdue': return 'text-red-600 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';
     }
+  };
+
+  const getStatusLabel = (report: ErrorReport) => {
+    if (report.approvalStatus === "rejected") return "Rejected";
+    return report.status.replace(/_/g, " ");
   };
 
   const getPriorityColor = (priority: TicketPriority) => {
@@ -574,8 +602,8 @@ export function ErrorReports() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(report.status)}>
-                          {report.status.replace('_', ' ')}
+                        <Badge className={getStatusColor(report.status, report.approvalStatus)}>
+                          {getStatusLabel(report)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -906,14 +934,21 @@ function ErrorReportDetailDialog({
     }).format(date);
   };
 
-  const getStatusColor = (status: ErrorReportStatus) => {
+  const getStatusColor = (status: ErrorReportStatus, approvalStatus?: ErrorReport["approvalStatus"]) => {
+    if (approvalStatus === "rejected") return 'text-red-600 bg-red-100';
     switch (status) {
       case 'pending_approval': return 'text-yellow-600 bg-yellow-100';
+      case 'assigned': return 'text-indigo-600 bg-indigo-100';
       case 'in_progress': return 'text-blue-600 bg-blue-100';
       case 'completed': return 'text-green-600 bg-green-100';
       case 'overdue': return 'text-red-600 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';
     }
+  };
+
+  const getStatusLabel = (item: ErrorReport) => {
+    if (item.approvalStatus === "rejected") return "Rejected";
+    return item.status.replace(/_/g, " ");
   };
 
   const getPriorityColor = (priority: TicketPriority) => {
@@ -1030,8 +1065,8 @@ function ErrorReportDetailDialog({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Status:</span>
-                        <Badge className={getStatusColor(report.status)}>
-                          {report.status.replace('_', ' ')}
+                        <Badge className={getStatusColor(report.status, report.approvalStatus)}>
+                          {getStatusLabel(report)}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
@@ -1184,58 +1219,10 @@ function ErrorReportDetailDialog({
           </TabsContent>
 
           <TabsContent value="timeline" className="mt-4">
-            <ScrollArea className="h-[400px]">
-              <div className="space-y-4">
-                <h4 className="font-medium">Activity Timeline</h4>
-                <div className="space-y-3">
-                  <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                    <div>
-                      <p className="text-sm font-medium">Report Created</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDateTime(report.dateReported)} by {getUserName(report.reporterId)}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {report.assignedToId && (
-                    <div className="flex gap-3">
-                      <div className="w-2 h-2 rounded-full bg-yellow-500 mt-2"></div>
-                      <div>
-                        <p className="text-sm font-medium">Report Assigned</p>
-                        <p className="text-xs text-muted-foreground">
-                          Assigned to {getUserName(report.assignedToId)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {report.status === 'in_progress' && (
-                    <div className="flex gap-3">
-                      <div className="w-2 h-2 rounded-full bg-purple-500 mt-2"></div>
-                      <div>
-                        <p className="text-sm font-medium">Work Started</p>
-                        <p className="text-xs text-muted-foreground">
-                          Report moved to In Progress
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {report.completionDate && (
-                    <div className="flex gap-3">
-                      <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-                      <div>
-                        <p className="text-sm font-medium">Report Completed</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateTime(report.completionDate)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </ScrollArea>
+            <ActivityTimelinePanel
+              statusHistory={report.statusHistory}
+              activityLog={report.activityLog}
+            />
           </TabsContent>
         </Tabs>
       </DialogContent>

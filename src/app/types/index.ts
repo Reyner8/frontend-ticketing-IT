@@ -28,6 +28,7 @@ export type FeatureRequestStatus =
 // Enhanced status for Error Reports
 export type ErrorReportStatus =
   | 'pending_approval'
+  | 'assigned'
   | 'in_progress'
   | 'completed'
   | 'overdue';
@@ -355,7 +356,7 @@ export interface Notification {
 
 export interface SearchResult {
   id: string;
-  type: 'ticket' | 'downtime' | 'user' | 'comment';
+  type: 'ticket' | 'error' | 'feature' | 'downtime' | 'user' | 'comment';
   title: string;
   description: string;
   url: string;
