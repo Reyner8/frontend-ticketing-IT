@@ -237,6 +237,7 @@ export function PublicSubmissionForm() {
           
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
               {/* Submission Type */}
               <div className="space-y-3">
                 <Label className="text-base">Submission Type *</Label>

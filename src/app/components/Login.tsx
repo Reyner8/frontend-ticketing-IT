@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -78,6 +78,15 @@ export function Login() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              <Link to="/forgot-password" className="text-primary hover:underline">
+                Forgot password?
+              </Link>
+              {" · "}
+              <Link to="/register" className="text-primary hover:underline">
+                Create account
+              </Link>
+            </p>
           </form>
           <div className="mt-4 rounded-lg border bg-muted/50 p-3 text-xs text-muted-foreground">
             <div className="flex items-start gap-2">

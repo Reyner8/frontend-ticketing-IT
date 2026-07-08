@@ -4,12 +4,22 @@ import { AppProvider } from "./lib/store";
 import DashboardLayout from "./components/DashboardLayout";
 import { PublicSubmissionForm } from "./components/PublicSubmissionForm";
 import { Login } from "./components/Login";
+import { Register } from "./components/Register";
+import { ForgotPassword } from "./components/ForgotPassword";
 import { AuthGuard } from "./components/AuthGuard";
 
 const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/register",
+    element: <Register />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
   },
   {
     path: "/",
