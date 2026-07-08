@@ -12,11 +12,9 @@ import {
   fetchFeatureMilestones,
   fetchFeatureTimeline,
   createMilestone,
-  updateMilestone,
   completeMilestone,
   deleteMilestone,
   createTimelineEntry,
-  updateTimelineEntry,
   deleteTimelineEntry,
 } from "../lib/api/services";
 import type { Milestone, TimelineEntry } from "../types";

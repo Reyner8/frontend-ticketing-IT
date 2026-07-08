@@ -465,19 +465,29 @@ export function mapTicketWatcher(data: Record<string, unknown>): import('../../t
 }
 
 export function mapConversionHistory(data: Record<string, unknown>): import('../../types').ConversionHistoryEntry {
-  const source = (data.source_ticket ?? {}) as Record<string, unknown>;
+  const sourceRaw = data.source_ticket;
+  const source =
+    typeof sourceRaw === 'string'
+      ? { id: sourceRaw, title: '' }
+      : ((sourceRaw ?? {}) as Record<string, unknown>);
   const target = (data.target ?? {}) as Record<string, unknown>;
   const targetDetail = (target.detail ?? {}) as Record<string, unknown>;
-  const converter = data.converted_by as { id?: number | string; name?: string } | null;
+  const convertedByRaw = data.converted_by;
+  const convertedByName =
+    typeof convertedByRaw === 'string'
+      ? convertedByRaw
+      : typeof convertedByRaw === 'object' && convertedByRaw !== null
+        ? String((convertedByRaw as { name?: string }).name ?? (convertedByRaw as { id?: string }).id ?? '')
+        : undefined;
 
   return {
     id: String(data.id),
-    sourceTicketId: String(source.id ?? ''),
+    sourceTicketId: String(source.id ?? sourceRaw ?? ''),
     sourceTicketTitle: String(source.title ?? ''),
-    targetType: String(target.type ?? target.label ?? ''),
+    targetType: String(target.type ?? data.target_type ?? target.label ?? ''),
     targetId: String(target.id ?? ''),
     targetTitle: targetDetail.title ? String(targetDetail.title) : undefined,
-    convertedBy: converter?.name ? String(converter.name) : converter?.id ? String(converter.id) : undefined,
+    convertedBy: convertedByName || undefined,
     convertedAt: parseDate((data.converted_at ?? data.created_at) as string),
     reason: data.reason as string | undefined,
     notes: data.notes as string | undefined,

@@ -86,8 +86,12 @@ export function PublicSubmissionForm() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const honeypot = new FormData(e.currentTarget).get('website');
+    if (typeof honeypot === 'string' && honeypot.trim() !== '') {
+      return;
+    }
 
     setSubmitting(true);
 

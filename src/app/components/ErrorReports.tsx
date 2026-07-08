@@ -884,19 +884,6 @@ function ErrorReportDetailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [newComment, setNewComment] = useState("");
-  const [comments, setComments] = useState<Comment[]>(report.comments ?? []);
-  const [submittingComment, setSubmittingComment] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchComments('errors', report.id)
-      .then((data) => { if (!cancelled) setComments(data); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [report.id]);
-
-  const reportComments = comments;
   const users = getCachedUsers();
   
   const slaStatus = report.slaBreached 
@@ -917,22 +904,6 @@ function ErrorReportDetailDialog({
       minute: '2-digit',
       second: '2-digit'
     }).format(date);
-  };
-
-  const handleAddComment = async () => {
-    const content = newComment.trim();
-    if (!content) return;
-    setSubmittingComment(true);
-    try {
-      const created = await createComment('errors', report.id, content);
-      setComments((prev) => [...prev, created]);
-      setNewComment("");
-      toast.success('Comment added');
-    } catch {
-      toast.error('Failed to add comment');
-    } finally {
-      setSubmittingComment(false);
-    }
   };
 
   const getStatusColor = (status: ErrorReportStatus) => {
@@ -1010,6 +981,18 @@ function ErrorReportDetailDialog({
             resourceId={report.id}
             status={report.status}
             onCompleted={() => onOpenChange(false)}
+          />
+          <ResourceEditActions
+            title={report.title}
+            description={report.description}
+            onUpdate={async (payload) => {
+              await updateErrorReport(report.id, payload);
+              onOpenChange(false);
+            }}
+            onDelete={async () => {
+              await deleteErrorReport(report.id);
+              onOpenChange(false);
+            }}
           />
         </div>
 

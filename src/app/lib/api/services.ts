@@ -322,7 +322,6 @@ export async function submitPublicRequest(
       form.append(key, String(value));
     }
   });
-  form.append('website', '');
   files.forEach((file) => form.append('files[]', file));
 
   const response = await apiRequest<{ success: boolean; data: PublicSubmissionResult }>(
@@ -779,11 +778,11 @@ export async function syncDowntimeAffectedSystems(
   downtimeId: string,
   systems: string[]
 ): Promise<string[]> {
-  const response = await apiPut<{ success: boolean; data: { system_name: string }[] }>(
+  const response = await apiPut<{ success: boolean; data: string[] }>(
     `/downtime-records/${downtimeId}/affected-systems`,
-    { systems }
+    { system_names: systems }
   );
-  return (response.data ?? []).map((s) => s.system_name);
+  return response.data ?? [];
 }
 
 export async function createMilestone(

@@ -30,7 +30,8 @@ const TYPE_LABELS: Record<CalendarEvent["type"], string> = {
 
 export function CalendarView() {
   const { state } = useApp();
-  const canManage = state.currentUser?.role === "admin" || state.currentUser?.role === "team_lead";
+  const canManage =
+    state.currentUser?.role === "admin" || state.currentUser?.role === "it_staff";
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [upcoming, setUpcoming] = useState<CalendarEvent[]>([]);

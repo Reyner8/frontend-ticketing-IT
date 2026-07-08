@@ -13,6 +13,8 @@ import {
 } from "./ui/dialog";
 import { Pencil, Trash2 } from "lucide-react";
 
+import { useApp } from "../lib/store";
+
 interface ResourceEditActionsProps {
   title: string;
   description?: string;
@@ -25,11 +27,16 @@ interface ResourceEditActionsProps {
 export function ResourceEditActions({
   title,
   description,
-  canEdit = true,
-  canDelete = true,
+  canEdit: canEditProp,
+  canDelete: canDeleteProp,
   onUpdate,
   onDelete,
 }: ResourceEditActionsProps) {
+  const { state } = useApp();
+  const role = state.currentUser?.role;
+  const canMutate = role === "admin" || role === "it_staff";
+  const canEdit = canEditProp ?? canMutate;
+  const canDelete = canDeleteProp ?? canMutate;
   const [editOpen, setEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
   const [editDescription, setEditDescription] = useState(description ?? "");
