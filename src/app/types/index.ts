@@ -34,6 +34,8 @@ export type ErrorReportStatus =
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
 
+export type ApprovalStatusValue = 'pending' | 'approved' | 'rejected';
+
 export type TicketCategory = 
   | 'software_bug' 
   | 'feature_request' 
@@ -83,6 +85,8 @@ export interface Ticket {
   category: TicketCategory;
   priority: TicketPriority;
   status: TicketStatus;
+  approvalStatus?: ApprovalStatusValue;
+  rejectionReason?: string;
   reporterId: string;
   assignedToId?: string;
   assignedTeam?: TeamType;
@@ -111,6 +115,8 @@ export interface ErrorReport {
   category: 'hardware' | 'network' | 'software';
   priority: TicketPriority;
   status: ErrorReportStatus;
+  approvalStatus?: ApprovalStatusValue;
+  rejectionReason?: string;
   reporterId: string;
   assignedToId?: string;
   assignedTeam?: TeamType;
@@ -140,6 +146,7 @@ export interface FeatureRequest {
   requestType: 'feature_request' | 'bug_fix';
   priority: TicketPriority;
   status: FeatureRequestStatus;
+  approvalStatus?: ApprovalStatusValue;
   progress: number; // percentage 0-100
   reporterId: string;
   assignedToId?: string;

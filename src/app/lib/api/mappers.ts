@@ -31,6 +31,32 @@ export function parseDate(value: string | null | undefined): Date {
   return value ? new Date(value) : new Date();
 }
 
+export function mapApprovalStatus(
+  data: Record<string, unknown>
+): import('../../types').ApprovalStatusValue | undefined {
+  const approval = data.approval as { status?: string } | undefined;
+  const raw = data.approval_status ?? approval?.status;
+  if (raw === null || raw === undefined || raw === '') return undefined;
+  const value = unwrapValue(raw as WrappedValue<string>);
+  if (value === 'pending' || value === 'approved' || value === 'rejected') {
+    return value;
+  }
+  return undefined;
+}
+
+export function isResourcePendingApproval(
+  status: string,
+  approvalStatus?: import('../../types').ApprovalStatusValue
+): boolean {
+  if (approvalStatus === 'approved' || approvalStatus === 'rejected') {
+    return false;
+  }
+  if (approvalStatus === 'pending') {
+    return true;
+  }
+  return ['pending_approval', 'submission'].includes(status);
+}
+
 export function mapUser(data: Record<string, unknown>): User {
   const team = data.team as { value?: string } | string | null | undefined;
   const preferences = (data.preferences ?? {}) as Record<string, unknown>;
@@ -89,6 +115,11 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
     category: unwrapValue(data.category as WrappedValue<Ticket['category']>) || 'system_error',
     priority: unwrapValue(data.priority as WrappedValue<Ticket['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<TicketStatus>) || 'draft',
+    approvalStatus: mapApprovalStatus(data),
+    rejectionReason: (data.rejection_reason ??
+      (data.approval as { rejection_reason?: string } | undefined)?.rejection_reason) as
+      | string
+      | undefined,
     reporterId: reporter?.id ? String(reporter.id) : '',
     assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
     assignedTeam: assignedTeam?.value as Ticket['assignedTeam'],
@@ -147,6 +178,11 @@ export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport
     category: unwrapValue(data.category as WrappedValue<ErrorReport['category']>) || 'software',
     priority: unwrapValue(data.priority as WrappedValue<ErrorReport['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<ErrorReportStatus>) || 'pending_approval',
+    approvalStatus: mapApprovalStatus(data),
+    rejectionReason: (data.rejection_reason ??
+      (data.approval as { rejection_reason?: string } | undefined)?.rejection_reason) as
+      | string
+      | undefined,
     reporterId: reporter?.id ? String(reporter.id) : '',
     assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
     assignedTeam: assignedTeam?.value as ErrorReport['assignedTeam'],
@@ -216,6 +252,7 @@ export function mapFeatureDetail(data: Record<string, unknown>): FeatureRequest 
     slaTimeElapsed: (data.sla_time_elapsed as number) ?? 0,
     slaTimeRemaining: (data.sla_time_remaining as number) ?? 0,
     slaBreached: (data.sla_breached as boolean) ?? false,
+    approvalStatus: mapApprovalStatus(data),
     approvedBy: data.approved_by ? String(data.approved_by) : undefined,
     rejectionReason: data.rejection_reason as string | undefined,
     roiImpact: data.roi_impact as string | undefined,

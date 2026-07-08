@@ -980,6 +980,7 @@ function ErrorReportDetailDialog({
             target="errors"
             resourceId={report.id}
             status={report.status}
+            approvalStatus={report.approvalStatus}
             onCompleted={() => onOpenChange(false)}
           />
           <ResourceEditActions

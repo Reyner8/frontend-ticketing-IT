@@ -1008,7 +1008,7 @@ export async function registerUser(payload: {
 }): Promise<User> {
   const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
     '/register',
-    { ...payload, role: 'reporter', is_active: true },
+    payload,
     false
   );
   return mapUser(response.data);

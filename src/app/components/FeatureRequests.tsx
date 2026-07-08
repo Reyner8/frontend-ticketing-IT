@@ -803,6 +803,7 @@ function FeatureRequestDetailDialog({
             target="features"
             resourceId={ticket.id}
             status={ticket.status}
+            approvalStatus={ticket.approvalStatus}
             onCompleted={() => onOpenChange(false)}
           />
           <ResourceEditActions

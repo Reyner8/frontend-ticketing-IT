@@ -337,6 +337,7 @@ function TicketDetailDialog({
             target="tickets"
             resourceId={detail.id}
             status={detail.status}
+            approvalStatus={detail.approvalStatus}
             onCompleted={() => onOpenChange(false)}
           />
           <ResourceEditActions

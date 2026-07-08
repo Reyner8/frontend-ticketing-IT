@@ -13,13 +13,16 @@ import {
 } from "./ui/dialog";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { approveResource, rejectResource } from "../lib/api/services";
+import { isResourcePendingApproval } from "../lib/api/mappers";
 import { ApiError } from "../lib/api/client";
 import { useApp } from "../lib/store";
+import type { ApprovalStatusValue } from "../types";
 
 interface ApprovalActionsProps {
   target: "tickets" | "errors" | "features";
   resourceId: string;
   status: string;
+  approvalStatus?: ApprovalStatusValue;
   onCompleted?: () => void;
 }
 
@@ -27,6 +30,7 @@ export function ApprovalActions({
   target,
   resourceId,
   status,
+  approvalStatus,
   onCompleted,
 }: ApprovalActionsProps) {
   const { state } = useApp();
@@ -36,7 +40,7 @@ export function ApprovalActions({
   const [rejecting, setRejecting] = useState(false);
 
   const isTeamLead = state.currentUser?.role === "team_lead";
-  const canApprove = isTeamLead && status === "pending_approval";
+  const canApprove = isTeamLead && isResourcePendingApproval(status, approvalStatus);
 
   if (!canApprove) return null;
 
