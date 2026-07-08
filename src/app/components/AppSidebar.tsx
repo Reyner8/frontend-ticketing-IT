@@ -33,6 +33,9 @@ import {
   AlertTriangle,
   ExternalLink,
   Ticket as TicketIcon,
+  Eye,
+  History,
+  AtSign,
 } from "lucide-react";
 
 interface AppSidebarProps {
@@ -86,6 +89,12 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           description: 'All tickets and public submissions',
         },
         {
+          id: '/watched-tickets',
+          title: 'Watched Tickets',
+          icon: Eye,
+          description: 'Tickets you are watching',
+        },
+        {
           id: '/error-reports',
           title: 'Error Reports',
           icon: Bug,
@@ -131,7 +140,20 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
             { id: '/team-performance?view=sla', title: 'SLA Compliance' },
             { id: '/team-performance?view=workload', title: 'Team Workload' },
             { id: '/team-performance?view=trends', title: 'Performance Trends' },
+            { id: '/team-performance?view=compare', title: 'Team Compare' },
           ] : undefined,
+        },
+        {
+          id: '/conversion-history',
+          title: 'Conversion History',
+          icon: History,
+          description: 'Ticket conversion audit trail',
+        },
+        {
+          id: '/mentions',
+          title: 'My Mentions',
+          icon: AtSign,
+          description: 'Comments mentioning you',
         },
       ],
     },

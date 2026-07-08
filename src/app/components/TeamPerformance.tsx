@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Progress } from "./ui/progress";
 import { useApp } from "../lib/store";
-import { fetchTeamWorkloadLatest, fetchTickets, getCachedUsers } from "../lib/api/services";
+import { toast } from "sonner";
+import { fetchTeamWorkloadLatest, fetchTickets, getCachedUsers, fetchTeamWorkloadCompare, generateTeamWorkload } from "../lib/api/services";
 import { TeamType, TeamWorkload } from "../types";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { 
@@ -167,6 +168,28 @@ export function TeamPerformance() {
               <SelectItem value="quarter">This Quarter</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={async () => {
+            try {
+              const data = await fetchTeamWorkloadCompare(new Date().toISOString().slice(0, 10));
+              setTeamWorkload(data);
+              toast.success("Loaded team comparison snapshot");
+            } catch {
+              toast.error("Compare failed");
+            }
+          }}>
+            Compare Teams
+          </Button>
+          <Button variant="outline" onClick={async () => {
+            try {
+              const data = await generateTeamWorkload();
+              setTeamWorkload(data);
+              toast.success("Workload snapshot generated");
+            } catch {
+              toast.error("Generate failed");
+            }
+          }}>
+            Generate Snapshot
+          </Button>
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export

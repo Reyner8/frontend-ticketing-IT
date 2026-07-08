@@ -18,9 +18,9 @@ import {
   fetchTicketDetail,
   fetchTicketStatusHistory,
   fetchTicketActivityLogs,
-  fetchComments,
-  createComment,
   getCachedUsers,
+  updateTicket,
+  deleteTicket,
 } from "../lib/api/services";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
@@ -29,9 +29,12 @@ import { StatusChangeActions } from "./StatusChangeActions";
 import { TagManager } from "./TagManager";
 import { WatcherPanel } from "./WatcherPanel";
 import { ConversionActions } from "./ConversionActions";
+import { CommentThread } from "./CommentThread";
+import { MergeTicketPanel } from "./MergeTicketPanel";
+import { ResourceEditActions } from "./ResourceEditActions";
 import { TableSkeleton } from "./LoadingStates";
-import { Search, Eye, Ticket as TicketIcon, MessageSquare, Send } from "lucide-react";
-import type { Ticket, TicketStatus, TicketPriority, Comment, StatusHistoryEntry, ActivityLogEntry } from "../types";
+import { Search, Eye, Ticket as TicketIcon, MessageSquare } from "lucide-react";
+import type { Ticket, TicketStatus, TicketPriority, StatusHistoryEntry, ActivityLogEntry } from "../types";
 
 const TICKET_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "draft", label: "Draft" },
@@ -274,23 +277,18 @@ function TicketDetailDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [detail, setDetail] = useState(ticket);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
   const [statusHistory, setStatusHistory] = useState<StatusHistoryEntry[]>([]);
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
-  const [submittingComment, setSubmittingComment] = useState(false);
   const users = getCachedUsers();
 
   useEffect(() => {
     setDetail(ticket);
     Promise.all([
       fetchTicketDetail(ticket.id).catch(() => ticket),
-      fetchComments("tickets", ticket.id).catch(() => []),
       fetchTicketStatusHistory(ticket.id).catch(() => []),
       fetchTicketActivityLogs(ticket.id).catch(() => []),
-    ]).then(([d, c, sh, al]) => {
+    ]).then(([d, sh, al]) => {
       setDetail(d);
-      setComments(c);
       setStatusHistory(sh);
       setActivityLog(al);
     });
@@ -298,22 +296,6 @@ function TicketDetailDialog({
 
   const getUserName = (userId: string) =>
     users.find((u) => u.id === userId)?.name ?? "Unknown";
-
-  const handleAddComment = async () => {
-    const content = newComment.trim();
-    if (!content) return;
-    setSubmittingComment(true);
-    try {
-      const created = await createComment("tickets", detail.id, content);
-      setComments((prev) => [...prev, created]);
-      setNewComment("");
-      toast.success("Comment added");
-    } catch {
-      toast.error("Failed to add comment");
-    } finally {
-      setSubmittingComment(false);
-    }
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -357,14 +339,27 @@ function TicketDetailDialog({
             status={detail.status}
             onCompleted={() => onOpenChange(false)}
           />
+          <ResourceEditActions
+            title={detail.title}
+            description={detail.description}
+            onUpdate={async (payload) => {
+              const updated = await updateTicket(detail.id, payload);
+              setDetail(updated);
+            }}
+            onDelete={async () => {
+              await deleteTicket(detail.id);
+              onOpenChange(false);
+            }}
+          />
         </div>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="files">Attachments</TabsTrigger>
             <TabsTrigger value="meta">Tags & Watchers</TabsTrigger>
+            <TabsTrigger value="merge">Merge</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
 
@@ -410,35 +405,7 @@ function TicketDetailDialog({
           </TabsContent>
 
           <TabsContent value="comments" className="mt-4">
-            <ScrollArea className="h-[320px] pr-4">
-              <div className="space-y-4">
-                {comments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No comments yet</p>
-                ) : (
-                  comments.map((c) => (
-                    <div key={c.id} className="rounded-lg border p-3">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{getUserName(c.userId)}</span>
-                        <span>{format(c.createdAt, "PPp")}</span>
-                      </div>
-                      <p className="text-sm">{c.content}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-            <div className="flex gap-2 mt-3">
-              <Textarea
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
-                rows={2}
-                className="flex-1"
-              />
-              <Button onClick={handleAddComment} disabled={submittingComment}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
+            <CommentThread parent="tickets" resourceId={detail.id} />
           </TabsContent>
 
           <TabsContent value="files" className="mt-4">
@@ -453,6 +420,10 @@ function TicketDetailDialog({
               onUpdated={(tags) => setDetail((d) => ({ ...d, tags }))}
             />
             <WatcherPanel ticketId={detail.id} />
+          </TabsContent>
+
+          <TabsContent value="merge" className="mt-4">
+            <MergeTicketPanel ticketId={detail.id} />
           </TabsContent>
 
           <TabsContent value="activity" className="mt-4">

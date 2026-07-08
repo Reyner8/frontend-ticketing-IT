@@ -16,7 +16,9 @@ import { Progress } from "./ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { useApp } from "../lib/store";
-import { fetchErrorReports, fetchErrorReportDetail, createErrorReport, createTicket, fetchComments, createComment, fetchErrorStatusHistory, fetchErrorActivityLogs, getCachedUsers } from "../lib/api/services";
+import { fetchErrorReports, fetchErrorReportDetail, createErrorReport, createTicket, fetchErrorStatusHistory, fetchErrorActivityLogs, getCachedUsers, updateErrorReport, deleteErrorReport } from "../lib/api/services";
+import { CommentThread } from "./CommentThread";
+import { ResourceEditActions } from "./ResourceEditActions";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
@@ -1192,64 +1194,8 @@ function ErrorReportDetailDialog({
 
           <TabsContent value="activity" className="mt-4">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Comments & Activity</h4>
-                <span className="text-sm text-muted-foreground">
-                  {reportComments.length} comments
-                </span>
-              </div>
-
-              <ScrollArea className="h-[300px]">
-                <div className="space-y-4">
-                  {reportComments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs">
-                          {getUserName(comment.userId).split(' ').map((n: string) => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{getUserName(comment.userId)}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDateTime(comment.createdAt)}
-                          </span>
-                          {comment.isInternal && (
-                            <Badge variant="outline" className="text-xs">Internal</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm">{comment.content}</p>
-                        {comment.attachments.length > 0 && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Paperclip className="h-3 w-3" />
-                            <span>{comment.attachments.length} attachment(s)</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
-              {/* Add Comment */}
-              <div className="space-y-2">
-                <Textarea
-                  placeholder="Add a comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  rows={3}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="sm">
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Attach File
-                  </Button>
-                  <Button size="sm" onClick={handleAddComment} disabled={submittingComment}>
-                    <Reply className="mr-2 h-4 w-4" />
-                    {submittingComment ? 'Adding...' : 'Add Comment'}
-                  </Button>
-                </div>
-              </div>
+              <h4 className="font-medium">Comments</h4>
+              <CommentThread parent="errors" resourceId={report.id} />
             </div>
           </TabsContent>
 

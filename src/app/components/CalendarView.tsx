@@ -6,7 +6,14 @@ import { Calendar } from "./ui/calendar";
 import { ScrollArea } from "./ui/scroll-area";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
-import { fetchCalendarEvents, fetchUpcomingEvents } from "../lib/api/services";
+import { fetchCalendarEvents, fetchUpcomingEvents, createCalendarEvent, deleteCalendarEvent } from "../lib/api/services";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Plus, Trash2 } from "lucide-react";
+import { useApp } from "../lib/store";
 import type { CalendarEvent } from "../types";
 
 const TYPE_COLORS: Record<CalendarEvent["type"], string> = {
@@ -22,13 +29,22 @@ const TYPE_LABELS: Record<CalendarEvent["type"], string> = {
 };
 
 export function CalendarView() {
+  const { state } = useApp();
+  const canManage = state.currentUser?.role === "admin" || state.currentUser?.role === "team_lead";
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [upcoming, setUpcoming] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    start: "",
+    end: "",
+    type: "maintenance" as CalendarEvent["type"],
+    color: "#3b82f6",
+  });
 
-  useEffect(() => {
-    const load = async () => {
+  const load = async () => {
       setLoading(true);
       const start = startOfMonth(selectedDate);
       const end = endOfMonth(selectedDate);
@@ -48,8 +64,38 @@ export function CalendarView() {
         setLoading(false);
       }
     };
+  useEffect(() => {
     load();
   }, [selectedDate]);
+
+  const handleCreate = async () => {
+    if (!form.title || !form.start || !form.end) return;
+    try {
+      await createCalendarEvent({
+        title: form.title,
+        start: form.start,
+        end: form.end,
+        type: form.type,
+        color: form.color,
+      });
+      toast.success("Event created");
+      setCreateOpen(false);
+      load();
+    } catch {
+      toast.error("Failed to create event");
+    }
+  };
+
+  const handleDelete = async (eventId: string) => {
+    if (!confirm("Delete this event?")) return;
+    try {
+      await deleteCalendarEvent(eventId);
+      toast.success("Event deleted");
+      load();
+    } catch {
+      toast.error("Delete failed");
+    }
+  };
 
   const eventDates = useMemo(
     () => events.map((e) => e.start),
@@ -63,11 +109,19 @@ export function CalendarView() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div>
-        <h2 className="text-3xl tracking-tight">Calendar View</h2>
-        <p className="text-muted-foreground">
-          Planned maintenance, downtime windows, and deadlines
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl tracking-tight">Calendar View</h2>
+          <p className="text-muted-foreground">
+            Planned maintenance, downtime windows, and deadlines
+          </p>
+        </div>
+        {canManage && (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Event
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -124,6 +178,11 @@ export function CalendarView() {
                         >
                           {TYPE_LABELS[event.type]}
                         </Badge>
+                        {canManage && (
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(event.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                       {event.description && (
                         <p className="text-xs text-muted-foreground">
@@ -192,6 +251,45 @@ export function CalendarView() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Calendar Event</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Title</Label>
+              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label>Start</Label>
+                <Input type="datetime-local" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label>End</Label>
+                <Input type="datetime-local" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Type</Label>
+              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as CalendarEvent["type"] })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="planned_downtime">Planned Downtime</SelectItem>
+                  <SelectItem value="deadline">Deadline</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

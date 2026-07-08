@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { ScrollArea } from "./ui/scroll-area";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
-import { fetchDowntimeRecords, createDowntimeRecord, getCachedUsers } from "../lib/api/services";
+import { fetchDowntimeRecords, createDowntimeRecord, getCachedUsers, updateDowntimeRecord, resolveDowntimeRecord, syncDowntimeAffectedSystems } from "../lib/api/services";
 import { DowntimeRecord, DowntimeType } from "../types";
 import { TableSkeleton, NoDowntimeRecords } from "./LoadingStates";
 import { DowntimeTable } from "./downtime/DowntimeTable";
@@ -436,6 +436,7 @@ export function DowntimeMonev() {
           downtime={selectedDowntime}
           open={!!selectedDowntime}
           onOpenChange={(open) => !open && setSelectedDowntime(null)}
+          onUpdated={loadDowntimes}
         />
       )}
 
@@ -454,11 +455,60 @@ function DowntimeDetailDialog({
   downtime,
   open,
   onOpenChange,
+  onUpdated,
 }: {
   downtime: DowntimeRecord;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUpdated?: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(downtime.title);
+  const [reason, setReason] = useState(downtime.reason);
+  const [systemsText, setSystemsText] = useState(downtime.affectedSystems.join(", "));
+  const [rootCause, setRootCause] = useState(downtime.rootCause ?? "");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setTitle(downtime.title);
+    setReason(downtime.reason);
+    setSystemsText(downtime.affectedSystems.join(", "));
+    setRootCause(downtime.rootCause ?? "");
+  }, [downtime]);
+
+  const saveEdit = async () => {
+    setBusy(true);
+    try {
+      await updateDowntimeRecord(downtime.id, { title, reason });
+      const systems = systemsText.split(",").map((s) => s.trim()).filter(Boolean);
+      if (systems.length) await syncDowntimeAffectedSystems(downtime.id, systems);
+      toast.success("Downtime updated");
+      setEditing(false);
+      onUpdated?.();
+    } catch {
+      toast.error("Update failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resolve = async () => {
+    setBusy(true);
+    try {
+      await resolveDowntimeRecord(downtime.id, {
+        root_cause: rootCause || undefined,
+        end_time: new Date().toISOString(),
+      });
+      toast.success("Downtime resolved");
+      onOpenChange(false);
+      onUpdated?.();
+    } catch {
+      toast.error("Resolve failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
@@ -471,6 +521,44 @@ function DowntimeDetailDialog({
           </DialogTitle>
           <DialogDescription>{downtime.title}</DialogDescription>
         </DialogHeader>
+
+        <div className="flex gap-2 mb-2">
+          {downtime.status === "ongoing" && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setEditing((v) => !v)}>
+                {editing ? "Cancel edit" : "Edit"}
+              </Button>
+              <Button size="sm" onClick={resolve} disabled={busy}>
+                Resolve
+              </Button>
+            </>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="space-y-3 mb-4">
+            <div className="space-y-1">
+              <Label>Title</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Reason</Label>
+              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
+            </div>
+            <div className="space-y-1">
+              <Label>Affected systems (comma-separated)</Label>
+              <Input value={systemsText} onChange={(e) => setSystemsText(e.target.value)} />
+            </div>
+            <Button onClick={saveEdit} disabled={busy}>Save changes</Button>
+          </div>
+        ) : null}
+
+        {downtime.status === "ongoing" && (
+          <div className="space-y-1 mb-4">
+            <Label>Root cause (for resolve)</Label>
+            <Textarea value={rootCause} onChange={(e) => setRootCause(e.target.value)} rows={2} />
+          </div>
+        )}
 
         <ScrollArea className="h-[400px] pr-4">
           <div className="space-y-6">

@@ -16,8 +16,11 @@ import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
-import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, fetchComments, createComment, getCachedUsers } from "../lib/api/services";
-import type { Milestone, TimelineEntry, Comment } from "../types";
+import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, getCachedUsers, fetchFeatureActivityLogs, updateFeatureRequest, deleteFeatureRequest } from "../lib/api/services";
+import type { Milestone, TimelineEntry, ActivityLogEntry } from "../types";
+import { CommentThread } from "./CommentThread";
+import { MilestoneTimelinePanel } from "./MilestoneTimelinePanel";
+import { ResourceEditActions } from "./ResourceEditActions";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
@@ -720,32 +723,6 @@ function FeatureRequestDetailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
-
-  useEffect(() => {
-    fetchComments("features", ticket.id)
-      .then(setComments)
-      .catch(() => setComments([]));
-  }, [ticket.id]);
-
-  const handleAddComment = async () => {
-    const content = newComment.trim();
-    if (!content) return;
-    setSubmittingComment(true);
-    try {
-      const created = await createComment("features", ticket.id, content);
-      setComments((prev) => [...prev, created]);
-      setNewComment("");
-      toast.success("Comment added");
-    } catch {
-      toast.error("Failed to add comment");
-    } finally {
-      setSubmittingComment(false);
-    }
-  };
-
   const progress = ticket.progress > 0 ? ticket.progress :
                   ticket.status === 'completed' ? 100 :
                   ['development', 'testing', 'validation'].includes(ticket.status) ? 60 :
@@ -827,6 +804,18 @@ function FeatureRequestDetailDialog({
             resourceId={ticket.id}
             status={ticket.status}
             onCompleted={() => onOpenChange(false)}
+          />
+          <ResourceEditActions
+            title={ticket.title}
+            description={ticket.description}
+            onUpdate={async (payload) => {
+              await updateFeatureRequest(ticket.id, payload);
+              onOpenChange(false);
+            }}
+            onDelete={async () => {
+              await deleteFeatureRequest(ticket.id);
+              onOpenChange(false);
+            }}
           />
         </div>
 
@@ -1079,95 +1068,17 @@ function FeatureRequestDetailDialog({
                       No timeline entries or milestones yet
                     </p>
                   )}
+                <MilestoneTimelinePanel featureId={ticket.id} />
               </div>
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="comments" className="mt-4">
-            <ScrollArea className="h-[320px] pr-4">
-              <div className="space-y-4">
-                {comments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No comments yet</p>
-                ) : (
-                  comments.map((c) => (
-                    <div key={c.id} className="rounded-lg border p-3">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{getUserName(c.userId)}</span>
-                        <span>{formatDate(c.createdAt)}</span>
-                      </div>
-                      <p className="text-sm">{c.content}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-            <div className="flex gap-2 mt-3">
-              <Textarea
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
-                rows={2}
-                className="flex-1"
-              />
-              <Button onClick={handleAddComment} disabled={submittingComment}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
+            <CommentThread parent="features" resourceId={ticket.id} />
           </TabsContent>
 
           <TabsContent value="activity" className="mt-4">
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-4">
-                <h4 className="font-medium">Recent Activity</h4>
-                <div className="space-y-3 text-sm">
-                  <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                    <div>
-                      <p className="font-medium">Request Created</p>
-                      <p className="text-muted-foreground">
-                        {formatDate(ticket.dateSubmitted)} by {getUserName(ticket.reporterId)}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {ticket.assignedToId && (
-                    <div className="flex gap-3">
-                      <div className="w-2 h-2 rounded-full bg-yellow-500 mt-2"></div>
-                      <div>
-                        <p className="font-medium">Assigned to Developer</p>
-                        <p className="text-muted-foreground">
-                          Assigned to {getUserName(ticket.assignedToId)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {['development', 'testing', 'validation'].includes(ticket.status) && (
-                    <div className="flex gap-3">
-                      <div className="w-2 h-2 rounded-full bg-purple-500 mt-2"></div>
-                      <div>
-                        <p className="font-medium">Development Started</p>
-                        <p className="text-muted-foreground">
-                          Work has begun on this request
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {ticket.completionDate && (
-                    <div className="flex gap-3">
-                      <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-                      <div>
-                        <p className="font-medium">Request Completed</p>
-                        <p className="text-muted-foreground">
-                          {formatDate(ticket.completionDate)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </ScrollArea>
+            <FeatureActivityTab featureId={ticket.id} />
           </TabsContent>
 
           <TabsContent value="files" className="mt-4">
@@ -1330,5 +1241,39 @@ function NewFeatureRequestDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FeatureActivityTab({ featureId }: { featureId: string }) {
+  const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeatureActivityLogs(featureId)
+      .then(setLogs)
+      .catch(() => setLogs([]))
+      .finally(() => setLoading(false));
+  }, [featureId]);
+
+  return (
+    <ScrollArea className="h-[400px] pr-4">
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading activity...</p>
+      ) : logs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No activity logged yet.</p>
+      ) : (
+        <ul className="space-y-3 text-sm">
+          {logs.map((log) => (
+            <li key={log.id} className="border-l-2 pl-3">
+              <p className="font-medium">{log.action}</p>
+              <p className="text-muted-foreground">{log.description}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatDate(log.performedAt)} · {log.performedBy ?? "System"}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </ScrollArea>
   );
 }

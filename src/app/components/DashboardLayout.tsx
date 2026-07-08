@@ -14,6 +14,9 @@ import { PublicFormLanding } from "./PublicFormLanding";
 import { UserManagement } from "./UserManagement";
 import { CalendarView } from "./CalendarView";
 import { Tickets } from "./Tickets";
+import { WatchedTicketsView } from "./WatchedTicketsView";
+import { ConversionHistoryView } from "./ConversionHistoryView";
+import { MentionsView } from "./MentionsView";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -52,6 +55,12 @@ export default function DashboardLayout() {
         return <Dashboard />;
       case "/tickets":
         return <Tickets />;
+      case "/watched-tickets":
+        return <WatchedTicketsView />;
+      case "/conversion-history":
+        return <ConversionHistoryView />;
+      case "/mentions":
+        return <MentionsView />;
       case "/error-reports":
         return <ErrorReports />;
       case "/feature-requests":
@@ -467,12 +476,13 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
   const [dataset, setDataset] = useState<
     "tickets" | "errors" | "features" | "downtimes" | "users"
   >("tickets");
+  const [format, setFormat] = useState<"csv" | "excel" | "pdf">("csv");
   const [loading, setLoading] = useState(false);
 
   const handleExport = async () => {
     setLoading(true);
     try {
-      const { blob, filename } = await downloadServerExport(dataset);
+      const { blob, filename } = await downloadServerExport(dataset, format);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -514,8 +524,7 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Downloads CSV from the server when available. Falls back to client-side
-        export if the server endpoint is unreachable.
+        Downloads from the server (CSV, Excel, or printable HTML/PDF).
       </p>
       <div className="space-y-2">
         <Label>Dataset</Label>
@@ -535,13 +544,24 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
           </SelectContent>
         </Select>
       </div>
+      <div className="space-y-2">
+        <Label>Format</Label>
+        <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="csv">CSV</SelectItem>
+            <SelectItem value="excel">Excel</SelectItem>
+            <SelectItem value="pdf">PDF (HTML)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onClose}>
           Cancel
         </Button>
         <Button onClick={handleExport} disabled={loading}>
           <Download className="mr-2 h-4 w-4" />
-          {loading ? "Preparing..." : "Download CSV"}
+          {loading ? "Preparing..." : "Download"}
         </Button>
       </div>
     </div>
