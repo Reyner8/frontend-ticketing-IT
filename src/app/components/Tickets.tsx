@@ -29,6 +29,7 @@ import { StatusChangeActions } from "./StatusChangeActions";
 import { TagManager } from "./TagManager";
 import { WatcherPanel } from "./WatcherPanel";
 import { ConversionActions } from "./ConversionActions";
+import { TicketTriagePanel } from "./TicketTriagePanel";
 import { CommentThread } from "./CommentThread";
 import { MergeTicketPanel } from "./MergeTicketPanel";
 import { ResourceEditActions } from "./ResourceEditActions";
@@ -86,6 +87,7 @@ export function Tickets() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | "all">("all");
+  const [publicOnlyFilter, setPublicOnlyFilter] = useState(false);
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -123,16 +125,19 @@ export function Tickets() {
         (t) =>
           t.title.toLowerCase().includes(q) ||
           t.id.toLowerCase().includes(q) ||
-          t.tags.some((tag) => tag.toLowerCase().includes(q))
+          t.tags.some((tag) => tag.toLowerCase().includes(q)) ||
+          (t.submitterName?.toLowerCase().includes(q) ?? false) ||
+          (t.submitterUnit?.toLowerCase().includes(q) ?? false)
       );
     }
     if (statusFilter !== "all") list = list.filter((t) => t.status === statusFilter);
     if (priorityFilter !== "all") list = list.filter((t) => t.priority === priorityFilter);
+    if (publicOnlyFilter) list = list.filter((t) => t.isPublicSubmission);
 
     return list.sort(
       (a, b) => b.dateReported.getTime() - a.dateReported.getTime()
     );
-  }, [tickets, searchTerm, statusFilter, priorityFilter, currentUser]);
+  }, [tickets, searchTerm, statusFilter, priorityFilter, publicOnlyFilter, currentUser]);
 
   const openDetail = async (ticket: Ticket) => {
     try {
@@ -173,7 +178,7 @@ export function Tickets() {
             Tickets
           </h2>
           <p className="text-muted-foreground">
-            All tickets including public submissions pending approval
+            Antrian laporan masuk — termasuk form publik (PUB-*) yang menunggu triage IT
           </p>
         </div>
         <Badge variant="outline">{filtered.length} shown</Badge>
@@ -218,6 +223,13 @@ export function Tickets() {
               <SelectItem value="low">Low</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant={publicOnlyFilter ? "default" : "outline"}
+            onClick={() => setPublicOnlyFilter((v) => !v)}
+          >
+            Laporan Publik
+          </Button>
         </CardContent>
       </Card>
 
@@ -237,6 +249,7 @@ export function Tickets() {
                 <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>Title</TableHead>
+                  <TableHead>Pelapor</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Reported</TableHead>
@@ -246,8 +259,22 @@ export function Tickets() {
               <TableBody>
                 {filtered.map((ticket) => (
                   <TableRow key={ticket.id} className="cursor-pointer" onClick={() => openDetail(ticket)}>
-                    <TableCell className="font-mono text-sm">{ticket.id}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      <div className="flex items-center gap-2">
+                        {ticket.id}
+                        {ticket.isPublicSubmission && (
+                          <Badge variant="outline" className="text-xs">
+                            Publik
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{ticket.title}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {ticket.isPublicSubmission
+                        ? `${ticket.submitterName ?? "—"}${ticket.submitterUnit ? ` · ${ticket.submitterUnit}` : ""}`
+                        : "—"}
+                    </TableCell>
                     <TableCell>
                       <Badge className={statusColor(ticket.status)}>
                         {ticket.status.replace(/_/g, " ")}
@@ -327,6 +354,9 @@ function TicketDetailDialog({
               {detail.status.replace(/_/g, " ")}
             </Badge>
             <Badge className={priorityColor(detail.priority)}>{detail.priority}</Badge>
+            {detail.isPublicSubmission && (
+              <Badge variant="outline">Laporan Publik</Badge>
+            )}
           </DialogTitle>
           <DialogDescription>{detail.title}</DialogDescription>
         </DialogHeader>
@@ -350,6 +380,7 @@ function TicketDetailDialog({
             <ConversionActions
               ticketId={detail.id}
               ticketStatus={detail.status}
+              ticketPriority={detail.priority}
               onCompleted={() => onOpenChange(false)}
             />
           </div>
@@ -387,6 +418,21 @@ function TicketDetailDialog({
           <TabsContent value="details" className="mt-4">
             <ScrollArea className="h-[380px] pr-4">
               <div className="space-y-4 text-sm">
+                {detail.isPublicSubmission && (
+                  <div className="rounded-lg border bg-slate-50 p-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Pelapor (form publik)</Label>
+                      <p className="mt-1 font-medium">{detail.submitterName ?? "—"}</p>
+                    </div>
+                    <div>
+                      <Label>Unit</Label>
+                      <p className="mt-1 font-medium">{detail.submitterUnit ?? "—"}</p>
+                    </div>
+                  </div>
+                )}
+
+                <TicketTriagePanel ticket={detail} onUpdated={setDetail} />
+
                 <div>
                   <Label>Description</Label>
                   <p className="mt-1 whitespace-pre-wrap">{detail.description || "—"}</p>

@@ -26,17 +26,19 @@ import {
 } from "../lib/api/services";
 import { ApiError } from "../lib/api/client";
 import { useApp } from "../lib/store";
-import type { ConversionHistoryEntry } from "../types";
+import type { ConversionHistoryEntry, TicketPriority } from "../types";
 
 interface ConversionActionsProps {
   ticketId: string;
   ticketStatus: string;
+  ticketPriority?: TicketPriority;
   onCompleted?: () => void;
 }
 
 export function ConversionActions({
   ticketId,
   ticketStatus,
+  ticketPriority = "medium",
   onCompleted,
 }: ConversionActionsProps) {
   const { state } = useApp();
@@ -44,11 +46,17 @@ export function ConversionActions({
   const [target, setTarget] = useState<"error_report" | "feature_request">("error_report");
   const [category, setCategory] = useState("software");
   const [requestType, setRequestType] = useState("feature_request");
+  const [priority, setPriority] = useState<TicketPriority>(ticketPriority);
   const [reason, setReason] = useState("");
   const [history, setHistory] = useState<ConversionHistoryEntry | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const isItStaff = state.currentUser?.role === "it_staff";
+  const isItStaff =
+    state.currentUser?.role === "it_staff" || state.currentUser?.role === "admin";
+
+  useEffect(() => {
+    setPriority(ticketPriority);
+  }, [ticketPriority]);
 
   useEffect(() => {
     fetchTicketConversionHistory(ticketId)
@@ -59,7 +67,7 @@ export function ConversionActions({
   if (!isItStaff) {
     return history ? (
       <div className="rounded-md border p-3 text-sm">
-        <p className="font-medium">Converted to {history.targetType}</p>
+        <p className="font-medium">Dikonversi ke {history.targetType}</p>
         <p className="text-muted-foreground">
           Target ID: {history.targetId}
           {history.targetTitle ? ` — ${history.targetTitle}` : ""}
@@ -71,7 +79,7 @@ export function ConversionActions({
   if (history || ticketStatus === "converted") {
     return (
       <div className="rounded-md border p-3 text-sm space-y-1">
-        <p className="font-medium">Already converted</p>
+        <p className="font-medium">Sudah dikonversi</p>
         <p className="text-muted-foreground">
           {history?.targetType ?? "Resource"} {history?.targetId ?? ""}
         </p>
@@ -81,7 +89,7 @@ export function ConversionActions({
 
   const handleConvert = async () => {
     if (!reason.trim()) {
-      toast.error("Conversion reason is required");
+      toast.error("Alasan konversi wajib diisi");
       return;
     }
     setSubmitting(true);
@@ -90,18 +98,20 @@ export function ConversionActions({
         await convertTicketToError(ticketId, {
           category,
           conversion_reason: reason.trim(),
+          priority,
         });
       } else {
         await convertTicketToFeature(ticketId, {
           request_type: requestType,
           conversion_reason: reason.trim(),
+          priority,
         });
       }
-      toast.success("Ticket converted");
+      toast.success("Ticket berhasil dikonversi");
       setOpen(false);
       onCompleted?.();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Conversion failed");
+      toast.error(err instanceof ApiError ? err.message : "Konversi gagal");
     } finally {
       setSubmitting(false);
     }
@@ -117,15 +127,17 @@ export function ConversionActions({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Convert Ticket</DialogTitle>
+            <DialogTitle>Convert Ticket — Arahkan ke Tim</DialogTitle>
             <DialogDescription>
-              Turn this ticket into an error report or feature request.
+              Tentukan apakah laporan ini masuk Error Report (insiden) atau Feature
+              Request/Bug Fix (pengembangan). Untuk Error Report, pilih ranah
+              hardware, network, atau software.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div>
-              <Label>Target type</Label>
+              <Label>Tujuan konversi</Label>
               <Select
                 value={target}
                 onValueChange={(v) => setTarget(v as typeof target)}
@@ -134,15 +146,17 @@ export function ConversionActions({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="error_report">Error Report</SelectItem>
-                  <SelectItem value="feature_request">Feature Request</SelectItem>
+                  <SelectItem value="error_report">Error Report (insiden IT)</SelectItem>
+                  <SelectItem value="feature_request">
+                    Feature Request / Bug Fix (pengembangan)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {target === "error_report" ? (
               <div>
-                <Label>Category</Label>
+                <Label>Ranah masalah (IT)</Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
                     <SelectValue />
@@ -156,7 +170,7 @@ export function ConversionActions({
               </div>
             ) : (
               <div>
-                <Label>Request type</Label>
+                <Label>Jenis permintaan</Label>
                 <Select value={requestType} onValueChange={setRequestType}>
                   <SelectTrigger>
                     <SelectValue />
@@ -170,11 +184,29 @@ export function ConversionActions({
             )}
 
             <div>
-              <Label>Reason</Label>
+              <Label>Prioritas</Label>
+              <Select
+                value={priority}
+                onValueChange={(v) => setPriority(v as TicketPriority)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Alasan konversi</Label>
               <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Why is this ticket being converted?"
+                placeholder="Mengapa ticket ini diarahkan ke modul tersebut?"
                 rows={3}
               />
             </div>
@@ -182,10 +214,10 @@ export function ConversionActions({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              Batal
             </Button>
             <Button onClick={handleConvert} disabled={submitting}>
-              {submitting ? "Converting..." : "Convert"}
+              {submitting ? "Mengonversi..." : "Convert"}
             </Button>
           </DialogFooter>
         </DialogContent>
