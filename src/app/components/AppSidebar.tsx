@@ -86,7 +86,7 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           id: '/tickets',
           title: 'Tickets',
           icon: TicketIcon,
-          description: 'All tickets and public submissions',
+          description: 'Antrian laporan masuk & triage IT',
         },
         {
           id: '/watched-tickets',
@@ -122,7 +122,7 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           id: '/public-form',
           title: 'Public Form',
           icon: ExternalLink,
-          description: 'Share public submission form',
+          description: 'Bagikan form laporan sederhana tanpa login',
         },
       ],
     },
