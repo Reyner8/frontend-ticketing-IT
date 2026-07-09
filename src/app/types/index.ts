@@ -38,6 +38,7 @@ export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
 export type ApprovalStatusValue = 'pending' | 'approved' | 'rejected';
 
 export type TicketCategory = 
+  | 'general_report'
   | 'software_bug' 
   | 'feature_request' 
   | 'network_issue' 
@@ -106,6 +107,11 @@ export interface Ticket {
   mergedTickets?: string[]; // IDs of merged tickets
   parentTicketId?: string; // For sub-tickets
   watchers: string[]; // User IDs watching this ticket
+  isPublicSubmission?: boolean;
+  submitterName?: string;
+  submitterUnit?: string;
+  submitterEmail?: string;
+  submitterPhone?: string;
 }
 
 // Enhanced Error Report interface

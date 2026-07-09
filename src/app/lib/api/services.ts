@@ -289,20 +289,14 @@ export async function createComment(
 }
 
 export interface PublicSubmissionPayload {
-  submission_type: 'error_report' | 'feature_request';
   title: string;
   description: string;
-  category: string;
-  priority: string;
   submitter_name: string;
-  submitter_email: string;
-  submitter_phone?: string;
-  submitter_unit?: string;
+  submitter_unit: string;
 }
 
 export interface PublicSubmissionResult {
   reference_number: string;
-  submission_type: string;
   status: string;
   submitted_at: string;
 }

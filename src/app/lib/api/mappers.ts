@@ -87,16 +87,19 @@ export function mapTicketListItem(data: Record<string, unknown>): Ticket {
     id: String(data.id),
     title: String(data.title),
     description: '',
-    category: unwrapValue(data.category as WrappedValue<Ticket['category']>) || 'system_error',
+    category: unwrapValue(data.category as WrappedValue<Ticket['category']>) || 'general_report',
     priority: unwrapValue(data.priority as WrappedValue<Ticket['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<TicketStatus>) || 'draft',
     reporterId: '',
-    dateReported: parseDate(data.created_at as string),
+    dateReported: parseDate((data.date_reported ?? data.created_at) as string),
     slaBreached: false,
     attachments: [],
     comments: [],
     tags: [],
     watchers: [],
+    isPublicSubmission: (data.is_public_submission as boolean) ?? false,
+    submitterName: data.submitter_name as string | undefined,
+    submitterUnit: data.submitter_unit as string | undefined,
   };
 }
 
@@ -107,12 +110,18 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
   const effort = (data.effort ?? {}) as Record<string, unknown>;
   const time = (data.time ?? {}) as Record<string, unknown>;
   const tags = (data.tags as Array<{ name?: string }>) ?? [];
+  const submitter = data.submitter as {
+    name?: string;
+    email?: string;
+    phone?: string;
+    unit?: string;
+  } | null;
 
   return {
     id: String(data.id),
     title: String(data.title),
     description: String(data.description ?? ''),
-    category: unwrapValue(data.category as WrappedValue<Ticket['category']>) || 'system_error',
+    category: unwrapValue(data.category as WrappedValue<Ticket['category']>) || 'general_report',
     priority: unwrapValue(data.priority as WrappedValue<Ticket['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<TicketStatus>) || 'draft',
     approvalStatus: mapApprovalStatus(data),
@@ -137,6 +146,11 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
     comments: [],
     tags: tags.map((t) => t.name ?? '').filter(Boolean),
     watchers: [],
+    isPublicSubmission: (data.is_public_submission as boolean) ?? false,
+    submitterName: submitter?.name,
+    submitterUnit: submitter?.unit,
+    submitterEmail: submitter?.email,
+    submitterPhone: submitter?.phone,
   };
 }
 
