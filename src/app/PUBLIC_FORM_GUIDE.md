@@ -34,9 +34,9 @@ https://your-domain.com/public/submit
 ## IT Workflow (internal)
 
 1. **Tickets** → filter **Laporan Publik**
-2. Buka detail `PUB-*` → data pelapor & lampiran
-3. **Triage IT** — kategori & prioritas
-4. **Convert** — Error Report (hardware/network/software) atau Feature Request / Bug Fix
+2. Buka detail `PUB-*` → data pelapor & lampiran (bukti gambar)
+3. **Convert** — pilih Error Report (hardware/network/software) atau Feature Request / Bug Fix, sekaligus set prioritas
+4. Lampiran laporan otomatis ikut ke resource hasil convert
 5. Assign tim dan lacak hingga selesai
 
 ## API

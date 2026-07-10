@@ -86,7 +86,7 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           id: '/tickets',
           title: 'Tickets',
           icon: TicketIcon,
-          description: 'Antrian laporan masuk & triage IT',
+          description: 'Antrian laporan masuk — tinjau & convert',
         },
         {
           id: '/watched-tickets',

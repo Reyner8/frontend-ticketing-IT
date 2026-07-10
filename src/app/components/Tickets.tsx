@@ -29,7 +29,6 @@ import { StatusChangeActions } from "./StatusChangeActions";
 import { TagManager } from "./TagManager";
 import { WatcherPanel } from "./WatcherPanel";
 import { ConversionActions } from "./ConversionActions";
-import { TicketTriagePanel } from "./TicketTriagePanel";
 import { CommentThread } from "./CommentThread";
 import { MergeTicketPanel } from "./MergeTicketPanel";
 import { ResourceEditActions } from "./ResourceEditActions";
@@ -178,7 +177,7 @@ export function Tickets() {
             Tickets
           </h2>
           <p className="text-muted-foreground">
-            Antrian laporan masuk — termasuk form publik (PUB-*) yang menunggu triage IT
+            Antrian laporan masuk — termasuk form publik (PUB-*). IT meninjau, lalu convert ke Error Report / Feature Request
           </p>
         </div>
         <Badge variant="outline">{filtered.length} shown</Badge>
@@ -432,8 +431,6 @@ function TicketDetailDialog({
                     </div>
                   </div>
                 )}
-
-                <TicketTriagePanel ticket={detail} onUpdated={setDetail} />
 
                 <div>
                   <Label>Description</Label>

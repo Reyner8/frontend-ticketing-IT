@@ -2,7 +2,7 @@
 
 ## Overview
 
-Form laporan sederhana tanpa login. Pengguna hanya isi judul, detail, nama, unit, dan bukti gambar. Tim IT melakukan triage di halaman **Tickets**.
+Form laporan sederhana tanpa login. Pengguna hanya isi judul, detail, nama, unit, dan bukti gambar. Tim IT meninjau lalu meng-convert laporan di halaman **Tickets**.
 
 ## URLs
 
@@ -26,8 +26,8 @@ Form laporan sederhana tanpa login. Pengguna hanya isi judul, detail, nama, unit
 ```mermaid
 flowchart LR
     A[Pengguna: form publik] --> B[Ticket PUB-*]
-    B --> C[IT: triage kategori & prioritas]
-    C --> D[Convert ke Error Report]
+    B --> C[IT: tinjau laporan + bukti]
+    C --> D[Convert ke Error Report + kategori/prioritas]
     C --> E[Convert ke Feature Request / Bug Fix]
 ```
 
