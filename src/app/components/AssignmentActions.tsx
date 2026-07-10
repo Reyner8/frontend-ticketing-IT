@@ -57,7 +57,9 @@ export function AssignmentActions({
   const [selectedTeam, setSelectedTeam] = useState<TeamType | "">(currentTeam ?? "");
   const [submitting, setSubmitting] = useState(false);
 
-  if (state.currentUser?.role !== "team_lead") return null;
+  if (state.currentUser?.role !== "team_lead" && state.currentUser?.role !== "admin") {
+    return null;
+  }
 
   const users = getCachedUsers().filter(
     (u) => u.role === "it_staff" && u.isActive

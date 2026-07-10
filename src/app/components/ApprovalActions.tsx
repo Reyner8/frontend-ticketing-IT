@@ -39,7 +39,8 @@ export function ApprovalActions({
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
 
-  const isTeamLead = state.currentUser?.role === "team_lead";
+  const isTeamLead =
+    state.currentUser?.role === "team_lead" || state.currentUser?.role === "admin";
   const canApprove = isTeamLead && isResourcePendingApproval(status, approvalStatus);
 
   if (!canApprove) return null;

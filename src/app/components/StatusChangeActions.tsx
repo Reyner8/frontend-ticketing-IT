@@ -46,8 +46,9 @@ export function StatusChangeActions({
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const isItStaff = state.currentUser?.role === "it_staff";
-  if (!isItStaff) return null;
+  const canChangeStatus =
+    state.currentUser?.role === "it_staff" || state.currentUser?.role === "admin";
+  if (!canChangeStatus) return null;
 
   const handleSubmit = async () => {
     if (status === currentStatus) {

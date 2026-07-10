@@ -405,15 +405,17 @@ function TicketDetailDialog({
           />
         </div>
 
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="comments">Comments</TabsTrigger>
-            <TabsTrigger value="files">Attachments</TabsTrigger>
-            <TabsTrigger value="meta">Tags & Watchers</TabsTrigger>
-            <TabsTrigger value="merge">Merge</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="details" className="w-full min-h-0">
+          <div className="overflow-x-auto pb-1">
+            <TabsList className="inline-flex h-auto w-max min-w-full flex-wrap gap-1 p-1">
+              <TabsTrigger value="details" className="flex-none px-3">Details</TabsTrigger>
+              <TabsTrigger value="comments" className="flex-none px-3">Comments</TabsTrigger>
+              <TabsTrigger value="files" className="flex-none px-3">Files</TabsTrigger>
+              <TabsTrigger value="meta" className="flex-none px-3">Tags</TabsTrigger>
+              <TabsTrigger value="merge" className="flex-none px-3">Merge</TabsTrigger>
+              <TabsTrigger value="activity" className="flex-none px-3">Activity</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="details" className="mt-4">
             <ScrollArea className="h-[380px] pr-4">
