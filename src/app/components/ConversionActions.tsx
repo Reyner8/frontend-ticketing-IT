@@ -64,27 +64,26 @@ export function ConversionActions({
       .catch(() => setHistory(null));
   }, [ticketId]);
 
-  if (!isItStaff) {
-    return history ? (
-      <div className="rounded-md border p-3 text-sm">
-        <p className="font-medium">Dikonversi ke {history.targetType}</p>
-        <p className="text-muted-foreground">
-          Target ID: {history.targetId}
-          {history.targetTitle ? ` — ${history.targetTitle}` : ""}
-        </p>
-      </div>
-    ) : null;
+  if (history || ticketStatus === "converted") {
+    const targetType = history?.targetType?.replace(/_/g, " ") ?? "resource";
+    const targetId = history?.targetId;
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700"
+        title={
+          history?.targetTitle
+            ? `${targetType} ${targetId ?? ""} — ${history.targetTitle}`
+            : undefined
+        }
+      >
+        <ArrowRightLeft className="h-3.5 w-3.5" />
+        Dikonversi{targetId ? ` → ${targetId}` : ` ke ${targetType}`}
+      </span>
+    );
   }
 
-  if (history || ticketStatus === "converted") {
-    return (
-      <div className="rounded-md border p-3 text-sm space-y-1">
-        <p className="font-medium">Sudah dikonversi</p>
-        <p className="text-muted-foreground">
-          {history?.targetType ?? "Resource"} {history?.targetId ?? ""}
-        </p>
-      </div>
-    );
+  if (!isItStaff) {
+    return null;
   }
 
   const handleConvert = async () => {

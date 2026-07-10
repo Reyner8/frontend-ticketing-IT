@@ -360,29 +360,27 @@ function TicketDetailDialog({
           <DialogDescription>{detail.title}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-          <div className="flex flex-wrap gap-2">
-            <AssignmentActions
-              target="tickets"
-              resourceId={detail.id}
-              currentAssigneeId={detail.assignedToId}
-              currentTeam={detail.assignedTeam}
-              onCompleted={() => onOpenChange(false)}
-            />
-            <StatusChangeActions
-              target="tickets"
-              resourceId={detail.id}
-              currentStatus={detail.status}
-              options={TICKET_STATUS_OPTIONS}
-              onCompleted={() => onOpenChange(false)}
-            />
-            <ConversionActions
-              ticketId={detail.id}
-              ticketStatus={detail.status}
-              ticketPriority={detail.priority}
-              onCompleted={() => onOpenChange(false)}
-            />
-          </div>
+        <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+          <AssignmentActions
+            target="tickets"
+            resourceId={detail.id}
+            currentAssigneeId={detail.assignedToId}
+            currentTeam={detail.assignedTeam}
+            onCompleted={() => onOpenChange(false)}
+          />
+          <StatusChangeActions
+            target="tickets"
+            resourceId={detail.id}
+            currentStatus={detail.status}
+            options={TICKET_STATUS_OPTIONS}
+            onCompleted={() => onOpenChange(false)}
+          />
+          <ConversionActions
+            ticketId={detail.id}
+            ticketStatus={detail.status}
+            ticketPriority={detail.priority}
+            onCompleted={() => onOpenChange(false)}
+          />
           <ApprovalActions
             target="tickets"
             resourceId={detail.id}
@@ -390,18 +388,20 @@ function TicketDetailDialog({
             approvalStatus={detail.approvalStatus}
             onCompleted={() => onOpenChange(false)}
           />
-          <ResourceEditActions
-            title={detail.title}
-            description={detail.description}
-            onUpdate={async (payload) => {
-              const updated = await updateTicket(detail.id, payload);
-              setDetail(updated);
-            }}
-            onDelete={async () => {
-              await deleteTicket(detail.id);
-              onOpenChange(false);
-            }}
-          />
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <ResourceEditActions
+              title={detail.title}
+              description={detail.description}
+              onUpdate={async (payload) => {
+                const updated = await updateTicket(detail.id, payload);
+                setDetail(updated);
+              }}
+              onDelete={async () => {
+                await deleteTicket(detail.id);
+                onOpenChange(false);
+              }}
+            />
+          </div>
         </div>
 
         <Tabs defaultValue="details" className="w-full min-h-0">
