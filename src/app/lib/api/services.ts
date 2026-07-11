@@ -380,6 +380,13 @@ export async function unassignTeam(target: AssignmentTarget, id: string): Promis
   await apiPost(`/${target}/${id}/unassign/team`);
 }
 
+export async function claimResource(
+  target: AssignmentTarget,
+  id: string
+): Promise<void> {
+  await apiPost(`/${target}/${id}/claim`);
+}
+
 type AttachmentParent = 'tickets' | 'errors' | 'features' | 'comments';
 
 export async function fetchAttachments(

@@ -25,6 +25,7 @@ import {
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
+import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
 import { TagManager } from "./TagManager";
 import { WatcherPanel } from "./WatcherPanel";
@@ -343,6 +344,12 @@ function TicketDetailDialog({
   const getUserName = (userId: string) =>
     users.find((u) => u.id === userId)?.name ?? "Unknown";
 
+  const refreshDetail = () => {
+    fetchTicketDetail(detail.id)
+      .then(setDetail)
+      .catch(() => {});
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
@@ -361,6 +368,12 @@ function TicketDetailDialog({
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+          <ClaimActions
+            target="tickets"
+            resourceId={detail.id}
+            assignedToId={detail.assignedToId}
+            onCompleted={refreshDetail}
+          />
           <AssignmentActions
             target="tickets"
             resourceId={detail.id}
@@ -372,8 +385,9 @@ function TicketDetailDialog({
             target="tickets"
             resourceId={detail.id}
             currentStatus={detail.status}
+            assignedToId={detail.assignedToId}
             options={TICKET_STATUS_OPTIONS}
-            onCompleted={() => onOpenChange(false)}
+            onCompleted={refreshDetail}
           />
           <ConversionActions
             ticketId={detail.id}

@@ -22,6 +22,7 @@ import { ResourceEditActions } from "./ResourceEditActions";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
+import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
 import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
 import { TagManager } from "./TagManager";
@@ -912,9 +913,23 @@ function ErrorReportDetailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const [liveReport, setLiveReport] = useState(report);
   const users = getCachedUsers();
+
+  useEffect(() => {
+    setLiveReport(report);
+    fetchErrorReportDetail(report.id)
+      .then(setLiveReport)
+      .catch(() => setLiveReport(report));
+  }, [report.id]);
+
+  const refreshDetail = () => {
+    fetchErrorReportDetail(liveReport.id)
+      .then(setLiveReport)
+      .catch(() => {});
+  };
   
-  const slaStatus = report.slaBreached 
+  const slaStatus = liveReport.slaBreached 
     ? { status: 'Breached', color: 'text-red-600 bg-red-100' }
     : { status: 'On Time', color: 'text-green-600 bg-green-100' };
 
@@ -996,26 +1011,33 @@ function ErrorReportDetailDialog({
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <div className="flex flex-wrap gap-2">
+            <ClaimActions
+              target="errors"
+              resourceId={liveReport.id}
+              assignedToId={liveReport.assignedToId}
+              onCompleted={refreshDetail}
+            />
             <AssignmentActions
               target="errors"
-              resourceId={report.id}
-              currentAssigneeId={report.assignedToId}
-              currentTeam={report.assignedTeam}
+              resourceId={liveReport.id}
+              currentAssigneeId={liveReport.assignedToId}
+              currentTeam={liveReport.assignedTeam}
               onCompleted={() => onOpenChange(false)}
             />
             <StatusChangeActions
               target="errors"
-              resourceId={report.id}
-              currentStatus={report.status}
+              resourceId={liveReport.id}
+              currentStatus={liveReport.status}
+              assignedToId={liveReport.assignedToId}
               options={ERROR_STATUS_OPTIONS}
-              onCompleted={() => onOpenChange(false)}
+              onCompleted={refreshDetail}
             />
           </div>
           <ApprovalActions
             target="errors"
-            resourceId={report.id}
-            status={report.status}
-            approvalStatus={report.approvalStatus}
+            resourceId={liveReport.id}
+            status={liveReport.status}
+            approvalStatus={liveReport.approvalStatus}
             onCompleted={() => onOpenChange(false)}
           />
           <ResourceEditActions

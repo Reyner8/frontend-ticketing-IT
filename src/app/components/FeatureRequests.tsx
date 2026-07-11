@@ -24,6 +24,7 @@ import { ResourceEditActions } from "./ResourceEditActions";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
+import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
 import { TagManager } from "./TagManager";
 import { Send } from "lucide-react";
@@ -741,10 +742,25 @@ function FeatureRequestDetailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const progress = ticket.progress > 0 ? ticket.progress :
-                  ticket.status === 'completed' ? 100 :
-                  ['development', 'testing', 'validation'].includes(ticket.status) ? 60 :
-                  ticket.status === 'assigned' ? 20 : 0;
+  const [liveTicket, setLiveTicket] = useState(ticket);
+
+  useEffect(() => {
+    setLiveTicket(ticket);
+    fetchFeatureDetail(ticket.id)
+      .then(setLiveTicket)
+      .catch(() => setLiveTicket(ticket));
+  }, [ticket.id]);
+
+  const refreshDetail = () => {
+    fetchFeatureDetail(liveTicket.id)
+      .then(setLiveTicket)
+      .catch(() => {});
+  };
+
+  const progress = liveTicket.progress > 0 ? liveTicket.progress :
+                  liveTicket.status === 'completed' ? 100 :
+                  ['development', 'testing', 'validation'].includes(liveTicket.status) ? 60 :
+                  liveTicket.status === 'assigned' ? 20 : 0;
 
   const users = getCachedUsers();
   const getUserName = (userId: string) => {
@@ -802,26 +818,33 @@ function FeatureRequestDetailDialog({
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <div className="flex flex-wrap gap-2">
+            <ClaimActions
+              target="features"
+              resourceId={liveTicket.id}
+              assignedToId={liveTicket.assignedToId}
+              onCompleted={refreshDetail}
+            />
             <AssignmentActions
               target="features"
-              resourceId={ticket.id}
-              currentAssigneeId={ticket.assignedToId}
-              currentTeam={ticket.assignedTeam}
+              resourceId={liveTicket.id}
+              currentAssigneeId={liveTicket.assignedToId}
+              currentTeam={liveTicket.assignedTeam}
               onCompleted={() => onOpenChange(false)}
             />
             <StatusChangeActions
               target="features"
-              resourceId={ticket.id}
-              currentStatus={ticket.status}
+              resourceId={liveTicket.id}
+              currentStatus={liveTicket.status}
+              assignedToId={liveTicket.assignedToId}
               options={FEATURE_STATUS_OPTIONS}
-              onCompleted={() => onOpenChange(false)}
+              onCompleted={refreshDetail}
             />
           </div>
           <ApprovalActions
             target="features"
-            resourceId={ticket.id}
-            status={ticket.status}
-            approvalStatus={ticket.approvalStatus}
+            resourceId={liveTicket.id}
+            status={liveTicket.status}
+            approvalStatus={liveTicket.approvalStatus}
             onCompleted={() => onOpenChange(false)}
           />
           <ResourceEditActions

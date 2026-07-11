@@ -28,6 +28,7 @@ interface StatusChangeActionsProps {
   target: "tickets" | "errors" | "features";
   resourceId: string;
   currentStatus: string;
+  assignedToId?: string;
   options: { value: string; label: string }[];
   onCompleted?: () => void;
 }
@@ -36,6 +37,7 @@ export function StatusChangeActions({
   target,
   resourceId,
   currentStatus,
+  assignedToId,
   options,
   onCompleted,
 }: StatusChangeActionsProps) {
@@ -46,8 +48,14 @@ export function StatusChangeActions({
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const role = state.currentUser?.role;
+  const userId = state.currentUser?.id;
+
   const canChangeStatus =
-    state.currentUser?.role === "it_staff" || state.currentUser?.role === "admin";
+    role === "admin" ||
+    role === "team_lead" ||
+    (role === "it_staff" && !!assignedToId && assignedToId === userId);
+
   if (!canChangeStatus) return null;
 
   const handleSubmit = async () => {
