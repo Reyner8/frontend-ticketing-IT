@@ -816,9 +816,9 @@ function FeatureRequestDetailDialog({
           <DialogDescription>{ticket.title}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b pb-3">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="flex flex-col md:flex-row md:items-stretch justify-between gap-4 border-b pb-4 bg-slate-50/50 dark:bg-slate-900/20 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+          <div className="flex-1 flex flex-col gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Alur Kerja
             </span>
             <div className="flex flex-wrap items-center gap-2">
@@ -852,8 +852,13 @@ function FeatureRequestDetailDialog({
               />
             </div>
           </div>
-          <div className="flex flex-col gap-1.5 border-l pl-4">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+
+          {/* Separator line: vertical on desktop, horizontal on mobile */}
+          <div className="hidden md:block w-px bg-slate-200 dark:bg-slate-800 self-stretch my-1" />
+          <div className="block md:hidden w-full h-px bg-slate-200 dark:bg-slate-800" />
+
+          <div className="flex flex-col gap-2 md:pl-2 min-w-[120px]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Kelola
             </span>
             <ResourceEditActions
