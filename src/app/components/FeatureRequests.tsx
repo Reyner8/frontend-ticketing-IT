@@ -816,49 +816,59 @@ function FeatureRequestDetailDialog({
           <DialogDescription>{ticket.title}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-          <div className="flex flex-wrap gap-2">
-            <ClaimActions
-              target="features"
-              resourceId={liveTicket.id}
-              assignedToId={liveTicket.assignedToId}
-              onCompleted={refreshDetail}
-            />
-            <AssignmentActions
-              target="features"
-              resourceId={liveTicket.id}
-              currentAssigneeId={liveTicket.assignedToId}
-              currentTeam={liveTicket.assignedTeam}
-              onCompleted={() => onOpenChange(false)}
-            />
-            <StatusChangeActions
-              target="features"
-              resourceId={liveTicket.id}
-              currentStatus={liveTicket.status}
-              assignedToId={liveTicket.assignedToId}
-              options={FEATURE_STATUS_OPTIONS}
-              onCompleted={refreshDetail}
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b pb-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Alur Kerja
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <ClaimActions
+                target="features"
+                resourceId={liveTicket.id}
+                assignedToId={liveTicket.assignedToId}
+                onCompleted={refreshDetail}
+              />
+              <AssignmentActions
+                target="features"
+                resourceId={liveTicket.id}
+                currentAssigneeId={liveTicket.assignedToId}
+                currentTeam={liveTicket.assignedTeam}
+                onCompleted={() => onOpenChange(false)}
+              />
+              <StatusChangeActions
+                target="features"
+                resourceId={liveTicket.id}
+                currentStatus={liveTicket.status}
+                assignedToId={liveTicket.assignedToId}
+                options={FEATURE_STATUS_OPTIONS}
+                onCompleted={refreshDetail}
+              />
+              <ApprovalActions
+                target="features"
+                resourceId={liveTicket.id}
+                status={liveTicket.status}
+                approvalStatus={liveTicket.approvalStatus}
+                onCompleted={() => onOpenChange(false)}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 border-l pl-4">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Kelola
+            </span>
+            <ResourceEditActions
+              title={ticket.title}
+              description={ticket.description}
+              onUpdate={async (payload) => {
+                await updateFeatureRequest(ticket.id, payload);
+                onOpenChange(false);
+              }}
+              onDelete={async () => {
+                await deleteFeatureRequest(ticket.id);
+                onOpenChange(false);
+              }}
             />
           </div>
-          <ApprovalActions
-            target="features"
-            resourceId={liveTicket.id}
-            status={liveTicket.status}
-            approvalStatus={liveTicket.approvalStatus}
-            onCompleted={() => onOpenChange(false)}
-          />
-          <ResourceEditActions
-            title={ticket.title}
-            description={ticket.description}
-            onUpdate={async (payload) => {
-              await updateFeatureRequest(ticket.id, payload);
-              onOpenChange(false);
-            }}
-            onDelete={async () => {
-              await deleteFeatureRequest(ticket.id);
-              onOpenChange(false);
-            }}
-          />
         </div>
 
         <Tabs defaultValue="details" className="w-full">

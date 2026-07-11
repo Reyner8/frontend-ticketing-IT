@@ -367,42 +367,52 @@ function TicketDetailDialog({
           <DialogDescription>{detail.title}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-center gap-2 border-b pb-3">
-          <ClaimActions
-            target="tickets"
-            resourceId={detail.id}
-            assignedToId={detail.assignedToId}
-            onCompleted={refreshDetail}
-          />
-          <AssignmentActions
-            target="tickets"
-            resourceId={detail.id}
-            currentAssigneeId={detail.assignedToId}
-            currentTeam={detail.assignedTeam}
-            onCompleted={() => onOpenChange(false)}
-          />
-          <StatusChangeActions
-            target="tickets"
-            resourceId={detail.id}
-            currentStatus={detail.status}
-            assignedToId={detail.assignedToId}
-            options={TICKET_STATUS_OPTIONS}
-            onCompleted={refreshDetail}
-          />
-          <ConversionActions
-            ticketId={detail.id}
-            ticketStatus={detail.status}
-            ticketPriority={detail.priority}
-            onCompleted={() => onOpenChange(false)}
-          />
-          <ApprovalActions
-            target="tickets"
-            resourceId={detail.id}
-            status={detail.status}
-            approvalStatus={detail.approvalStatus}
-            onCompleted={() => onOpenChange(false)}
-          />
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b pb-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Alur Kerja
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <ClaimActions
+                target="tickets"
+                resourceId={detail.id}
+                assignedToId={detail.assignedToId}
+                onCompleted={refreshDetail}
+              />
+              <AssignmentActions
+                target="tickets"
+                resourceId={detail.id}
+                currentAssigneeId={detail.assignedToId}
+                currentTeam={detail.assignedTeam}
+                onCompleted={() => onOpenChange(false)}
+              />
+              <StatusChangeActions
+                target="tickets"
+                resourceId={detail.id}
+                currentStatus={detail.status}
+                assignedToId={detail.assignedToId}
+                options={TICKET_STATUS_OPTIONS}
+                onCompleted={refreshDetail}
+              />
+              <ConversionActions
+                ticketId={detail.id}
+                ticketStatus={detail.status}
+                ticketPriority={detail.priority}
+                onCompleted={() => onOpenChange(false)}
+              />
+              <ApprovalActions
+                target="tickets"
+                resourceId={detail.id}
+                status={detail.status}
+                approvalStatus={detail.approvalStatus}
+                onCompleted={() => onOpenChange(false)}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 border-l pl-4">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Kelola
+            </span>
             <ResourceEditActions
               title={detail.title}
               description={detail.description}

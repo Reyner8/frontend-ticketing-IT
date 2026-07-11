@@ -1009,49 +1009,59 @@ function ErrorReportDetailDialog({
           <DialogDescription>{report.title}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-          <div className="flex flex-wrap gap-2">
-            <ClaimActions
-              target="errors"
-              resourceId={liveReport.id}
-              assignedToId={liveReport.assignedToId}
-              onCompleted={refreshDetail}
-            />
-            <AssignmentActions
-              target="errors"
-              resourceId={liveReport.id}
-              currentAssigneeId={liveReport.assignedToId}
-              currentTeam={liveReport.assignedTeam}
-              onCompleted={() => onOpenChange(false)}
-            />
-            <StatusChangeActions
-              target="errors"
-              resourceId={liveReport.id}
-              currentStatus={liveReport.status}
-              assignedToId={liveReport.assignedToId}
-              options={ERROR_STATUS_OPTIONS}
-              onCompleted={refreshDetail}
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 border-b pb-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Alur Kerja
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <ClaimActions
+                target="errors"
+                resourceId={liveReport.id}
+                assignedToId={liveReport.assignedToId}
+                onCompleted={refreshDetail}
+              />
+              <AssignmentActions
+                target="errors"
+                resourceId={liveReport.id}
+                currentAssigneeId={liveReport.assignedToId}
+                currentTeam={liveReport.assignedTeam}
+                onCompleted={() => onOpenChange(false)}
+              />
+              <StatusChangeActions
+                target="errors"
+                resourceId={liveReport.id}
+                currentStatus={liveReport.status}
+                assignedToId={liveReport.assignedToId}
+                options={ERROR_STATUS_OPTIONS}
+                onCompleted={refreshDetail}
+              />
+              <ApprovalActions
+                target="errors"
+                resourceId={liveReport.id}
+                status={liveReport.status}
+                approvalStatus={liveReport.approvalStatus}
+                onCompleted={() => onOpenChange(false)}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 border-l pl-4">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Kelola
+            </span>
+            <ResourceEditActions
+              title={report.title}
+              description={report.description}
+              onUpdate={async (payload) => {
+                await updateErrorReport(report.id, payload);
+                onOpenChange(false);
+              }}
+              onDelete={async () => {
+                await deleteErrorReport(report.id);
+                onOpenChange(false);
+              }}
             />
           </div>
-          <ApprovalActions
-            target="errors"
-            resourceId={liveReport.id}
-            status={liveReport.status}
-            approvalStatus={liveReport.approvalStatus}
-            onCompleted={() => onOpenChange(false)}
-          />
-          <ResourceEditActions
-            title={report.title}
-            description={report.description}
-            onUpdate={async (payload) => {
-              await updateErrorReport(report.id, payload);
-              onOpenChange(false);
-            }}
-            onDelete={async () => {
-              await deleteErrorReport(report.id);
-              onOpenChange(false);
-            }}
-          />
         </div>
 
         <Tabs defaultValue="details" className="w-full">
