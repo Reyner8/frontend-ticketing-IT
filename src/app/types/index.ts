@@ -9,7 +9,8 @@ export type TicketStatus =
   | 'in_progress' 
   | 'waiting_for_user' 
   | 'resolved' 
-  | 'closed';
+  | 'closed'
+  | 'converted';
 
 // Enhanced status for Feature Requests lifecycle
 export type FeatureRequestStatus = 
@@ -406,26 +407,6 @@ export interface CalendarEvent {
   };
 }
 
-export interface SystemConfiguration {
-  slaThresholds: Record<TicketPriority, number>;
-  autoAssignment: boolean;
-  workingHours: {
-    start: string;
-    end: string;
-    days: number[]; // 0-6, Sunday to Saturday
-  };
-  escalationRules: {
-    level1Hours: number;
-    level2Hours: number;
-    level3Hours: number;
-  };
-  maintenanceWindow: {
-    day: number; // 0-6
-    startTime: string;
-    duration: number; // in hours
-  };
-}
-
 // State management types
 export interface AppState {
   currentUser: User | null;
@@ -433,7 +414,6 @@ export interface AppState {
   notifications: Notification[];
   unreadNotificationCount: number;
   quickActions: QuickAction[];
-  systemConfig: SystemConfiguration;
   loading: {
     [key: string]: boolean;
   };

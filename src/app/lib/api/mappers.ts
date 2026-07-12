@@ -83,6 +83,11 @@ export function mapUser(data: Record<string, unknown>): User {
 }
 
 export function mapTicketListItem(data: Record<string, unknown>): Ticket {
+  const reporter = data.reporter as { id?: number } | null;
+  const assignedUser = data.assigned_user as { id?: number } | null;
+  const assignedTeam = data.assigned_team as { value?: string } | null;
+  const tags = (data.tags as Array<{ name?: string }>) ?? [];
+
   return {
     id: String(data.id),
     title: String(data.title),
@@ -90,12 +95,15 @@ export function mapTicketListItem(data: Record<string, unknown>): Ticket {
     category: unwrapValue(data.category as WrappedValue<Ticket['category']>) || 'general_report',
     priority: unwrapValue(data.priority as WrappedValue<Ticket['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<TicketStatus>) || 'draft',
-    reporterId: '',
+    reporterId: reporter?.id ? String(reporter.id) : '',
+    assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
+    assignedTeam: assignedTeam?.value as Ticket['assignedTeam'],
     dateReported: parseDate((data.date_reported ?? data.created_at) as string),
-    slaBreached: false,
+    dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
+    slaBreached: (data.sla_breached as boolean) ?? false,
     attachments: [],
     comments: [],
-    tags: [],
+    tags: tags.map((t) => t.name ?? '').filter(Boolean),
     watchers: [],
     isPublicSubmission: (data.is_public_submission as boolean) ?? false,
     submitterName: data.submitter_name as string | undefined,
@@ -155,6 +163,11 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
 }
 
 export function mapErrorReportListItem(data: Record<string, unknown>): ErrorReport {
+  const reporter = data.reporter as { id?: number } | null;
+  const assignedUser = data.assigned_user as { id?: number } | null;
+  const assignedTeam = data.assigned_team as { value?: string } | null;
+  const tags = (data.tags as Array<{ name?: string }>) ?? [];
+
   return {
     id: String(data.id),
     title: String(data.title),
@@ -162,18 +175,21 @@ export function mapErrorReportListItem(data: Record<string, unknown>): ErrorRepo
     category: unwrapValue(data.category as WrappedValue<ErrorReport['category']>) || 'software',
     priority: unwrapValue(data.priority as WrappedValue<ErrorReport['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<ErrorReportStatus>) || 'pending_approval',
-    reporterId: '',
-    dateReported: new Date(),
+    reporterId: reporter?.id ? String(reporter.id) : '',
+    assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
+    assignedTeam: assignedTeam?.value as ErrorReport['assignedTeam'],
+    dateReported: parseDate((data.date_reported ?? data.created_at) as string),
+    completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
     attachments: [],
     comments: [],
-    tags: [],
+    tags: tags.map((t) => t.name ?? '').filter(Boolean),
     slaTimeElapsed: 0,
     slaTimeRemaining: 0,
-    slaBreached: false,
+    slaBreached: (data.sla_breached as boolean) ?? false,
     statusHistory: [],
     activityLog: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: parseDate((data.created_at ?? data.date_reported) as string),
+    updatedAt: parseDate((data.updated_at ?? data.created_at) as string),
   };
 }
 
@@ -220,6 +236,11 @@ export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport
 }
 
 export function mapFeatureListItem(data: Record<string, unknown>): FeatureRequest {
+  const reporter = data.reporter as { id?: number } | null;
+  const assignedUser = data.assigned_user as { id?: number } | null;
+  const assignedTeam = data.assigned_team as { value?: string } | null;
+  const tags = (data.tags as Array<{ name?: string }>) ?? [];
+
   return {
     id: String(data.id),
     title: String(data.title),
@@ -228,16 +249,20 @@ export function mapFeatureListItem(data: Record<string, unknown>): FeatureReques
     priority: unwrapValue(data.priority as WrappedValue<FeatureRequest['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<FeatureRequestStatus>) || 'submission',
     progress: (data.progress as number) ?? 0,
-    reporterId: '',
-    dateSubmitted: parseDate(data.created_at as string),
+    reporterId: reporter?.id ? String(reporter.id) : '',
+    assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
+    assignedTeam: assignedTeam?.value as FeatureRequest['assignedTeam'],
+    dateSubmitted: parseDate((data.date_submitted ?? data.created_at) as string),
+    dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
+    completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
     attachments: [],
     comments: [],
-    tags: [],
+    tags: tags.map((t) => t.name ?? '').filter(Boolean),
     milestones: [],
     timeline: [],
     slaTimeElapsed: 0,
     slaTimeRemaining: 0,
-    slaBreached: false,
+    slaBreached: (data.sla_breached as boolean) ?? false,
     statusHistory: [],
     activityLog: [],
     createdAt: parseDate(data.created_at as string),

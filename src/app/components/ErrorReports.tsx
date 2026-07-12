@@ -203,8 +203,8 @@ export function ErrorReports() {
         aValue = priorityOrder[a.priority];
         bValue = priorityOrder[b.priority];
       } else if (sortBy === 'status') {
-        const statusOrder = { 
-          'pending_approval': 1, 'in_progress': 2, 'completed': 3, 'overdue': 4
+        const statusOrder: Record<ErrorReportStatus, number> = {
+          'pending_approval': 1, 'assigned': 2, 'in_progress': 3, 'completed': 4, 'overdue': 5
         };
         aValue = statusOrder[a.status];
         bValue = statusOrder[b.status];

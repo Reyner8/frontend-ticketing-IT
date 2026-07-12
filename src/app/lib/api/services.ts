@@ -1,6 +1,7 @@
 import {
   apiGet,
   apiPost,
+  apiPut,
   apiPatch,
   apiDelete,
   apiRequest,

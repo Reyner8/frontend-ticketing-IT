@@ -4,7 +4,6 @@ import {
   User, 
   Notification, 
   QuickAction, 
-  SystemConfiguration,
 } from '../types';
 import { getToken, clearToken } from './api/client';
 import {
@@ -18,21 +17,12 @@ import {
   setCachedUsers,
 } from './api/services';
 
-const defaultSystemConfig: SystemConfiguration = {
-  slaThresholds: { critical: 4, high: 24, medium: 72, low: 168 },
-  autoAssignment: true,
-  workingHours: { start: '09:00', end: '17:00', days: [1, 2, 3, 4, 5] },
-  escalationRules: { level1Hours: 2, level2Hours: 8, level3Hours: 24 },
-  maintenanceWindow: { day: 0, startTime: '02:00', duration: 4 },
-};
-
 const initialState: AppState = {
   currentUser: null,
   authLoading: true,
   notifications: [],
   unreadNotificationCount: 0,
   quickActions: [],
-  systemConfig: defaultSystemConfig,
   loading: {},
   errors: {}
 };
@@ -49,7 +39,6 @@ type AppAction =
   | { type: 'UPDATE_USER_PREFERENCES'; payload: Partial<User['preferences']> }
   | { type: 'SET_QUICK_ACTIONS'; payload: QuickAction[] }
   | { type: 'TOGGLE_DARK_MODE' }
-  | { type: 'UPDATE_SYSTEM_CONFIG'; payload: Partial<SystemConfiguration> }
   | { type: 'LOGOUT' };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -142,15 +131,6 @@ function appReducer(state: AppState, action: AppAction): AppState {
             ...state.currentUser.preferences,
             darkMode: newDarkMode
           }
-        }
-      };
-
-    case 'UPDATE_SYSTEM_CONFIG':
-      return {
-        ...state,
-        systemConfig: {
-          ...state.systemConfig,
-          ...action.payload
         }
       };
 

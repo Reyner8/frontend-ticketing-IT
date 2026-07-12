@@ -37,7 +37,8 @@ export const TICKET_STATUS_COLORS = {
   in_progress: 'text-purple-600 bg-purple-100',
   waiting_for_user: 'text-orange-600 bg-orange-100',
   resolved: 'text-green-600 bg-green-100',
-  closed: 'text-gray-600 bg-gray-200'
+  closed: 'text-gray-600 bg-gray-200',
+  converted: 'text-purple-600 bg-purple-100'
 } as const;
 
 // SLA thresholds in hours
