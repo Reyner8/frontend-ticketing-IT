@@ -36,6 +36,9 @@ export type ErrorReportStatus =
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
 
+// Target application for Feature Requests / Bug Fixes
+export type TargetApplication = 'simrs' | 'rme' | 'antrean' | 'lainnya';
+
 export type ApprovalStatusValue = 'pending' | 'approved' | 'rejected';
 
 export type TicketCategory = 
@@ -151,6 +154,7 @@ export interface FeatureRequest {
   title: string;
   description: string;
   requestType: 'feature_request' | 'bug_fix';
+  targetApplication?: TargetApplication;
   priority: TicketPriority;
   status: FeatureRequestStatus;
   approvalStatus?: ApprovalStatusValue;

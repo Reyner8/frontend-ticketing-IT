@@ -42,7 +42,28 @@ const FEATURE_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "rejected", label: "Rejected" },
   { value: "cancelled", label: "Cancelled" },
 ];
-import { FeatureRequest, FeatureRequestStatus, TicketPriority } from "../types";
+
+const TARGET_APPLICATION_OPTIONS: { value: TargetApplication; label: string }[] = [
+  { value: "simrs", label: "SIMRS" },
+  { value: "rme", label: "RME" },
+  { value: "antrean", label: "ANTREAN" },
+  { value: "lainnya", label: "Lainnya" },
+];
+
+function getApplicationLabel(app?: TargetApplication): string {
+  return TARGET_APPLICATION_OPTIONS.find((o) => o.value === app)?.label ?? "-";
+}
+
+function getApplicationColor(app?: TargetApplication): string {
+  switch (app) {
+    case "simrs": return "text-blue-600 bg-blue-100";
+    case "rme": return "text-green-600 bg-green-100";
+    case "antrean": return "text-purple-600 bg-purple-100";
+    case "lainnya": return "text-gray-600 bg-gray-100";
+    default: return "text-gray-600 bg-gray-100";
+  }
+}
+import { FeatureRequest, FeatureRequestStatus, TargetApplication, TicketPriority } from "../types";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
 import { 
   Search, 
@@ -72,6 +93,7 @@ export function FeatureRequests() {
   const [statusFilter, setStatusFilter] = useState<FeatureRequestStatus | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | "all">("all");
   const [typeFilter, setTypeFilter] = useState<"feature_request" | "bug_fix" | "all">("all");
+  const [applicationFilter, setApplicationFilter] = useState<TargetApplication | "all">("all");
   const [selectedTicket, setSelectedTicket] = useState<FeatureRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
@@ -162,6 +184,10 @@ export function FeatureRequests() {
       filtered = filtered.filter(ticket => ticket.requestType === typeFilter);
     }
 
+    if (applicationFilter !== "all") {
+      filtered = filtered.filter(ticket => ticket.targetApplication === applicationFilter);
+    }
+
     if (progressFilter !== "all") {
       filtered = filtered.filter(ticket => {
         const progress = calculateProgress(ticket);
@@ -205,7 +231,7 @@ export function FeatureRequests() {
     });
 
     return filtered;
-  }, [features, searchTerm, statusFilter, priorityFilter, typeFilter, progressFilter, currentUser, sortBy, sortOrder]);
+  }, [features, searchTerm, statusFilter, priorityFilter, typeFilter, applicationFilter, progressFilter, currentUser, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredTickets.length / pageSize);
@@ -401,7 +427,7 @@ export function FeatureRequests() {
           <CardTitle className="text-lg">Filter & Search</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <div className="md:col-span-2">
               <Label htmlFor="search">Search</Label>
               <div className="relative">
@@ -426,6 +452,21 @@ export function FeatureRequests() {
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="feature_request">Feature Requests</SelectItem>
                   <SelectItem value="bug_fix">Bug Fixes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="application">Aplikasi</Label>
+              <Select value={applicationFilter} onValueChange={(value: any) => setApplicationFilter(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Aplikasi</SelectItem>
+                  {TARGET_APPLICATION_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -580,11 +621,16 @@ export function FeatureRequests() {
                   return (
                     <TableRow key={ticket.id} className="cursor-pointer hover:bg-muted/50">
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <TypeIcon className="h-4 w-4" />
                           <Badge className={getTypeColor(ticket.requestType)}>
                             {ticket.requestType === 'feature_request' ? 'Feature' : 'Bug Fix'}
                           </Badge>
+                          {ticket.targetApplication && (
+                            <Badge className={getApplicationColor(ticket.targetApplication)}>
+                              {getApplicationLabel(ticket.targetApplication)}
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">{ticket.id}</TableCell>
@@ -806,12 +852,17 @@ function FeatureRequestDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex flex-wrap items-center gap-2 pr-8">
             {ticket.requestType === 'feature_request' ? <Lightbulb className="h-5 w-5" /> : <Bug className="h-5 w-5" />}
             <span>{ticket.id}</span>
             <Badge className={ticket.requestType === 'feature_request' ? 'text-blue-600 bg-blue-100' : 'text-red-600 bg-red-100'}>
               {ticket.requestType === 'feature_request' ? 'Feature Request' : 'Bug Fix'}
             </Badge>
+            {ticket.targetApplication && (
+              <Badge className={getApplicationColor(ticket.targetApplication)}>
+                {getApplicationLabel(ticket.targetApplication)}
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>{ticket.title}</DialogDescription>
         </DialogHeader>
@@ -877,7 +928,7 @@ function FeatureRequestDetailDialog({
         </div>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="inline-flex h-auto w-max min-w-full flex-wrap gap-1 p-1">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="progress">Progress Timeline</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
@@ -924,6 +975,16 @@ function FeatureRequestDetailDialog({
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Type:</span>
                         <span className="capitalize">{ticket.requestType.replace('_', ' ')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Aplikasi:</span>
+                        {ticket.targetApplication ? (
+                          <Badge className={getApplicationColor(ticket.targetApplication)}>
+                            {getApplicationLabel(ticket.targetApplication)}
+                          </Badge>
+                        ) : (
+                          <span>-</span>
+                        )}
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Assigned Team:</span>
@@ -1169,6 +1230,7 @@ function NewFeatureRequestDialog({
     description: '',
     priority: 'medium' as TicketPriority,
     type: 'feature_request' as 'feature_request' | 'bug_fix',
+    targetApplication: 'simrs' as TargetApplication,
     dueDate: undefined as Date | undefined
   });
   const [submitting, setSubmitting] = useState(false);
@@ -1181,6 +1243,7 @@ function NewFeatureRequestDialog({
         title: formData.title,
         description: formData.description,
         request_type: formData.type,
+        target_application: formData.targetApplication,
         priority: formData.priority,
       });
       toast.success('Feature request created');
@@ -1191,6 +1254,7 @@ function NewFeatureRequestDialog({
         description: '',
         priority: 'medium',
         type: 'feature_request',
+        targetApplication: 'simrs',
         dueDate: undefined
       });
     } catch {
@@ -1220,6 +1284,20 @@ function NewFeatureRequestDialog({
               <SelectContent>
                 <SelectItem value="feature_request">Feature Request</SelectItem>
                 <SelectItem value="bug_fix">Bug Fix</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="targetApplication">Aplikasi Tujuan</Label>
+            <Select value={formData.targetApplication} onValueChange={(value: TargetApplication) => setFormData({ ...formData, targetApplication: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TARGET_APPLICATION_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

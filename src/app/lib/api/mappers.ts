@@ -237,6 +237,7 @@ export function mapFeatureListItem(data: Record<string, unknown>): FeatureReques
   const reporter = data.reporter as { id?: number } | null;
   const assignedUser = data.assigned_user as { id?: number } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
+  const targetApplication = data.target_application as { value?: string } | null;
   const tags = (data.tags as Array<{ name?: string }>) ?? [];
 
   return {
@@ -244,6 +245,7 @@ export function mapFeatureListItem(data: Record<string, unknown>): FeatureReques
     title: String(data.title),
     description: '',
     requestType: unwrapValue(data.request_type as WrappedValue<FeatureRequest['requestType']>) || 'feature_request',
+    targetApplication: (targetApplication?.value as FeatureRequest['targetApplication']) ?? undefined,
     priority: unwrapValue(data.priority as WrappedValue<FeatureRequest['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<FeatureRequestStatus>) || 'submission',
     progress: (data.progress as number) ?? 0,

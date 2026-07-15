@@ -444,6 +444,7 @@ export async function createFeatureRequest(payload: {
   title: string;
   description: string;
   request_type: string;
+  target_application?: string;
   priority: string;
 }): Promise<FeatureRequest> {
   const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
