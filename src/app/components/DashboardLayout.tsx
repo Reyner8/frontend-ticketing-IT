@@ -14,7 +14,6 @@ import { PublicFormLanding } from "./PublicFormLanding";
 import { UserManagement } from "./UserManagement";
 import { CalendarView } from "./CalendarView";
 import { Tickets } from "./Tickets";
-import { WatchedTicketsView } from "./WatchedTicketsView";
 import { ConversionHistoryView } from "./ConversionHistoryView";
 import { MentionsView } from "./MentionsView";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -55,8 +54,6 @@ export default function DashboardLayout() {
         return <Dashboard />;
       case "/tickets":
         return <Tickets />;
-      case "/watched-tickets":
-        return <WatchedTicketsView onNavigate={setActiveView} />;
       case "/conversion-history":
         return <ConversionHistoryView />;
       case "/mentions":

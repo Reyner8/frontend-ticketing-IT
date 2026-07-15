@@ -31,7 +31,6 @@ import {
   computeDashboardStats,
   preferencesToApi,
   mapTag,
-  mapTicketWatcher,
   mapConversionHistory,
   mapSystemConfigItem,
   mapDashboardStatsFromApi,
@@ -53,7 +52,6 @@ import {
   TimelineEntry,
   CalendarEvent,
   Tag,
-  TicketWatcher,
   ConversionHistoryEntry,
   SystemConfigItem,
   ActivityLogEntry,
@@ -667,45 +665,6 @@ export async function syncResourceTags(
   return (response.data ?? []).map(mapTag);
 }
 
-export async function fetchTicketWatchers(ticketId: string): Promise<TicketWatcher[]> {
-  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
-    `/tickets/${ticketId}/watchers`
-  );
-  return (response.data ?? []).map(mapTicketWatcher);
-}
-
-export async function fetchWatchStatus(ticketId: string): Promise<{ isWatching: boolean; watchersCount: number }> {
-  const response = await apiGet<{ success: boolean; data: { is_watching: boolean; watchers_count: number } }>(
-    `/tickets/${ticketId}/watch/status`
-  );
-  return {
-    isWatching: response.data?.is_watching ?? false,
-    watchersCount: response.data?.watchers_count ?? 0,
-  };
-}
-
-export async function toggleTicketWatch(ticketId: string): Promise<boolean> {
-  const response = await apiPost<{ success: boolean; data: { is_watching: boolean } }>(
-    `/tickets/${ticketId}/watch`
-  );
-  return response.data?.is_watching ?? false;
-}
-
-export async function addTicketWatcher(ticketId: string, userId: string): Promise<TicketWatcher[]> {
-  const response = await apiPost<{ success: boolean; data: Record<string, unknown>[] }>(
-    `/tickets/${ticketId}/watchers`,
-    { user_id: Number(userId) }
-  );
-  return (response.data ?? []).map(mapTicketWatcher);
-}
-
-export async function removeTicketWatcher(ticketId: string, userId: string): Promise<TicketWatcher[]> {
-  const response = await apiDelete<{ success: boolean; data: Record<string, unknown>[] }>(
-    `/tickets/${ticketId}/watchers/${userId}`
-  );
-  return (response.data ?? []).map(mapTicketWatcher);
-}
-
 export async function fetchTicketConversionHistory(ticketId: string): Promise<ConversionHistoryEntry | null> {
   const response = await apiGet<{ success: boolean; data: Record<string, unknown> | null }>(
     `/tickets/${ticketId}/conversion-history`
@@ -898,20 +857,6 @@ export async function fetchGlobalConversionHistory(params?: Record<string, strin
   });
   return {
     entries: (data as unknown as Record<string, unknown>[]).map(mapConversionHistory),
-    total: meta.total,
-  };
-}
-
-export async function fetchWatchedTickets(params?: Record<string, string | number>): Promise<{
-  tickets: Ticket[];
-  total: number;
-}> {
-  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/me/watched-tickets', {
-    per_page: 50,
-    ...params,
-  });
-  return {
-    tickets: (data as unknown as Record<string, unknown>[]).map(mapTicketListItem),
     total: meta.total,
   };
 }

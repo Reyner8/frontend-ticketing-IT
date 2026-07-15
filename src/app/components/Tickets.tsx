@@ -28,7 +28,6 @@ import { AssignmentActions } from "./AssignmentActions";
 import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
 import { TagManager } from "./TagManager";
-import { WatcherPanel } from "./WatcherPanel";
 import { ConversionActions } from "./ConversionActions";
 import { CommentThread } from "./CommentThread";
 import { MergeTicketPanel } from "./MergeTicketPanel";
@@ -373,41 +372,50 @@ function TicketDetailDialog({
               Alur Kerja
             </span>
             <div className="flex flex-wrap items-center gap-2">
-              <ClaimActions
-                target="tickets"
-                resourceId={detail.id}
-                assignedToId={detail.assignedToId}
-                onCompleted={refreshDetail}
-              />
-              <AssignmentActions
-                target="tickets"
-                resourceId={detail.id}
-                currentAssigneeId={detail.assignedToId}
-                currentTeam={detail.assignedTeam}
-                onCompleted={() => onOpenChange(false)}
-              />
-              <StatusChangeActions
-                target="tickets"
-                resourceId={detail.id}
-                currentStatus={detail.status}
-                assignedToId={detail.assignedToId}
-                options={TICKET_STATUS_OPTIONS}
-                onCompleted={refreshDetail}
-              />
+              {detail.status !== "converted" && (
+                <>
+                  <ClaimActions
+                    target="tickets"
+                    resourceId={detail.id}
+                    assignedToId={detail.assignedToId}
+                    onCompleted={refreshDetail}
+                  />
+                  <AssignmentActions
+                    target="tickets"
+                    resourceId={detail.id}
+                    currentAssigneeId={detail.assignedToId}
+                    currentTeam={detail.assignedTeam}
+                    onCompleted={() => onOpenChange(false)}
+                  />
+                  <StatusChangeActions
+                    target="tickets"
+                    resourceId={detail.id}
+                    currentStatus={detail.status}
+                    assignedToId={detail.assignedToId}
+                    options={TICKET_STATUS_OPTIONS.filter((o) => o.value !== "converted")}
+                    onCompleted={refreshDetail}
+                  />
+                  <ApprovalActions
+                    target="tickets"
+                    resourceId={detail.id}
+                    status={detail.status}
+                    approvalStatus={detail.approvalStatus}
+                    onCompleted={() => onOpenChange(false)}
+                  />
+                </>
+              )}
               <ConversionActions
                 ticketId={detail.id}
                 ticketStatus={detail.status}
                 ticketPriority={detail.priority}
                 onCompleted={() => onOpenChange(false)}
               />
-              <ApprovalActions
-                target="tickets"
-                resourceId={detail.id}
-                status={detail.status}
-                approvalStatus={detail.approvalStatus}
-                onCompleted={() => onOpenChange(false)}
-              />
             </div>
+            {detail.status === "converted" && (
+              <p className="text-xs text-muted-foreground">
+                Ticket sudah dialihkan — ubah status di Error Report atau Feature Request terkait.
+              </p>
+            )}
           </div>
 
           {/* Separator line: vertical on desktop, horizontal on mobile */}
@@ -514,7 +522,6 @@ function TicketDetailDialog({
               initialTags={detail.tags}
               onUpdated={(tags) => setDetail((d) => ({ ...d, tags }))}
             />
-            <WatcherPanel ticketId={detail.id} />
           </TabsContent>
 
           <TabsContent value="merge" className="mt-4">

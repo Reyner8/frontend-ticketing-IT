@@ -107,7 +107,6 @@ export interface Ticket {
   actualEffort?: number; // in hours
   mergedTickets?: string[]; // IDs of merged tickets
   parentTicketId?: string; // For sub-tickets
-  watchers: string[]; // User IDs watching this ticket
   isPublicSubmission?: boolean;
   submitterName?: string;
   submitterUnit?: string;
@@ -214,13 +213,6 @@ export interface Tag {
   id: string;
   name: string;
   createdAt?: Date;
-}
-
-export interface TicketWatcher {
-  id: string;
-  name: string;
-  username?: string;
-  watchingSince?: Date;
 }
 
 export interface Mention {

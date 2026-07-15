@@ -33,7 +33,6 @@ import {
   AlertTriangle,
   ExternalLink,
   Ticket as TicketIcon,
-  Eye,
   History,
   AtSign,
 } from "lucide-react";
@@ -87,12 +86,6 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           title: 'Tickets',
           icon: TicketIcon,
           description: 'Antrian laporan masuk — tinjau & convert',
-        },
-        {
-          id: '/watched-tickets',
-          title: 'Watched Tickets',
-          icon: Eye,
-          description: 'Tickets you are watching',
         },
         {
           id: '/error-reports',

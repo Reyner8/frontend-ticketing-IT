@@ -15,7 +15,7 @@ See `/INTEGRATION.md` for full mapping.
 
 ## Wave 3–4 (selesai)
 
-- Tickets page, assignment, feature comments, TagManager, WatcherPanel, ConversionActions
+- Tickets page, assignment, feature comments, TagManager, ConversionActions
 - System Config admin tab, public form attachments, server export, activity feed
 - Public intake + convert-only flow, carry-over lampiran, claim + status guard
 

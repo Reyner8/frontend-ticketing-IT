@@ -104,7 +104,6 @@ export function mapTicketListItem(data: Record<string, unknown>): Ticket {
     attachments: [],
     comments: [],
     tags: tags.map((t) => t.name ?? '').filter(Boolean),
-    watchers: [],
     isPublicSubmission: (data.is_public_submission as boolean) ?? false,
     submitterName: data.submitter_name as string | undefined,
     submitterUnit: data.submitter_unit as string | undefined,
@@ -153,7 +152,6 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
     attachments: [],
     comments: [],
     tags: tags.map((t) => t.name ?? '').filter(Boolean),
-    watchers: [],
     isPublicSubmission: (data.is_public_submission as boolean) ?? false,
     submitterName: submitter?.name,
     submitterUnit: submitter?.unit,
@@ -528,15 +526,6 @@ export function mapTag(data: Record<string, unknown>): import('../../types').Tag
     id: String(data.id),
     name: String(data.name ?? ''),
     createdAt: data.created_at ? parseDate(data.created_at as string) : undefined,
-  };
-}
-
-export function mapTicketWatcher(data: Record<string, unknown>): import('../../types').TicketWatcher {
-  return {
-    id: String(data.id),
-    name: String(data.name ?? ''),
-    username: data.username as string | undefined,
-    watchingSince: data.watching_since ? parseDate(data.watching_since as string) : undefined,
   };
 }
 
