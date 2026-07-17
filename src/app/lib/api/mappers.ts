@@ -86,7 +86,6 @@ export function mapTicketListItem(data: Record<string, unknown>): Ticket {
   const reporter = data.reporter as { id?: number } | null;
   const assignedUser = data.assigned_user as { id?: number } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
-  const tags = (data.tags as Array<{ name?: string }>) ?? [];
 
   return {
     id: String(data.id),
@@ -103,7 +102,6 @@ export function mapTicketListItem(data: Record<string, unknown>): Ticket {
     slaBreached: (data.sla_breached as boolean) ?? false,
     attachments: [],
     comments: [],
-    tags: tags.map((t) => t.name ?? '').filter(Boolean),
     isPublicSubmission: (data.is_public_submission as boolean) ?? false,
     submitterName: data.submitter_name as string | undefined,
     submitterUnit: data.submitter_unit as string | undefined,
@@ -116,7 +114,6 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
   const assignedTeam = data.assigned_team as { value?: string } | null;
   const effort = (data.effort ?? {}) as Record<string, unknown>;
   const time = (data.time ?? {}) as Record<string, unknown>;
-  const tags = (data.tags as Array<{ name?: string }>) ?? [];
   const submitter = data.submitter as {
     name?: string;
     email?: string;
@@ -151,7 +148,6 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
     parentTicketId: data.parent_ticket_id ? String(data.parent_ticket_id) : undefined,
     attachments: [],
     comments: [],
-    tags: tags.map((t) => t.name ?? '').filter(Boolean),
     isPublicSubmission: (data.is_public_submission as boolean) ?? false,
     submitterName: submitter?.name,
     submitterUnit: submitter?.unit,
@@ -164,7 +160,6 @@ export function mapErrorReportListItem(data: Record<string, unknown>): ErrorRepo
   const reporter = data.reporter as { id?: number } | null;
   const assignedUser = data.assigned_user as { id?: number } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
-  const tags = (data.tags as Array<{ name?: string }>) ?? [];
 
   return {
     id: String(data.id),
@@ -180,7 +175,6 @@ export function mapErrorReportListItem(data: Record<string, unknown>): ErrorRepo
     completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
     attachments: [],
     comments: [],
-    tags: tags.map((t) => t.name ?? '').filter(Boolean),
     slaTimeElapsed: 0,
     slaTimeRemaining: 0,
     slaBreached: (data.sla_breached as boolean) ?? false,
@@ -197,7 +191,6 @@ export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport
   const assignedTeam = data.assigned_team as { value?: string } | null;
   const sla = (data.sla ?? {}) as Record<string, unknown>;
   const effort = (data.effort ?? {}) as Record<string, unknown>;
-  const tags = (data.tags as Array<{ name?: string }>) ?? [];
 
   return {
     id: String(data.id),
@@ -225,7 +218,6 @@ export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport
     slaBreached: (sla.breached as boolean) ?? false,
     attachments: [],
     comments: [],
-    tags: tags.map((t) => t.name ?? '').filter(Boolean),
     statusHistory: [],
     activityLog: [],
     createdAt: parseDate(data.created_at as string),
@@ -238,7 +230,6 @@ export function mapFeatureListItem(data: Record<string, unknown>): FeatureReques
   const assignedUser = data.assigned_user as { id?: number } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
   const targetApplication = data.target_application as { value?: string } | null;
-  const tags = (data.tags as Array<{ name?: string }>) ?? [];
 
   return {
     id: String(data.id),
@@ -257,7 +248,6 @@ export function mapFeatureListItem(data: Record<string, unknown>): FeatureReques
     completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
     attachments: [],
     comments: [],
-    tags: tags.map((t) => t.name ?? '').filter(Boolean),
     milestones: [],
     timeline: [],
     slaTimeElapsed: 0,
@@ -520,14 +510,6 @@ export function mapActivityLog(data: Record<string, unknown>): ActivityLogEntry 
     targetUserId: data.target_user_id ? String(data.target_user_id) : undefined,
     loggableId: loggable?.id != null ? String(loggable.id) : undefined,
     loggableType: loggable?.type ? String(loggable.type) : undefined,
-  };
-}
-
-export function mapTag(data: Record<string, unknown>): import('../../types').Tag {
-  return {
-    id: String(data.id),
-    name: String(data.name ?? ''),
-    createdAt: data.created_at ? parseDate(data.created_at as string) : undefined,
   };
 }
 
