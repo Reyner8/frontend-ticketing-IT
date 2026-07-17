@@ -105,7 +105,6 @@ export interface Ticket {
   resolutionTime?: number; // in hours
   attachments: Attachment[];
   comments: Comment[];
-  tags: string[];
   estimatedEffort?: number; // in hours
   actualEffort?: number; // in hours
   mergedTickets?: string[]; // IDs of merged tickets
@@ -138,7 +137,6 @@ export interface ErrorReport {
   actualEffort?: number; // in hours
   attachments: Attachment[];
   comments: Comment[];
-  tags: string[];
   slaTimeElapsed: number; // in hours since creation
   slaTimeRemaining: number; // in hours until deadline
   slaBreached: boolean;
@@ -173,7 +171,6 @@ export interface FeatureRequest {
   actualEffort?: number; // in hours
   attachments: Attachment[];
   comments: Comment[];
-  tags: string[];
   milestones: Milestone[];
   timeline: TimelineEntry[];
   slaTimeElapsed: number; // in hours since creation
@@ -211,12 +208,6 @@ export interface ActivityLogEntry {
   targetUserId?: string;
   loggableId?: string;
   loggableType?: string;
-}
-
-export interface Tag {
-  id: string;
-  name: string;
-  createdAt?: Date;
 }
 
 export interface Mention {
