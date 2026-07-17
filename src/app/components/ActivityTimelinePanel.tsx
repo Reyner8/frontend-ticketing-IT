@@ -23,7 +23,7 @@ export function ActivityTimelinePanel({
               <li key={entry.id} className="border-l-2 pl-3">
                 {entry.previousStatus} → {entry.newStatus}
                 <span className="text-muted-foreground ml-2">
-                  {format(entry.changedAt, "PPp")}
+                  {format(entry.effectiveAt, "PPp")}
                 </span>
                 {entry.reason && (
                   <p className="text-xs text-muted-foreground mt-0.5">{entry.reason}</p>

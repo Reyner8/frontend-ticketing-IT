@@ -26,7 +26,6 @@ import {
   mapComment,
   mapAttachment,
   mapMilestone,
-  mapTimelineEntry,
   mapCalendarEvent,
   computeDashboardStats,
   preferencesToApi,
@@ -48,7 +47,6 @@ import {
   Comment,
   Attachment,
   Milestone,
-  TimelineEntry,
   CalendarEvent,
   ConversionHistoryEntry,
   SystemConfigItem,
@@ -332,7 +330,7 @@ type StatusTarget = 'tickets' | 'errors' | 'features';
 export async function updateResourceStatus(
   target: StatusTarget,
   id: string,
-  payload: { status: string; reason?: string; notes?: string }
+  payload: { status: string; reason?: string; notes?: string; effective_at?: string }
 ): Promise<void> {
   await apiPatch(`/${target}/${id}/status`, payload);
 }
@@ -458,14 +456,6 @@ export async function fetchFeatureMilestones(featureId: string): Promise<Milesto
     { per_page: 100 }
   );
   return (data as unknown as Record<string, unknown>[]).map(mapMilestone);
-}
-
-export async function fetchFeatureTimeline(featureId: string): Promise<TimelineEntry[]> {
-  const { data } = await apiGetPaginated<Record<string, unknown>[]>(
-    `/feature-requests/${featureId}/timelines`,
-    { per_page: 100 }
-  );
-  return (data as unknown as Record<string, unknown>[]).map(mapTimelineEntry);
 }
 
 export async function fetchCalendarEvents(params?: {
@@ -770,33 +760,6 @@ export async function completeMilestone(featureId: string, milestoneId: string):
 
 export async function deleteMilestone(featureId: string, milestoneId: string): Promise<void> {
   await apiDelete(`/feature-requests/${featureId}/milestones/${milestoneId}`);
-}
-
-export async function createTimelineEntry(
-  featureId: string,
-  payload: Record<string, unknown>
-): Promise<TimelineEntry> {
-  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
-    `/feature-requests/${featureId}/timelines`,
-    payload
-  );
-  return mapTimelineEntry(response.data);
-}
-
-export async function updateTimelineEntry(
-  featureId: string,
-  entryId: string,
-  payload: Record<string, unknown>
-): Promise<TimelineEntry> {
-  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
-    `/feature-requests/${featureId}/timelines/${entryId}`,
-    payload
-  );
-  return mapTimelineEntry(response.data);
-}
-
-export async function deleteTimelineEntry(featureId: string, entryId: string): Promise<void> {
-  await apiDelete(`/feature-requests/${featureId}/timelines/${entryId}`);
 }
 
 export async function fetchMergedTickets(ticketId: string): Promise<Ticket[]> {

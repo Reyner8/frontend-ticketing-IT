@@ -78,7 +78,7 @@ export function exportErrorsCsv(reports: ErrorReport[]): void {
 
 export function exportFeaturesCsv(features: FeatureRequest[]): void {
   const csv = toCsv(
-    ['id', 'title', 'request_type', 'priority', 'status', 'progress', 'reporter_id', 'assignee_id', 'team', 'date_submitted', 'completion_date'],
+    ['id', 'title', 'request_type', 'priority', 'status', 'progress', 'reporter_id', 'assignee_id', 'team', 'created_at', 'due_date'],
     features.map((f) => [
       f.id,
       f.title,
@@ -89,8 +89,8 @@ export function exportFeaturesCsv(features: FeatureRequest[]): void {
       f.reporterId,
       f.assignedToId ?? '',
       f.assignedTeam ?? '',
-      f.dateSubmitted,
-      f.completionDate ?? '',
+      f.createdAt,
+      f.dueDate ?? '',
     ])
   );
   downloadCsv(`feature-requests-${timestamp()}.csv`, csv);

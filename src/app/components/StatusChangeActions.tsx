@@ -50,6 +50,7 @@ export function StatusChangeActions({
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [effectiveAt, setEffectiveAt] = useState(() => format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [submitting, setSubmitting] = useState(false);
 
   const role = state.currentUser?.role;
@@ -69,11 +70,20 @@ export function StatusChangeActions({
     }
     setSubmitting(true);
     try {
-      await updateResourceStatus(target, resourceId, {
+      const payload: {
+        status: string;
+        reason?: string;
+        notes?: string;
+        effective_at?: string;
+      } = {
         status,
         reason: reason || undefined,
         notes: notes || undefined,
-      });
+      };
+      if (target === "features") {
+        payload.effective_at = new Date(effectiveAt).toISOString();
+      }
+      await updateResourceStatus(target, resourceId, payload);
       if (target === "features" && status === "development" && dueDate) {
         await updateFeatureRequest(resourceId, {
           due_date: format(dueDate, "yyyy-MM-dd"),
@@ -82,6 +92,7 @@ export function StatusChangeActions({
       toast.success("Status updated");
       setOpen(false);
       setDueDate(undefined);
+      setEffectiveAt(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
       onCompleted?.();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Update failed");
@@ -144,11 +155,26 @@ export function StatusChangeActions({
               />
             </div>
 
+            {target === "features" && (
+              <div>
+                <Label>Effective Date & Time</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  When this status change took effect (required for progress tracking).
+                </p>
+                <Input
+                  type="datetime-local"
+                  value={effectiveAt}
+                  onChange={(e) => setEffectiveAt(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+
             {target === "features" && status === "development" && (
               <div>
                 <Label>Due Date (opsional)</Label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Due date dapat diatur saat masuk Development. Bisa juga diubah lewat Edit nanti.
+                  Due date dapat diatur saat masuk Development. Bisa juga diubah lewat Edit di detail.
                 </p>
                 <Popover>
                   <PopoverTrigger asChild>

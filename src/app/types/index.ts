@@ -160,28 +160,15 @@ export interface FeatureRequest {
   reporterId: string;
   assignedToId?: string;
   assignedTeam?: TeamType;
-  dateSubmitted: Date;
-  approvalDate?: Date;
-  assignmentDate?: Date;
-  startDate?: Date;
   dueDate?: Date;
-  completionDate?: Date;
-  reviewDate?: Date;
-  estimatedEffort?: number; // in hours
-  actualEffort?: number; // in hours
   attachments: Attachment[];
   comments: Comment[];
   milestones: Milestone[];
-  timeline: TimelineEntry[];
-  slaTimeElapsed: number; // in hours since creation
-  slaTimeRemaining: number; // in hours until deadline
   slaBreached: boolean;
   statusHistory: StatusHistoryEntry[];
   activityLog: ActivityLogEntry[];
   approvedBy?: string;
   rejectionReason?: string;
-  roiImpact?: string;
-  qualityImpact?: string;
   postImplementationNotes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -194,6 +181,7 @@ export interface StatusHistoryEntry {
   newStatus: string;
   changedBy: string;
   changedAt: Date;
+  effectiveAt: Date;
   reason?: string;
   notes?: string;
 }
@@ -252,19 +240,6 @@ export interface Milestone {
   progress: number; // percentage
   createdBy: string;
   createdAt: Date;
-}
-
-export interface TimelineEntry {
-  id: string;
-  phase: 'submission' | 'approval' | 'assignment' | 'development' | 'testing' | 'validation' | 'completion' | 'review';
-  title: string;
-  description: string;
-  startDate?: Date;
-  endDate?: Date;
-  isCompleted: boolean;
-  progress: number; // percentage
-  assignedTo?: string;
-  notes?: string;
 }
 
 export interface Comment {

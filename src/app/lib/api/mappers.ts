@@ -15,7 +15,6 @@ import {
   Comment,
   Attachment,
   Milestone,
-  TimelineEntry,
   CalendarEvent,
 } from '../../types';
 
@@ -243,15 +242,10 @@ export function mapFeatureListItem(data: Record<string, unknown>): FeatureReques
     reporterId: reporter?.id ? String(reporter.id) : '',
     assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
     assignedTeam: assignedTeam?.value as FeatureRequest['assignedTeam'],
-    dateSubmitted: parseDate((data.date_submitted ?? data.created_at) as string),
     dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
-    completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
     attachments: [],
     comments: [],
     milestones: [],
-    timeline: [],
-    slaTimeElapsed: 0,
-    slaTimeRemaining: 0,
     slaBreached: (data.sla_breached as boolean) ?? false,
     statusHistory: [],
     activityLog: [],
@@ -269,23 +263,11 @@ export function mapFeatureDetail(data: Record<string, unknown>): FeatureRequest 
     reporterId: data.reporter_id ? String(data.reporter_id) : '',
     assignedToId: data.assigned_to_id ? String(data.assigned_to_id) : undefined,
     assignedTeam: assignedTeam?.value as FeatureRequest['assignedTeam'],
-    dateSubmitted: parseDate((data.date_submitted ?? data.created_at) as string),
-    approvalDate: data.approval_date ? parseDate(data.approval_date as string) : undefined,
-    assignmentDate: data.assignment_date ? parseDate(data.assignment_date as string) : undefined,
-    startDate: data.start_date ? parseDate(data.start_date as string) : undefined,
     dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
-    completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
-    reviewDate: data.review_date ? parseDate(data.review_date as string) : undefined,
-    estimatedEffort: data.estimated_effort as number | undefined,
-    actualEffort: data.actual_effort as number | undefined,
-    slaTimeElapsed: (data.sla_time_elapsed as number) ?? 0,
-    slaTimeRemaining: (data.sla_time_remaining as number) ?? 0,
     slaBreached: (data.sla_breached as boolean) ?? false,
     approvalStatus: mapApprovalStatus(data),
     approvedBy: data.approved_by ? String(data.approved_by) : undefined,
     rejectionReason: data.rejection_reason as string | undefined,
-    roiImpact: data.roi_impact as string | undefined,
-    qualityImpact: data.quality_impact as string | undefined,
     postImplementationNotes: data.post_implementation_notes as string | undefined,
   };
 }
@@ -368,12 +350,14 @@ export function mapTeamWorkload(data: Record<string, unknown>): TeamWorkload {
 }
 
 export function mapStatusHistory(data: Record<string, unknown>): StatusHistoryEntry {
+  const changedAt = parseDate((data.changed_at ?? data.created_at) as string);
   return {
     id: String(data.id),
     previousStatus: String(data.previous_status ?? data.from_status ?? ''),
     newStatus: String(data.new_status ?? data.to_status ?? data.status ?? ''),
     changedBy: String(data.changed_by ?? data.user_id ?? ''),
-    changedAt: parseDate((data.changed_at ?? data.created_at) as string),
+    changedAt,
+    effectiveAt: parseDate((data.effective_at ?? data.changed_at ?? data.created_at) as string),
     reason: data.reason as string | undefined,
     notes: data.notes as string | undefined,
   };
@@ -429,30 +413,6 @@ export function mapMilestone(data: Record<string, unknown>): Milestone {
     progress: Number(data.progress ?? 0),
     createdBy: String(data.created_by ?? ''),
     createdAt: parseDate(data.created_at as string),
-  };
-}
-
-export function mapTimelineEntry(data: Record<string, unknown>): TimelineEntry {
-  const rawPhase = String(data.phase ?? '').toLowerCase().replace(/\s+/g, '_');
-  const allowed: TimelineEntry['phase'][] = [
-    'submission', 'approval', 'assignment', 'development',
-    'testing', 'validation', 'completion', 'review',
-  ];
-  const phase = (allowed.includes(rawPhase as TimelineEntry['phase'])
-    ? rawPhase
-    : 'submission') as TimelineEntry['phase'];
-
-  return {
-    id: String(data.id),
-    phase,
-    title: String(data.title ?? ''),
-    description: String(data.description ?? ''),
-    startDate: data.start_date ? parseDate(data.start_date as string) : undefined,
-    endDate: data.end_date ? parseDate(data.end_date as string) : undefined,
-    isCompleted: Boolean(data.is_completed),
-    progress: Number(data.progress ?? 0),
-    assignedTo: (data.assigned_to as string) ?? undefined,
-    notes: (data.notes as string) ?? undefined,
   };
 }
 

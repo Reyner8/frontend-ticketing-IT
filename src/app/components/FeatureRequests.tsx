@@ -14,17 +14,37 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Progress } from "./ui/progress";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
-import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, getCachedUsers, fetchFeatureActivityLogs, fetchFeatureStatusHistory, updateFeatureRequest, deleteFeatureRequest } from "../lib/api/services";
-import type { Milestone, TimelineEntry, ActivityLogEntry, StatusHistoryEntry } from "../types";
+import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, getCachedUsers, fetchFeatureActivityLogs, fetchFeatureStatusHistory, updateFeatureRequest, deleteFeatureRequest } from "../lib/api/services";
+import type { ActivityLogEntry, StatusHistoryEntry, FeatureRequest, FeatureRequestStatus, TargetApplication, TicketPriority } from "../types";
 import { CommentThread } from "./CommentThread";
-import { MilestoneTimelinePanel } from "./MilestoneTimelinePanel";
+import { FeatureMilestoneDialog } from "./FeatureMilestoneDialog";
 import { ResourceEditActions } from "./ResourceEditActions";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
 import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
-import { Send } from "lucide-react";
+import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
+import {
+  Search,
+  Plus,
+  Eye,
+  Clock,
+  CheckCircle,
+  TrendingUp,
+  MoreHorizontal,
+  Lightbulb,
+  Bug,
+  Target,
+  Users,
+  Timer,
+  Send,
+} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { format } from "date-fns";
+import { consumeFocusResource } from "../lib/resource-focus";
+import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
+import { getApplicationColor, getApplicationLabel, TARGET_APPLICATION_OPTIONS, canShowFeatureDueDate } from "../lib/constants";
 
 const FEATURE_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "submission", label: "Submission" },
@@ -40,28 +60,86 @@ const FEATURE_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-import { FeatureRequest, FeatureRequestStatus, TargetApplication, TicketPriority } from "../types";
-import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
-import { 
-  Search, 
-  Plus, 
-  Eye, 
-  Edit, 
-  Clock, 
-  CheckCircle, 
-  TrendingUp, 
-  MoreHorizontal,
-  Lightbulb,
-  Bug,
-  Target,
-  Users,
-  Timer
-} from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { format } from "date-fns";
-import { consumeFocusResource } from "../lib/resource-focus";
-import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
-import { getApplicationColor, getApplicationLabel, TARGET_APPLICATION_OPTIONS, canShowFeatureDueDate } from "../lib/constants";
+const FEATURE_LIFECYCLE: { status: FeatureRequestStatus; label: string }[] = [
+  { status: "pending_approval", label: "Submitted" },
+  { status: "approved", label: "Approved" },
+  { status: "assigned", label: "Assigned" },
+  { status: "development", label: "Development" },
+  { status: "testing", label: "Testing" },
+  { status: "validation", label: "Validation" },
+  { status: "completed", label: "Completed" },
+  { status: "post_implementation_review", label: "Post-Implementation Review" },
+];
+
+const FEATURE_STATUS_ORDER: Record<FeatureRequestStatus, number> = {
+  submission: 0,
+  pending_approval: 1,
+  approved: 2,
+  assigned: 3,
+  development: 4,
+  testing: 5,
+  validation: 6,
+  completed: 7,
+  post_implementation_review: 8,
+  rejected: -1,
+  cancelled: -1,
+};
+
+function formatPhaseDuration(from: Date, to: Date): string {
+  const ms = to.getTime() - from.getTime();
+  if (ms <= 0) return "";
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  if (days >= 1) return `${days}d ${hours % 24}h`;
+  if (hours >= 1) return `${hours}h`;
+  const minutes = Math.floor(ms / (1000 * 60));
+  return `${minutes}m`;
+}
+
+function buildLifecycleSteps(
+  history: StatusHistoryEntry[],
+  currentStatus: FeatureRequestStatus,
+  createdAt: Date
+) {
+  const sorted = [...history].sort(
+    (a, b) => a.effectiveAt.getTime() - b.effectiveAt.getTime()
+  );
+  const statusAt = new Map<string, Date>();
+  for (const entry of sorted) {
+    if (entry.newStatus && !statusAt.has(entry.newStatus)) {
+      statusAt.set(entry.newStatus, entry.effectiveAt);
+    }
+  }
+  if (!statusAt.has("pending_approval") && !statusAt.has("submission")) {
+    statusAt.set("pending_approval", createdAt);
+  }
+
+  const currentIdx = FEATURE_STATUS_ORDER[currentStatus] ?? -1;
+  const isTerminal = currentStatus === "rejected" || currentStatus === "cancelled";
+
+  return FEATURE_LIFECYCLE.map((step, idx) => {
+    const effectiveAt = statusAt.get(step.status);
+    const nextStep = FEATURE_LIFECYCLE[idx + 1];
+    const nextAt = nextStep ? statusAt.get(nextStep.status) : undefined;
+
+    let stepState: "pending" | "completed" | "current";
+    if (isTerminal) {
+      stepState = effectiveAt ? "completed" : "pending";
+    } else if (currentStatus === step.status) {
+      stepState = "current";
+    } else if (currentIdx > FEATURE_STATUS_ORDER[step.status]) {
+      stepState = "completed";
+    } else {
+      stepState = "pending";
+    }
+
+    const durationEnd = nextAt ?? (stepState === "current" ? new Date() : undefined);
+    const duration =
+      effectiveAt && durationEnd ? formatPhaseDuration(effectiveAt, durationEnd) : undefined;
+
+    return { ...step, effectiveAt, stepState, duration };
+  });
+}
 
 export function FeatureRequests() {
   const { state } = useApp();
@@ -72,10 +150,11 @@ export function FeatureRequests() {
   const [typeFilter, setTypeFilter] = useState<"feature_request" | "bug_fix" | "all">("all");
   const [applicationFilter, setApplicationFilter] = useState<TargetApplication | "all">("all");
   const [selectedTicket, setSelectedTicket] = useState<FeatureRequest | null>(null);
+  const [milestoneFeatureId, setMilestoneFeatureId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState<'dateSubmitted' | 'priority' | 'status' | 'dueDate' | 'progress'>('dateSubmitted');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'priority' | 'status' | 'dueDate' | 'progress'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [progressFilter, setProgressFilter] = useState<'all' | 'not_started' | 'in_progress' | 'completed'>('all');
 
@@ -101,12 +180,8 @@ export function FeatureRequests() {
 
   const handleSelectFeature = async (feature: FeatureRequest) => {
     try {
-      const [detail, milestones, timeline] = await Promise.all([
-        fetchFeatureDetail(feature.id),
-        fetchFeatureMilestones(feature.id).catch(() => [] as Milestone[]),
-        fetchFeatureTimeline(feature.id).catch(() => [] as TimelineEntry[]),
-      ]);
-      setSelectedTicket({ ...detail, milestones, timeline });
+      const detail = await fetchFeatureDetail(feature.id);
+      setSelectedTicket(detail);
     } catch {
       setSelectedTicket(feature);
     }
@@ -217,14 +292,9 @@ export function FeatureRequests() {
     currentPage * pageSize
   );
 
-  // Helper functions
+  // Progress diambil langsung dari nilai backend (rata-rata milestone; 100% saat status selesai).
   const calculateProgress = (ticket: FeatureRequest) => {
-    if (ticket.progress > 0) return ticket.progress;
-    if (ticket.status === 'completed') return 100;
-    if (['development', 'testing', 'validation'].includes(ticket.status)) return 60;
-    if (ticket.status === 'assigned') return 20;
-    if (ticket.status === 'pending_approval' || ticket.status === 'submission') return 10;
-    return 0;
+    return Math.max(0, Math.min(100, Math.round(ticket.progress ?? 0)));
   };
 
   const getProgressColor = (progress: number) => {
@@ -517,7 +587,7 @@ export function FeatureRequests() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="dateSubmitted">Date Created</SelectItem>
+              <SelectItem value="createdAt">Date Created</SelectItem>
               <SelectItem value="dueDate">Due Date</SelectItem>
               <SelectItem value="priority">Priority</SelectItem>
               <SelectItem value="status">Status</SelectItem>
@@ -541,10 +611,10 @@ export function FeatureRequests() {
                   <TableHead>Type</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('dateSubmitted')}
+                    onClick={() => handleSort('createdAt')}
                   >
                     Request ID
-                    {sortBy === 'dateSubmitted' && (
+                    {sortBy === 'createdAt' && (
                       <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
                     )}
                   </TableHead>
@@ -615,7 +685,7 @@ export function FeatureRequests() {
                         <div className="max-w-xs">
                           <p className="truncate font-medium">{ticket.title}</p>
                           <p className="text-xs text-muted-foreground">
-                            Created {formatDate(ticket.dateSubmitted)}
+                            Created {formatDate(ticket.createdAt)}
                           </p>
                         </div>
                       </TableCell>
@@ -693,14 +763,10 @@ export function FeatureRequests() {
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            {(currentUser?.role === 'admin' || 
-                              currentUser?.role === 'team_lead' || 
-                              ticket.assignedToId === currentUser?.id) && (
-                              <DropdownMenuItem>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onClick={() => setMilestoneFeatureId(ticket.id)}>
+                              <Target className="mr-2 h-4 w-4" />
+                              View Milestones
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -750,6 +816,13 @@ export function FeatureRequests() {
         />
       )}
 
+      <FeatureMilestoneDialog
+        featureId={milestoneFeatureId}
+        open={!!milestoneFeatureId}
+        onOpenChange={(open) => !open && setMilestoneFeatureId(null)}
+        onUpdated={loadFeatures}
+      />
+
       {/* New Feature Request Dialog */}
       <NewFeatureRequestDialog
         open={showNewRequestDialog}
@@ -773,24 +846,39 @@ function FeatureRequestDetailDialog({
   onUpdated?: () => void;
 }) {
   const [liveTicket, setLiveTicket] = useState(ticket);
+  const [statusHistory, setStatusHistory] = useState<StatusHistoryEntry[]>([]);
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+
+  const loadActivity = (featureId: string = ticket.id) => {
+    setActivityLoading(true);
+    Promise.all([
+      fetchFeatureStatusHistory(featureId).catch(() => [] as StatusHistoryEntry[]),
+      fetchFeatureActivityLogs(featureId).catch(() => [] as ActivityLogEntry[]),
+    ])
+      .then(([history, logs]) => {
+        setStatusHistory(history);
+        setActivityLog(logs);
+      })
+      .finally(() => setActivityLoading(false));
+  };
 
   useEffect(() => {
     setLiveTicket(ticket);
     fetchFeatureDetail(ticket.id)
       .then(setLiveTicket)
       .catch(() => setLiveTicket(ticket));
+    loadActivity();
   }, [ticket.id]);
 
   const refreshDetail = () => {
     fetchFeatureDetail(liveTicket.id)
       .then(setLiveTicket)
       .catch(() => {});
+    loadActivity(liveTicket.id);
   };
 
-  const progress = liveTicket.progress > 0 ? liveTicket.progress :
-                  liveTicket.status === 'completed' ? 100 :
-                  ['development', 'testing', 'validation'].includes(liveTicket.status) ? 60 :
-                  liveTicket.status === 'assigned' ? 20 : 0;
+  const progress = Math.max(0, Math.min(100, Math.round(liveTicket.progress ?? 0)));
 
   const users = getCachedUsers();
   const getUserName = (userId: string) => {
@@ -819,18 +907,15 @@ function FeatureRequestDetailDialog({
     return format(date, 'MMM dd, yyyy');
   };
 
-  const getProgressSteps = () => {
-    const steps = [
-      { name: 'Submitted', status: 'completed' as const, date: ticket.dateSubmitted },
-      { name: 'Under Review', status: (ticket.status === 'submission' ? 'pending' : 'completed') as 'pending' | 'completed' | 'current', date: null as Date | null },
-      { name: 'Approved', status: (['submission', 'pending_approval', 'rejected'].includes(ticket.status) ? 'pending' : 'completed') as 'pending' | 'completed' | 'current', date: ticket.approvalDate as Date | null },
-      { name: 'In Development', status: (['submission', 'pending_approval', 'approved', 'assigned', 'rejected'].includes(ticket.status) ? 'pending' : 'completed') as 'pending' | 'completed' | 'current', date: null as Date | null },
-      { name: 'Testing', status: (['testing', 'validation'].includes(ticket.status) ? 'current' : ['completed', 'post_implementation_review'].includes(ticket.status) ? 'completed' : 'pending') as 'pending' | 'completed' | 'current', date: null as Date | null },
-      { name: 'Completed', status: (['completed', 'post_implementation_review'].includes(ticket.status) ? 'completed' : 'pending') as 'pending' | 'completed' | 'current', date: ticket.completionDate as Date | null },
-    ];
+  const lifecycleSteps = buildLifecycleSteps(
+    statusHistory,
+    liveTicket.status,
+    liveTicket.createdAt
+  );
 
-    return steps;
-  };
+  const sortedHistory = [...statusHistory].sort(
+    (a, b) => a.effectiveAt.getTime() - b.effectiveAt.getTime()
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -930,7 +1015,10 @@ function FeatureRequestDetailDialog({
               <div className="space-y-6">
                 {/* Progress Overview */}
                 <div>
-                  <h4 className="font-medium mb-4">Progress Overview</h4>
+                  <h4 className="font-medium mb-1">Progress Overview</h4>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Dihitung dari rata-rata progress milestone (100% saat status Completed).
+                  </p>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Overall Progress</span>
@@ -938,7 +1026,7 @@ function FeatureRequestDetailDialog({
                     </div>
                     <Progress value={progress} className="h-3" />
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Started {formatDate(ticket.dateSubmitted)}</span>
+                      <span>Started {formatDate(liveTicket.createdAt)}</span>
                       {canShowFeatureDueDate(liveTicket.status) && liveTicket.dueDate && (
                         <span>Due {formatDate(liveTicket.dueDate)}</span>
                       )}
@@ -947,10 +1035,9 @@ function FeatureRequestDetailDialog({
                 </div>
 
                 {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-medium mb-2">Request Information</h4>
-                    <div className="space-y-2 text-sm">
+                <div>
+                  <h4 className="font-medium mb-2">Request Information</h4>
+                  <div className="space-y-2 text-sm max-w-md">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Status:</span>
                         <Badge className={getStatusColor(ticket.status)}>
@@ -991,29 +1078,6 @@ function FeatureRequestDetailDialog({
                       )}
                     </div>
                   </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">Development Metrics</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Estimated Effort:</span>
-                        <span>{ticket.estimatedEffort ? `${ticket.estimatedEffort}h` : 'Not estimated'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Actual Effort:</span>
-                        <span>{ticket.actualEffort ? `${ticket.actualEffort}h` : 'In progress'}</span>
-                      </div>
-                      {ticket.estimatedEffort && ticket.actualEffort && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Efficiency:</span>
-                          <span className={ticket.actualEffort <= ticket.estimatedEffort ? 'text-green-600' : 'text-red-600'}>
-                            {Math.round((ticket.estimatedEffort / ticket.actualEffort) * 100)}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
                 {/* Description */}
                 <div>
@@ -1063,32 +1127,33 @@ function FeatureRequestDetailDialog({
                 <div>
                   <h4 className="font-medium mb-3">Lifecycle</h4>
                   <div className="space-y-4">
-                    {getProgressSteps().map((step, index) => (
-                      <div key={index} className="flex items-start gap-3">
+                    {lifecycleSteps.map((step) => (
+                      <div key={step.status} className="flex items-start gap-3">
                         <div className={`w-4 h-4 rounded-full mt-1 ${
-                          step.status === 'completed' ? 'bg-green-500' :
-                          step.status === 'current' ? 'bg-blue-500' :
+                          step.stepState === 'completed' ? 'bg-green-500' :
+                          step.stepState === 'current' ? 'bg-blue-500' :
                           'bg-gray-300'
                         }`} />
                         <div className="flex-1">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <span className={`font-medium ${
-                              step.status === 'completed' ? 'text-green-700' :
-                              step.status === 'current' ? 'text-blue-700' :
+                              step.stepState === 'completed' ? 'text-green-700' :
+                              step.stepState === 'current' ? 'text-blue-700' :
                               'text-gray-500'
                             }`}>
-                              {step.name}
+                              {step.label}
                             </span>
-                            {step.date && (
+                            {step.effectiveAt && (
                               <span className="text-xs text-muted-foreground">
-                                {formatDate(step.date)}
+                                {formatDate(step.effectiveAt)}
                               </span>
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {step.status === 'completed' ? 'Completed' :
-                             step.status === 'current' ? 'In Progress' :
+                            {step.stepState === 'completed' ? 'Completed' :
+                             step.stepState === 'current' ? 'In Progress' :
                              'Pending'}
+                            {step.duration && ` · ${step.duration}`}
                           </div>
                         </div>
                       </div>
@@ -1096,90 +1161,45 @@ function FeatureRequestDetailDialog({
                   </div>
                 </div>
 
-                {ticket.timeline && ticket.timeline.length > 0 && (
+                {sortedHistory.length > 0 && (
                   <div>
-                    <h4 className="font-medium mb-3">Timeline Entries</h4>
+                    <h4 className="font-medium mb-3">Status Transitions</h4>
                     <div className="space-y-3">
-                      {ticket.timeline.map((entry) => (
-                        <div key={entry.id} className="flex items-start gap-3 border rounded-md p-3">
-                          <div
-                            className={`w-2 h-2 rounded-full mt-2 ${
-                              entry.isCompleted ? 'bg-green-500' : 'bg-blue-500'
-                            }`}
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs capitalize">
-                                {entry.phase.replace(/_/g, ' ')}
-                              </Badge>
-                              <span className="font-medium text-sm">{entry.title}</span>
+                      {sortedHistory.map((entry, index) => {
+                        const next = sortedHistory[index + 1];
+                        const duration = next
+                          ? formatPhaseDuration(entry.effectiveAt, next.effectiveAt)
+                          : liveTicket.status === entry.newStatus
+                            ? formatPhaseDuration(entry.effectiveAt, new Date())
+                            : undefined;
+                        return (
+                          <div key={entry.id} className="border rounded-md p-3 text-sm">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium capitalize">
+                                {entry.previousStatus.replace(/_/g, ' ')} → {entry.newStatus.replace(/_/g, ' ')}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {format(entry.effectiveAt, 'PPp')}
+                              </span>
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {entry.description}
-                            </p>
-                            {(entry.startDate || entry.endDate) && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {entry.startDate && `Start: ${formatDate(entry.startDate)}`}
-                                {entry.startDate && entry.endDate && ' · '}
-                                {entry.endDate && `End: ${formatDate(entry.endDate)}`}
-                              </p>
+                            {entry.reason && (
+                              <p className="text-muted-foreground mt-1">{entry.reason}</p>
                             )}
-                            {entry.progress > 0 && (
-                              <div className="mt-2">
-                                <Progress value={entry.progress} className="h-1.5" />
-                              </div>
+                            {duration && (
+                              <p className="text-xs text-muted-foreground mt-1">Duration: {duration}</p>
                             )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
-                {ticket.milestones && ticket.milestones.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-3">Milestones</h4>
-                    <div className="space-y-3">
-                      {ticket.milestones.map((m) => (
-                        <div key={m.id} className="flex items-start gap-3 border rounded-md p-3">
-                          <div
-                            className={`w-2 h-2 rounded-full mt-2 ${
-                              m.isCompleted ? 'bg-green-500' : 'bg-yellow-500'
-                            }`}
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-sm">{m.title}</span>
-                              {m.targetDate && (
-                                <span className="text-xs text-muted-foreground">
-                                  Target: {formatDate(m.targetDate)}
-                                </span>
-                              )}
-                            </div>
-                            {m.description && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {m.description}
-                              </p>
-                            )}
-                            {m.progress > 0 && (
-                              <div className="mt-2">
-                                <Progress value={m.progress} className="h-1.5" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {sortedHistory.length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">
+                    No status history recorded yet
+                  </p>
                 )}
-
-                {(!ticket.timeline || ticket.timeline.length === 0) &&
-                  (!ticket.milestones || ticket.milestones.length === 0) && (
-                    <p className="text-sm text-muted-foreground italic">
-                      No timeline entries or milestones yet
-                    </p>
-                  )}
-                <MilestoneTimelinePanel featureId={ticket.id} />
               </div>
             </ScrollArea>
           </TabsContent>
@@ -1189,7 +1209,11 @@ function FeatureRequestDetailDialog({
           </TabsContent>
 
           <TabsContent value="activity" className="mt-4">
-            <FeatureActivityTab featureId={ticket.id} />
+            <FeatureActivityTab
+              statusHistory={statusHistory}
+              activityLog={activityLog}
+              loading={activityLoading}
+            />
           </TabsContent>
 
           <TabsContent value="files" className="mt-4">
@@ -1345,23 +1369,15 @@ function NewFeatureRequestDialog({
   );
 }
 
-function FeatureActivityTab({ featureId }: { featureId: string }) {
-  const [statusHistory, setStatusHistory] = useState<StatusHistoryEntry[]>([]);
-  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      fetchFeatureStatusHistory(featureId).catch(() => []),
-      fetchFeatureActivityLogs(featureId).catch(() => []),
-    ])
-      .then(([history, logs]) => {
-        setStatusHistory(history);
-        setActivityLog(logs);
-      })
-      .finally(() => setLoading(false));
-  }, [featureId]);
-
+function FeatureActivityTab({
+  statusHistory,
+  activityLog,
+  loading,
+}: {
+  statusHistory: StatusHistoryEntry[];
+  activityLog: ActivityLogEntry[];
+  loading: boolean;
+}) {
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading activity...</p>;
   }

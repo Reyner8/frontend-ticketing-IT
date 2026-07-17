@@ -106,7 +106,7 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
           description: `${feature.id} • ${feature.status} • ${feature.priority}`,
           url: `/feature-requests?id=${feature.id}`,
           relevanceScore: 1,
-          createdAt: feature.dateSubmitted,
+          createdAt: feature.createdAt,
         })),
         ...downtimes.map((downtime) => ({
           id: downtime.id,
