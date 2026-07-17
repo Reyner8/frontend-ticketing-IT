@@ -19,10 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { ArrowRightCircle } from "lucide-react";
-import { updateResourceStatus } from "../lib/api/services";
+import { ArrowRightCircle, Calendar as CalendarIcon } from "lucide-react";
+import { updateResourceStatus, updateFeatureRequest } from "../lib/api/services";
 import { ApiError } from "../lib/api/client";
 import { useApp } from "../lib/store";
+import { Calendar } from "./ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { format } from "date-fns";
 
 interface StatusChangeActionsProps {
   target: "tickets" | "errors" | "features";
@@ -46,6 +49,7 @@ export function StatusChangeActions({
   const [status, setStatus] = useState(currentStatus);
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
   const role = state.currentUser?.role;
@@ -70,8 +74,14 @@ export function StatusChangeActions({
         reason: reason || undefined,
         notes: notes || undefined,
       });
+      if (target === "features" && status === "development" && dueDate) {
+        await updateFeatureRequest(resourceId, {
+          due_date: format(dueDate, "yyyy-MM-dd"),
+        });
+      }
       toast.success("Status updated");
       setOpen(false);
+      setDueDate(undefined);
       onCompleted?.();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Update failed");
@@ -133,6 +143,34 @@ export function StatusChangeActions({
                 rows={3}
               />
             </div>
+
+            {target === "features" && status === "development" && (
+              <div>
+                <Label>Due Date (opsional)</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Due date dapat diatur saat masuk Development. Bisa juga diubah lewat Edit nanti.
+                </p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dueDate ? format(dueDate, "PPP") : "Pilih tanggal target selesai"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={setDueDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
