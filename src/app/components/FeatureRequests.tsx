@@ -12,8 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { Progress } from "./ui/progress";
-import { Calendar } from "./ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
 import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, fetchFeatureMilestones, fetchFeatureTimeline, getCachedUsers, fetchFeatureActivityLogs, fetchFeatureStatusHistory, updateFeatureRequest, deleteFeatureRequest } from "../lib/api/services";
@@ -26,7 +24,6 @@ import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
 import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
-import { TagManager } from "./TagManager";
 import { Send } from "lucide-react";
 
 const FEATURE_STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -43,26 +40,6 @@ const FEATURE_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-const TARGET_APPLICATION_OPTIONS: { value: TargetApplication; label: string }[] = [
-  { value: "simrs", label: "SIMRS" },
-  { value: "rme", label: "RME" },
-  { value: "antrean", label: "ANTREAN" },
-  { value: "lainnya", label: "Lainnya" },
-];
-
-function getApplicationLabel(app?: TargetApplication): string {
-  return TARGET_APPLICATION_OPTIONS.find((o) => o.value === app)?.label ?? "-";
-}
-
-function getApplicationColor(app?: TargetApplication): string {
-  switch (app) {
-    case "simrs": return "text-blue-600 bg-blue-100";
-    case "rme": return "text-green-600 bg-green-100";
-    case "antrean": return "text-purple-600 bg-purple-100";
-    case "lainnya": return "text-gray-600 bg-gray-100";
-    default: return "text-gray-600 bg-gray-100";
-  }
-}
 import { FeatureRequest, FeatureRequestStatus, TargetApplication, TicketPriority } from "../types";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
 import { 
@@ -70,7 +47,6 @@ import {
   Plus, 
   Eye, 
   Edit, 
-  Calendar as CalendarIcon, 
   Clock, 
   CheckCircle, 
   TrendingUp, 
@@ -85,6 +61,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { format } from "date-fns";
 import { consumeFocusResource } from "../lib/resource-focus";
 import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
+import { getApplicationColor, getApplicationLabel, TARGET_APPLICATION_OPTIONS, canShowFeatureDueDate } from "../lib/constants";
 
 export function FeatureRequests() {
   const { state } = useApp();
@@ -333,7 +310,7 @@ export function FeatureRequests() {
     const inProgress = filteredTickets.filter(t => ['development', 'testing', 'validation', 'assigned'].includes(t.status)).length;
     const completed = filteredTickets.filter(t => ['completed', 'post_implementation_review'].includes(t.status)).length;
     const overdue = filteredTickets.filter(t => {
-      if (!t.dueDate) return false;
+      if (!canShowFeatureDueDate(t.status) || !t.dueDate) return false;
       return new Date() > t.dueDate && !['completed', 'post_implementation_review', 'cancelled', 'rejected'].includes(t.status);
     }).length;
 
@@ -678,26 +655,30 @@ export function FeatureRequests() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {ticket.dueDate ? (
-                          <div className="space-y-1">
-                            <div className="text-sm">{formatDate(ticket.dueDate)}</div>
-                            {daysUntilDue !== null && (
-                              <div className={`text-xs ${
-                                daysUntilDue < 0 ? 'text-red-600' : 
-                                daysUntilDue <= 7 ? 'text-yellow-600' : 
-                                'text-muted-foreground'
-                              }`}>
-                                {daysUntilDue < 0 
-                                  ? `${Math.abs(daysUntilDue)} days overdue`
-                                  : daysUntilDue === 0 
-                                  ? 'Due today'
-                                  : `${daysUntilDue} days left`
-                                }
-                              </div>
-                            )}
-                          </div>
+                        {canShowFeatureDueDate(ticket.status) ? (
+                          ticket.dueDate ? (
+                            <div className="space-y-1">
+                              <div className="text-sm">{formatDate(ticket.dueDate)}</div>
+                              {daysUntilDue !== null && (
+                                <div className={`text-xs ${
+                                  daysUntilDue < 0 ? 'text-red-600' : 
+                                  daysUntilDue <= 7 ? 'text-yellow-600' : 
+                                  'text-muted-foreground'
+                                }`}>
+                                  {daysUntilDue < 0 
+                                    ? `${Math.abs(daysUntilDue)} days overdue`
+                                    : daysUntilDue === 0 
+                                    ? 'Due today'
+                                    : `${daysUntilDue} days left`
+                                  }
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Belum diatur</span>
+                          )
                         ) : (
-                          <span className="text-sm text-muted-foreground">No due date</span>
+                          <span className="text-xs text-muted-foreground">Setelah Development</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -765,6 +746,7 @@ export function FeatureRequests() {
           ticket={selectedTicket}
           open={!!selectedTicket}
           onOpenChange={(open) => !open && setSelectedTicket(null)}
+          onUpdated={loadFeatures}
         />
       )}
 
@@ -783,10 +765,12 @@ function FeatureRequestDetailDialog({
   ticket,
   open,
   onOpenChange,
+  onUpdated,
 }: {
   ticket: FeatureRequest;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUpdated?: () => void;
 }) {
   const [liveTicket, setLiveTicket] = useState(ticket);
 
@@ -913,14 +897,19 @@ function FeatureRequestDetailDialog({
               Kelola
             </span>
             <ResourceEditActions
-              title={ticket.title}
-              description={ticket.description}
+              title={liveTicket.title}
+              description={liveTicket.description}
+              showTargetApplication
+              targetApplication={liveTicket.targetApplication}
+              showDueDate={canShowFeatureDueDate(liveTicket.status)}
+              dueDate={liveTicket.dueDate}
               onUpdate={async (payload) => {
-                await updateFeatureRequest(ticket.id, payload);
-                onOpenChange(false);
+                const updated = await updateFeatureRequest(liveTicket.id, payload);
+                setLiveTicket(updated);
+                onUpdated?.();
               }}
               onDelete={async () => {
-                await deleteFeatureRequest(ticket.id);
+                await deleteFeatureRequest(liveTicket.id);
                 onOpenChange(false);
               }}
             />
@@ -950,7 +939,9 @@ function FeatureRequestDetailDialog({
                     <Progress value={progress} className="h-3" />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Started {formatDate(ticket.dateSubmitted)}</span>
-                      {ticket.dueDate && <span>Due {formatDate(ticket.dueDate)}</span>}
+                      {canShowFeatureDueDate(liveTicket.status) && liveTicket.dueDate && (
+                        <span>Due {formatDate(liveTicket.dueDate)}</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -990,6 +981,14 @@ function FeatureRequestDetailDialog({
                         <span className="text-muted-foreground">Assigned Team:</span>
                         <span className="capitalize">{ticket.assignedTeam || 'Unassigned'}</span>
                       </div>
+                      {canShowFeatureDueDate(liveTicket.status) && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Due Date:</span>
+                          <span>
+                            {liveTicket.dueDate ? formatDate(liveTicket.dueDate) : 'Belum diatur'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1054,12 +1053,6 @@ function FeatureRequestDetailDialog({
                     )}
                   </div>
                 </div>
-
-                <TagManager
-                  resourceType="features"
-                  resourceId={ticket.id}
-                  initialTags={ticket.tags}
-                />
               </div>
             </ScrollArea>
           </TabsContent>
@@ -1231,7 +1224,6 @@ function NewFeatureRequestDialog({
     priority: 'medium' as TicketPriority,
     type: 'feature_request' as 'feature_request' | 'bug_fix',
     targetApplication: 'simrs' as TargetApplication,
-    dueDate: undefined as Date | undefined
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -1255,7 +1247,6 @@ function NewFeatureRequestDialog({
         priority: 'medium',
         type: 'feature_request',
         targetApplication: 'simrs',
-        dueDate: undefined
       });
     } catch {
       toast.error('Failed to create feature request');
@@ -1325,44 +1316,19 @@ function NewFeatureRequestDialog({
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="priority">Priority</Label>
-              <Select value={formData.priority} onValueChange={(value: TicketPriority) => setFormData({ ...formData, priority: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low - Nice to have</SelectItem>
-                  <SelectItem value="medium">Medium - Standard request</SelectItem>
-                  <SelectItem value="high">High - Important feature</SelectItem>
-                  <SelectItem value="critical">Critical - Urgent bug fix</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="dueDate">Desired Due Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.dueDate ? format(formData.dueDate, "PPP") : "Select date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.dueDate}
-                    onSelect={(date) => setFormData({ ...formData, dueDate: date })}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          <div>
+            <Label htmlFor="priority">Priority</Label>
+            <Select value={formData.priority} onValueChange={(value: TicketPriority) => setFormData({ ...formData, priority: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low - Nice to have</SelectItem>
+                <SelectItem value="medium">Medium - Standard request</SelectItem>
+                <SelectItem value="high">High - Important feature</SelectItem>
+                <SelectItem value="critical">Critical - Urgent bug fix</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
