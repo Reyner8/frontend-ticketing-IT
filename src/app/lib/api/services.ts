@@ -30,7 +30,6 @@ import {
   mapCalendarEvent,
   computeDashboardStats,
   preferencesToApi,
-  mapTag,
   mapConversionHistory,
   mapSystemConfigItem,
   mapDashboardStatsFromApi,
@@ -51,7 +50,6 @@ import {
   Milestone,
   TimelineEntry,
   CalendarEvent,
-  Tag,
   ConversionHistoryEntry,
   SystemConfigItem,
   ActivityLogEntry,
@@ -636,36 +634,6 @@ export async function searchUsers(query: string): Promise<User[]> {
   );
 }
 
-type TagResourceType = 'tickets' | 'errors' | 'features';
-
-export async function fetchTags(params?: Record<string, string | number>): Promise<Tag[]> {
-  const { data } = await apiGetPaginated<Record<string, unknown>[]>('/tags', {
-    per_page: 100,
-    ...params,
-  });
-  return (data as unknown as Record<string, unknown>[]).map(mapTag);
-}
-
-export async function createTag(name: string): Promise<Tag> {
-  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
-    '/tags',
-    { name }
-  );
-  return mapTag(response.data);
-}
-
-export async function syncResourceTags(
-  resourceType: TagResourceType,
-  resourceId: string,
-  tagIds: number[]
-): Promise<Tag[]> {
-  const response = await apiRequest<{ success: boolean; data: Record<string, unknown>[] }>(
-    `/${resourceType}/${resourceId}/tags/sync`,
-    { method: 'PUT', body: { tag_ids: tagIds } }
-  );
-  return (response.data ?? []).map(mapTag);
-}
-
 export async function fetchTicketConversionHistory(ticketId: string): Promise<ConversionHistoryEntry | null> {
   const response = await apiGet<{ success: boolean; data: Record<string, unknown> | null }>(
     `/tickets/${ticketId}/conversion-history`
@@ -682,7 +650,12 @@ export async function convertTicketToError(
 
 export async function convertTicketToFeature(
   ticketId: string,
-  payload: { request_type: string; conversion_reason: string; priority?: string }
+  payload: {
+    request_type: string;
+    target_application: string;
+    conversion_reason: string;
+    priority?: string;
+  }
 ): Promise<void> {
   await apiPost(`/tickets/${ticketId}/convert/feature-request`, payload);
 }
