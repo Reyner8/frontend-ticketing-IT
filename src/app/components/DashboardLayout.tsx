@@ -158,11 +158,11 @@ export default function DashboardLayout() {
     <SidebarProvider>
       <div className="flex h-screen w-full">
         <AppSidebar activeView={activeView} onNavigate={setActiveView} />
-        <SidebarInset className="flex-1 flex flex-col">
+        <SidebarInset className="flex min-h-0 flex-1 flex-col overflow-hidden !mt-0">
           <AppHeader onNavigate={setActiveView} onOpenQuickAction={handleQuickAction} />
-          <main className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto">
             {renderContent()}
-          </main>
+          </div>
         </SidebarInset>
       </div>
       
