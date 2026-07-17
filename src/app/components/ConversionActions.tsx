@@ -26,7 +26,8 @@ import {
 } from "../lib/api/services";
 import { ApiError } from "../lib/api/client";
 import { useApp } from "../lib/store";
-import type { ConversionHistoryEntry, TicketPriority } from "../types";
+import type { ConversionHistoryEntry, TargetApplication, TicketPriority } from "../types";
+import { TARGET_APPLICATION_OPTIONS } from "../lib/constants";
 
 interface ConversionActionsProps {
   ticketId: string;
@@ -46,6 +47,7 @@ export function ConversionActions({
   const [target, setTarget] = useState<"error_report" | "feature_request">("error_report");
   const [category, setCategory] = useState("software");
   const [requestType, setRequestType] = useState("feature_request");
+  const [targetApplication, setTargetApplication] = useState<TargetApplication>("simrs");
   const [priority, setPriority] = useState<TicketPriority>(ticketPriority);
   const [reason, setReason] = useState("");
   const [history, setHistory] = useState<ConversionHistoryEntry | null>(null);
@@ -102,6 +104,7 @@ export function ConversionActions({
       } else {
         await convertTicketToFeature(ticketId, {
           request_type: requestType,
+          target_application: targetApplication,
           conversion_reason: reason.trim(),
           priority,
         });
@@ -168,18 +171,38 @@ export function ConversionActions({
                 </Select>
               </div>
             ) : (
-              <div>
-                <Label>Jenis permintaan</Label>
-                <Select value={requestType} onValueChange={setRequestType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="feature_request">Feature Request</SelectItem>
-                    <SelectItem value="bug_fix">Bug Fix</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div>
+                  <Label>Jenis permintaan</Label>
+                  <Select value={requestType} onValueChange={setRequestType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="feature_request">Feature Request</SelectItem>
+                      <SelectItem value="bug_fix">Bug Fix</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Aplikasi Tujuan</Label>
+                  <Select
+                    value={targetApplication}
+                    onValueChange={(v) => setTargetApplication(v as TargetApplication)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TARGET_APPLICATION_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
 
             <div>
