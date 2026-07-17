@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -11,22 +11,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "./ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { format } from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { TARGET_APPLICATION_OPTIONS } from "../lib/constants";
+import type { TargetApplication } from "../types";
 
 import { useApp } from "../lib/store";
 
 interface ResourceEditActionsProps {
   title: string;
   description?: string;
+  showTargetApplication?: boolean;
+  targetApplication?: TargetApplication;
+  showDueDate?: boolean;
+  dueDate?: Date;
   canEdit?: boolean;
   canDelete?: boolean;
-  onUpdate: (payload: { title: string; description?: string }) => Promise<void>;
+  onUpdate: (payload: {
+    title: string;
+    description?: string;
+    target_application?: string;
+    due_date?: string | null;
+  }) => Promise<void>;
   onDelete: () => Promise<void>;
 }
 
 export function ResourceEditActions({
   title,
   description,
+  showTargetApplication = false,
+  targetApplication,
+  showDueDate = false,
+  dueDate,
   canEdit: canEditProp,
   canDelete: canDeleteProp,
   onUpdate,
@@ -40,7 +65,20 @@ export function ResourceEditActions({
   const [editOpen, setEditOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
   const [editDescription, setEditDescription] = useState(description ?? "");
+  const [editTargetApplication, setEditTargetApplication] = useState<TargetApplication>(
+    targetApplication ?? "simrs"
+  );
+  const [editDueDate, setEditDueDate] = useState<Date | undefined>(dueDate);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (editOpen) {
+      setEditTitle(title);
+      setEditDescription(description ?? "");
+      setEditTargetApplication(targetApplication ?? "simrs");
+      setEditDueDate(dueDate);
+    }
+  }, [editOpen, title, description, targetApplication, dueDate]);
 
   const handleSave = async () => {
     setBusy(true);
@@ -48,6 +86,10 @@ export function ResourceEditActions({
       await onUpdate({
         title: editTitle.trim(),
         description: editDescription.trim() || undefined,
+        ...(showTargetApplication ? { target_application: editTargetApplication } : {}),
+        ...(showDueDate
+          ? { due_date: editDueDate ? format(editDueDate, "yyyy-MM-dd") : null }
+          : {}),
       });
       toast.success("Updated");
       setEditOpen(false);
@@ -105,6 +147,61 @@ export function ResourceEditActions({
                 rows={4}
               />
             </div>
+            {showTargetApplication && (
+              <div className="space-y-1">
+                <Label>Aplikasi Tujuan</Label>
+                <Select
+                  value={editTargetApplication}
+                  onValueChange={(v) => setEditTargetApplication(v as TargetApplication)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TARGET_APPLICATION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {showDueDate && (
+              <div className="space-y-1">
+                <Label>Due Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editDueDate ? format(editDueDate, "PPP") : "Pilih tanggal"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editDueDate}
+                      onSelect={setEditDueDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {editDueDate && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="px-0 h-auto text-xs text-muted-foreground"
+                    onClick={() => setEditDueDate(undefined)}
+                  >
+                    Hapus due date
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
