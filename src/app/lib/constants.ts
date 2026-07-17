@@ -1,5 +1,40 @@
+import type { FeatureRequestStatus, TargetApplication } from '../types';
+
 // Chart colors
 export const CHART_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+export const TARGET_APPLICATION_OPTIONS: { value: TargetApplication; label: string }[] = [
+  { value: 'simrs', label: 'SIMRS' },
+  { value: 'rme', label: 'RME' },
+  { value: 'antrean', label: 'ANTREAN' },
+  { value: 'lainnya', label: 'Lainnya' },
+];
+
+export function getApplicationLabel(app?: TargetApplication): string {
+  return TARGET_APPLICATION_OPTIONS.find((o) => o.value === app)?.label ?? '-';
+}
+
+export function getApplicationColor(app?: TargetApplication): string {
+  switch (app) {
+    case 'simrs': return 'text-blue-600 bg-blue-100';
+    case 'rme': return 'text-green-600 bg-green-100';
+    case 'antrean': return 'text-purple-600 bg-purple-100';
+    case 'lainnya': return 'text-gray-600 bg-gray-100';
+    default: return 'text-gray-600 bg-gray-100';
+  }
+}
+
+const FEATURE_DUE_DATE_STATUSES: FeatureRequestStatus[] = [
+  'development',
+  'testing',
+  'validation',
+  'completed',
+  'post_implementation_review',
+];
+
+export function canShowFeatureDueDate(status: FeatureRequestStatus): boolean {
+  return FEATURE_DUE_DATE_STATUSES.includes(status);
+}
 
 // Status colors
 export const STATUS_COLORS = {
