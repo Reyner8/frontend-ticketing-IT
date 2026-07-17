@@ -27,7 +27,6 @@ import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
 import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
-import { TagManager } from "./TagManager";
 import { ConversionActions } from "./ConversionActions";
 import { CommentThread } from "./CommentThread";
 import { MergeTicketPanel } from "./MergeTicketPanel";
@@ -124,7 +123,6 @@ export function Tickets() {
         (t) =>
           t.title.toLowerCase().includes(q) ||
           t.id.toLowerCase().includes(q) ||
-          t.tags.some((tag) => tag.toLowerCase().includes(q)) ||
           (t.submitterName?.toLowerCase().includes(q) ?? false) ||
           (t.submitterUnit?.toLowerCase().includes(q) ?? false)
       );
@@ -192,7 +190,7 @@ export function Tickets() {
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search by ID, title, tags..."
+              placeholder="Search by ID, title..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -447,7 +445,6 @@ function TicketDetailDialog({
               <TabsTrigger value="details" className="flex-none px-3">Details</TabsTrigger>
               <TabsTrigger value="comments" className="flex-none px-3">Comments</TabsTrigger>
               <TabsTrigger value="files" className="flex-none px-3">Files</TabsTrigger>
-              <TabsTrigger value="meta" className="flex-none px-3">Tags</TabsTrigger>
               <TabsTrigger value="merge" className="flex-none px-3">Merge</TabsTrigger>
               <TabsTrigger value="activity" className="flex-none px-3">Activity</TabsTrigger>
             </TabsList>
@@ -513,15 +510,6 @@ function TicketDetailDialog({
 
           <TabsContent value="files" className="mt-4">
             <AttachmentPanel parent="tickets" parentId={detail.id} canUpload canDelete />
-          </TabsContent>
-
-          <TabsContent value="meta" className="mt-4 space-y-6">
-            <TagManager
-              resourceType="tickets"
-              resourceId={detail.id}
-              initialTags={detail.tags}
-              onUpdated={(tags) => setDetail((d) => ({ ...d, tags }))}
-            />
           </TabsContent>
 
           <TabsContent value="merge" className="mt-4">
