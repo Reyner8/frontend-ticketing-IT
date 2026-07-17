@@ -25,7 +25,6 @@ import { AssignmentActions } from "./AssignmentActions";
 import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
 import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
-import { TagManager } from "./TagManager";
 import { consumeFocusResource } from "../lib/resource-focus";
 import { toast } from "sonner";
 import { ErrorReport, ErrorReportStatus, TicketPriority, TicketCategory, TeamType, Comment, ActivityLogEntry, StatusHistoryEntry } from "../types";
@@ -161,8 +160,7 @@ export function ErrorReports() {
       filtered = filtered.filter(report =>
         report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        report.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -420,7 +418,7 @@ export function ErrorReports() {
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Search reports, IDs, descriptions, tags..."
+                  placeholder="Search reports, IDs, descriptions..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -754,7 +752,6 @@ function NewErrorReportDialog({
     priority: 'medium' as TicketPriority,
     category: 'software' as 'hardware' | 'network' | 'software',
     estimatedEffort: '',
-    tags: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -777,7 +774,6 @@ function NewErrorReportDialog({
         priority: 'medium',
         category: 'software',
         estimatedEffort: '',
-        tags: ''
       });
     } catch {
       toast.error('Failed to create error report');
@@ -862,16 +858,6 @@ function NewErrorReportDialog({
                 value={formData.estimatedEffort}
                 onChange={(e) => setFormData({ ...formData, estimatedEffort: e.target.value })}
                 placeholder="e.g., 4"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="tags">Tags</Label>
-              <Input
-                id="tags"
-                value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="e.g., database, urgent, login"
               />
             </div>
           </div>
@@ -1228,12 +1214,6 @@ function ErrorReportDetailDialog({
                     )}
                   </div>
                 </div>
-
-                <TagManager
-                  resourceType="errors"
-                  resourceId={report.id}
-                  initialTags={report.tags}
-                />
 
                 {/* Attachments */}
                 <div>
