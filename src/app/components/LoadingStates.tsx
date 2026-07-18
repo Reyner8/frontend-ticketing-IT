@@ -88,16 +88,20 @@ export function NoTicketsFound({ onCreateTicket }: { onCreateTicket: () => void 
   );
 }
 
-export function NoDowntimeRecords({ onLogDowntime }: { onLogDowntime: () => void }) {
+export function NoDowntimeRecords({ onLogDowntime }: { onLogDowntime?: () => void }) {
   return (
     <EmptyState
       icon={Zap}
       title="No downtime records"
       description="No downtime events have been logged yet. Start by recording a planned maintenance or unplanned outage."
-      action={{
-        label: "Log Downtime Event",
-        onClick: onLogDowntime
-      }}
+      action={
+        onLogDowntime
+          ? {
+              label: "Log Downtime Event",
+              onClick: onLogDowntime,
+            }
+          : undefined
+      }
     />
   );
 }

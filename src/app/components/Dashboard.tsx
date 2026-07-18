@@ -669,7 +669,7 @@ export function Dashboard() {
                         <p className="text-sm text-muted-foreground">
                           Started: {downtime.startTime.toLocaleString()} • 
                           Impact: {downtime.impact} • 
-                          Systems: {downtime.affectedSystems.join(', ')}
+                          Sources: {(downtime.sourceComponents?.map((c) => c.name).join(', ') || downtime.affectedSystems.join(', ') || '—')}
                         </p>
                       </div>
                       <Badge variant="destructive">

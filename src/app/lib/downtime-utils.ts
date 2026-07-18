@@ -75,10 +75,14 @@ export const generateDowntimeAnalytics = (downtimes: DowntimeRecord[]) => {
     { name: 'Critical', value: downtimes.filter(d => d.impact === 'critical').length, color: '#FF6B6B' },
   ].filter(d => d.value > 0);
 
-  // System affected analysis
+  // Component affected analysis (prefer structured components)
   const systemsMap = new Map();
   downtimes.forEach(downtime => {
-    downtime.affectedSystems.forEach(system => {
+    const names =
+      downtime.affectedComponents?.length
+        ? downtime.affectedComponents.map((c) => c.name)
+        : downtime.affectedSystems ?? [];
+    names.forEach((system) => {
       const current = systemsMap.get(system) || { name: system, incidents: 0, totalDuration: 0 };
       current.incidents += 1;
       current.totalDuration += downtime.duration || 0;
