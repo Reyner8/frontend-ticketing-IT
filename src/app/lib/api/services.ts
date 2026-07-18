@@ -19,6 +19,9 @@ import {
   mapFeatureListItem,
   mapFeatureDetail,
   mapDowntimeRecord,
+  mapDowntimeLocation,
+  mapDowntimeComponent,
+  mapDowntimeAnalytics,
   mapNotification,
   mapTeamWorkload,
   mapStatusHistory,
@@ -40,6 +43,11 @@ import {
   ErrorReport,
   FeatureRequest,
   DowntimeRecord,
+  DowntimeLocation,
+  DowntimeComponent,
+  DowntimeComponentRef,
+  DowntimeAnalyticsSummary,
+  DowntimeComponentCategory,
   Notification,
   TeamWorkload,
   DashboardStats,
@@ -498,12 +506,162 @@ export async function createDowntimeRecord(payload: {
   impact: string;
   description?: string;
   end_time?: string;
+  location_id?: number | null;
+  source_component_ids: number[];
+  affected_component_ids?: number[];
+  affected_users?: number;
+  estimated_cost?: number;
+  root_cause?: string;
+  preventive_measures?: string;
 }): Promise<DowntimeRecord> {
   const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
     '/downtime-records',
     payload
   );
   return mapDowntimeRecord(response.data);
+}
+
+export async function fetchDowntimeLocations(params?: Record<string, string | number | boolean>): Promise<{
+  locations: DowntimeLocation[];
+  total: number;
+}> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/downtime-locations', {
+    per_page: 100,
+    ...params,
+  });
+  return {
+    locations: (data as unknown as Record<string, unknown>[]).map(mapDowntimeLocation),
+    total: meta.total,
+  };
+}
+
+export async function createDowntimeLocation(payload: {
+  name: string;
+  code?: string;
+  description?: string;
+  is_active?: boolean;
+}): Promise<DowntimeLocation> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/downtime-locations',
+    payload
+  );
+  return mapDowntimeLocation(response.data);
+}
+
+export async function updateDowntimeLocation(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<DowntimeLocation> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/downtime-locations/${id}`,
+    payload
+  );
+  return mapDowntimeLocation(response.data);
+}
+
+export async function deactivateDowntimeLocation(id: string): Promise<DowntimeLocation> {
+  const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
+    `/downtime-locations/${id}/deactivate`
+  );
+  return mapDowntimeLocation(response.data);
+}
+
+export async function deleteDowntimeLocation(id: string): Promise<void> {
+  await apiDelete(`/downtime-locations/${id}`);
+}
+
+export async function fetchDowntimeComponents(params?: Record<string, string | number | boolean>): Promise<{
+  components: DowntimeComponent[];
+  total: number;
+}> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/downtime-components', {
+    per_page: 100,
+    ...params,
+  });
+  return {
+    components: (data as unknown as Record<string, unknown>[]).map(mapDowntimeComponent),
+    total: meta.total,
+  };
+}
+
+export async function createDowntimeComponent(payload: {
+  name: string;
+  category: DowntimeComponentCategory | string;
+  code?: string;
+  description?: string;
+  is_active?: boolean;
+  default_affected_component_ids?: number[];
+}): Promise<DowntimeComponent> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/downtime-components',
+    payload
+  );
+  return mapDowntimeComponent(response.data);
+}
+
+export async function updateDowntimeComponent(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<DowntimeComponent> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/downtime-components/${id}`,
+    payload
+  );
+  return mapDowntimeComponent(response.data);
+}
+
+export async function syncDowntimeComponentDependencies(
+  id: string,
+  defaultAffectedComponentIds: number[]
+): Promise<DowntimeComponent> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/downtime-components/${id}/dependencies`,
+    { default_affected_component_ids: defaultAffectedComponentIds }
+  );
+  return mapDowntimeComponent(response.data);
+}
+
+export async function suggestAffectedComponents(
+  sourceComponentIds: number[]
+): Promise<DowntimeComponentRef[]> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
+    '/downtime-components/suggest-affected',
+    { source_component_ids: sourceComponentIds.join(',') }
+  );
+  return ((response.data ?? []) as Record<string, unknown>[]).map((row) => {
+    const category = row.category as { value?: DowntimeComponentCategory } | DowntimeComponentCategory | undefined;
+    const categoryValue =
+      typeof category === 'object' && category?.value ? category.value : (category as DowntimeComponentCategory | undefined);
+
+    return {
+      id: String(row.id),
+      code: String(row.code ?? ''),
+      name: String(row.name ?? ''),
+      category: categoryValue || 'other',
+      isActive: Boolean(row.is_active ?? true),
+    };
+  });
+}
+
+export async function deactivateDowntimeComponent(id: string): Promise<DowntimeComponent> {
+  const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
+    `/downtime-components/${id}/deactivate`
+  );
+  return mapDowntimeComponent(response.data);
+}
+
+export async function deleteDowntimeComponent(id: string): Promise<void> {
+  await apiDelete(`/downtime-components/${id}`);
+}
+
+export async function fetchDowntimeAnalytics(
+  params?: Record<string, string | number>
+): Promise<DowntimeAnalyticsSummary> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown> }>(
+    '/downtime-records/analytics',
+    params
+  );
+  return mapDowntimeAnalytics(response.data ?? {});
 }
 
 export async function fetchNotifications(params?: Record<string, string | number>): Promise<Notification[]> {
@@ -690,9 +848,10 @@ export type ExportFormat = 'csv' | 'excel' | 'pdf';
 
 export async function downloadServerExport(
   dataset: ExportDataset,
-  format: ExportFormat = 'csv'
+  format: ExportFormat = 'csv',
+  params?: Record<string, string | number>
 ): Promise<{ blob: Blob; filename: string }> {
-  return apiDownload(`/exports/${dataset}`, { format });
+  return apiDownload(`/exports/${dataset}`, { format, ...params });
 }
 
 export async function updateDowntimeRecord(
@@ -708,24 +867,19 @@ export async function updateDowntimeRecord(
 
 export async function resolveDowntimeRecord(
   id: string,
-  payload: { root_cause?: string; preventive_measures?: string; end_time?: string }
+  payload: {
+    root_cause: string;
+    preventive_measures: string;
+    end_time: string;
+    affected_users?: number;
+    estimated_cost?: number;
+  }
 ): Promise<DowntimeRecord> {
   const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
     `/downtime-records/${id}/resolve`,
     payload
   );
   return mapDowntimeRecord(response.data);
-}
-
-export async function syncDowntimeAffectedSystems(
-  downtimeId: string,
-  systems: string[]
-): Promise<string[]> {
-  const response = await apiPut<{ success: boolean; data: string[] }>(
-    `/downtime-records/${downtimeId}/affected-systems`,
-    { system_names: systems }
-  );
-  return response.data ?? [];
 }
 
 export async function createMilestone(

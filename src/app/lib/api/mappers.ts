@@ -3,6 +3,10 @@ import {
   Ticket,
   ErrorReport,
   FeatureRequest,
+  DowntimeAnalyticsSummary,
+  DowntimeComponent,
+  DowntimeComponentRef,
+  DowntimeLocation,
   DowntimeRecord,
   Notification,
   TeamWorkload,
@@ -265,12 +269,109 @@ export function mapFeatureDetail(data: Record<string, unknown>): FeatureRequest 
   };
 }
 
+function mapDowntimeComponentRef(data: Record<string, unknown>): DowntimeComponentRef {
+  const category = data.category as { value?: string } | string | undefined;
+  const categoryValue =
+    typeof category === 'object' && category?.value ? category.value : (category as string | undefined);
+
+  return {
+    id: String(data.id),
+    code: String(data.code ?? ''),
+    name: String(data.name ?? ''),
+    category: (categoryValue as DowntimeComponentRef['category']) || 'other',
+    isActive: Boolean(data.is_active ?? true),
+  };
+}
+
+export function mapDowntimeLocation(data: Record<string, unknown>): DowntimeLocation {
+  return {
+    id: String(data.id),
+    code: String(data.code ?? ''),
+    name: String(data.name ?? ''),
+    description: data.description as string | undefined,
+    isActive: Boolean(data.is_active ?? true),
+  };
+}
+
+export function mapDowntimeComponent(data: Record<string, unknown>): DowntimeComponent {
+  const defaults = (data.default_affected_components as Record<string, unknown>[] | undefined) ?? [];
+  return {
+    ...mapDowntimeComponentRef(data),
+    description: data.description as string | undefined,
+    defaultAffectedComponents: defaults.map(mapDowntimeComponentRef),
+  };
+}
+
+export function mapDowntimeAnalytics(data: Record<string, unknown>): DowntimeAnalyticsSummary {
+  const period = (data.period as Record<string, unknown>) ?? {};
+  const summary = (data.summary as Record<string, unknown>) ?? {};
+
+  const mapComponentStat = (row: Record<string, unknown>) => ({
+    componentId: String(row.component_id ?? ''),
+    name: String(row.name ?? ''),
+    category: String(row.category ?? ''),
+    incidentCount: Number(row.incident_count ?? 0),
+    totalMinutes: Number(row.total_minutes ?? 0),
+    uptimePercent: Number(row.uptime_percent ?? 0),
+    downtimePercent: Number(row.downtime_percent ?? 0),
+  });
+
+  return {
+    period: {
+      from: String(period.from ?? ''),
+      to: String(period.to ?? ''),
+      periodMinutes: Number(period.period_minutes ?? 0),
+    },
+    summary: {
+      incidentCount: Number(summary.incident_count ?? 0),
+      ongoingCount: Number(summary.ongoing_count ?? 0),
+      resolvedCount: Number(summary.resolved_count ?? 0),
+      plannedCount: Number(summary.planned_count ?? 0),
+      unplannedCount: Number(summary.unplanned_count ?? 0),
+      totalDowntimeMinutes: Number(summary.total_downtime_minutes ?? 0),
+      averageDowntimeMinutes: Number(summary.average_downtime_minutes ?? 0),
+      totalEstimatedCost: Number(summary.total_estimated_cost ?? 0),
+      totalAffectedUsers: Number(summary.total_affected_users ?? 0),
+    },
+    impactBreakdown: ((data.impact_breakdown as Record<string, unknown>[]) ?? []).map((row) => ({
+      impact: String(row.impact ?? ''),
+      count: Number(row.count ?? 0),
+      totalMinutes: Number(row.total_minutes ?? 0),
+    })),
+    mostFrequentSources: ((data.most_frequent_sources as Record<string, unknown>[]) ?? []).map(mapComponentStat),
+    mostAffectedComponents: ((data.most_affected_components as Record<string, unknown>[]) ?? []).map(
+      mapComponentStat
+    ),
+    locationFrequency: ((data.location_frequency as Record<string, unknown>[]) ?? []).map((row) => ({
+      locationId: row.location_id != null ? String(row.location_id) : null,
+      locationName: String(row.location_name ?? 'Unspecified'),
+      incidentCount: Number(row.incident_count ?? 0),
+      totalMinutes: Number(row.total_minutes ?? 0),
+    })),
+    componentUptime: ((data.component_uptime as Record<string, unknown>[]) ?? []).map(mapComponentStat),
+    categoryUptime: ((data.category_uptime as Record<string, unknown>[]) ?? []).map((row) => ({
+      category: String(row.category ?? ''),
+      incidentCount: Number(row.incident_count ?? 0),
+      totalMinutes: Number(row.total_minutes ?? 0),
+      uptimePercent: Number(row.uptime_percent ?? 0),
+      downtimePercent: Number(row.downtime_percent ?? 0),
+    })),
+  };
+}
+
 export function mapDowntimeRecord(data: Record<string, unknown>): DowntimeRecord {
   const type = data.type as { value?: string } | string;
   const impact = data.impact as { value?: string } | string;
   const status = data.status as { value?: string } | string;
   const duration = data.duration as { minutes?: number } | number | null;
   const reportedBy = data.reported_by as { id?: number } | null;
+  const location = data.location as Record<string, unknown> | null | undefined;
+  const sourceComponents = ((data.source_components as Record<string, unknown>[]) ?? []).map(
+    mapDowntimeComponentRef
+  );
+  const affectedComponents = ((data.affected_components as Record<string, unknown>[]) ?? []).map(
+    mapDowntimeComponentRef
+  );
 
   const typeValue = typeof type === 'object' && type?.value ? type.value : (type as string);
   const impactValue = typeof impact === 'object' && impact?.value ? impact.value : (impact as string);
@@ -288,7 +389,10 @@ export function mapDowntimeRecord(data: Record<string, unknown>): DowntimeRecord
     startTime: parseDate(data.start_time as string),
     endTime: data.end_time ? parseDate(data.end_time as string) : undefined,
     duration: durationMinutes ?? undefined,
-    affectedSystems: (data.affected_systems as string[]) ?? [],
+    affectedSystems: affectedComponents.map((c) => c.name),
+    location: location ? mapDowntimeLocation(location) : null,
+    sourceComponents,
+    affectedComponents,
     impact: (impactValue as DowntimeRecord['impact']) || 'medium',
     reportedBy: reportedBy?.id ? String(reportedBy.id) : '',
     description: data.description as string | undefined,

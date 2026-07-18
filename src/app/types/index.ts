@@ -260,6 +260,90 @@ export interface Attachment {
   uploadedAt: Date;
 }
 
+export type DowntimeComponentCategory =
+  | 'application'
+  | 'network'
+  | 'utility'
+  | 'infrastructure'
+  | 'equipment'
+  | 'operational_service'
+  | 'other';
+
+export interface DowntimeComponentRef {
+  id: string;
+  code: string;
+  name: string;
+  category: DowntimeComponentCategory;
+  isActive: boolean;
+}
+
+export interface DowntimeLocation {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface DowntimeComponent extends DowntimeComponentRef {
+  description?: string;
+  defaultAffectedComponents: DowntimeComponentRef[];
+}
+
+export interface DowntimeAnalyticsSummary {
+  period: { from: string; to: string; periodMinutes: number };
+  summary: {
+    incidentCount: number;
+    ongoingCount: number;
+    resolvedCount: number;
+    plannedCount: number;
+    unplannedCount: number;
+    totalDowntimeMinutes: number;
+    averageDowntimeMinutes: number;
+    totalEstimatedCost: number;
+    totalAffectedUsers: number;
+  };
+  impactBreakdown: Array<{ impact: string; count: number; totalMinutes: number }>;
+  mostFrequentSources: Array<{
+    componentId: string;
+    name: string;
+    category: string;
+    incidentCount: number;
+    totalMinutes: number;
+    uptimePercent: number;
+  }>;
+  mostAffectedComponents: Array<{
+    componentId: string;
+    name: string;
+    category: string;
+    incidentCount: number;
+    totalMinutes: number;
+    uptimePercent: number;
+  }>;
+  locationFrequency: Array<{
+    locationId: string | null;
+    locationName: string;
+    incidentCount: number;
+    totalMinutes: number;
+  }>;
+  componentUptime: Array<{
+    componentId: string;
+    name: string;
+    category: string;
+    incidentCount: number;
+    totalMinutes: number;
+    uptimePercent: number;
+    downtimePercent: number;
+  }>;
+  categoryUptime: Array<{
+    category: string;
+    incidentCount: number;
+    totalMinutes: number;
+    uptimePercent: number;
+    downtimePercent: number;
+  }>;
+}
+
 export interface DowntimeRecord {
   id: string;
   title: string;
@@ -268,7 +352,11 @@ export interface DowntimeRecord {
   startTime: Date;
   endTime?: Date;
   duration?: number; // in minutes
+  /** @deprecated prefer affectedComponents */
   affectedSystems: string[];
+  location?: DowntimeLocation | null;
+  sourceComponents: DowntimeComponentRef[];
+  affectedComponents: DowntimeComponentRef[];
   impact: 'low' | 'medium' | 'high' | 'critical';
   reportedBy: string;
   description?: string;
