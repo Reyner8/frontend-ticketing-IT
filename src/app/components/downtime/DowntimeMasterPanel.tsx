@@ -9,6 +9,7 @@ import { Badge } from "../ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { toast } from "sonner";
 import { ApiError } from "../../lib/api/client";
 import {
@@ -25,8 +26,9 @@ import {
   updateDowntimeLocation,
 } from "../../lib/api/services";
 import { DowntimeComponent, DowntimeComponentCategory, DowntimeLocation } from "../../types";
+import { getComponentCategoryColor } from "../../lib/downtime-utils";
 import { ComponentMultiSelect } from "./ComponentMultiSelect";
-import { Plus } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Link2, Power, PowerOff, Trash2 } from "lucide-react";
 
 const CATEGORIES: Array<{ value: DowntimeComponentCategory; label: string }> = [
   { value: "application", label: "Application" },
@@ -243,7 +245,7 @@ export function DowntimeMasterPanel() {
                     <TableHead>Category</TableHead>
                     <TableHead>Default Affected</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -262,8 +264,10 @@ export function DowntimeMasterPanel() {
                           <div className="font-medium">{component.name}</div>
                           <div className="text-xs text-muted-foreground">{component.code}</div>
                         </TableCell>
-                        <TableCell className="capitalize">
-                          {component.category.replaceAll("_", " ")}
+                        <TableCell>
+                          <Badge className={getComponentCategoryColor(component.category)}>
+                            {component.category.replaceAll("_", " ")}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1 max-w-xs">
@@ -275,6 +279,11 @@ export function DowntimeMasterPanel() {
                                   {c.name}
                                 </Badge>
                               ))
+                            )}
+                            {component.defaultAffectedComponents.length > 4 && (
+                              <Badge variant="outline">
+                                +{component.defaultAffectedComponents.length - 4} more
+                              </Badge>
                             )}
                           </div>
                         </TableCell>
@@ -289,63 +298,73 @@ export function DowntimeMasterPanel() {
                             {component.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" onClick={() => openEditComponent(component)}>
-                              Edit
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => openDependencies(component)}>
-                              Dependencies
-                            </Button>
-                            {component.isActive ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditComponent(component)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openDependencies(component)}>
+                                <Link2 className="mr-2 h-4 w-4" />
+                                Dependencies
+                              </DropdownMenuItem>
+                              {component.isActive ? (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      await deactivateDowntimeComponent(component.id);
+                                      toast.success("Component deactivated");
+                                      await load();
+                                    } catch (err) {
+                                      toast.error(firstError(err));
+                                    }
+                                  }}
+                                >
+                                  <PowerOff className="mr-2 h-4 w-4" />
+                                  Deactivate
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      await updateDowntimeComponent(component.id, { is_active: true });
+                                      toast.success("Component reactivated");
+                                      await load();
+                                    } catch (err) {
+                                      toast.error(firstError(err));
+                                    }
+                                  }}
+                                >
+                                  <Power className="mr-2 h-4 w-4" />
+                                  Activate
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600"
                                 onClick={async () => {
+                                  if (!confirm(`Delete component "${component.name}"?`)) return;
                                   try {
-                                    await deactivateDowntimeComponent(component.id);
-                                    toast.success("Component deactivated");
+                                    await deleteDowntimeComponent(component.id);
+                                    toast.success("Component deleted");
                                     await load();
                                   } catch (err) {
                                     toast.error(firstError(err));
                                   }
                                 }}
                               >
-                                Deactivate
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={async () => {
-                                  try {
-                                    await updateDowntimeComponent(component.id, { is_active: true });
-                                    toast.success("Component reactivated");
-                                    await load();
-                                  } catch (err) {
-                                    toast.error(firstError(err));
-                                  }
-                                }}
-                              >
-                                Activate
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={async () => {
-                                try {
-                                  await deleteDowntimeComponent(component.id);
-                                  toast.success("Component deleted");
-                                  await load();
-                                } catch (err) {
-                                  toast.error(firstError(err));
-                                }
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </div>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
@@ -371,7 +390,7 @@ export function DowntimeMasterPanel() {
                     <TableHead>Name</TableHead>
                     <TableHead>Code</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -404,60 +423,69 @@ export function DowntimeMasterPanel() {
                             {location.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" onClick={() => openEditLocation(location)}>
-                              Edit
-                            </Button>
-                            {location.isActive ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditLocation(location)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              {location.isActive ? (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      await deactivateDowntimeLocation(location.id);
+                                      toast.success("Location deactivated");
+                                      await load();
+                                    } catch (err) {
+                                      toast.error(firstError(err));
+                                    }
+                                  }}
+                                >
+                                  <PowerOff className="mr-2 h-4 w-4" />
+                                  Deactivate
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      await updateDowntimeLocation(location.id, { is_active: true });
+                                      toast.success("Location reactivated");
+                                      await load();
+                                    } catch (err) {
+                                      toast.error(firstError(err));
+                                    }
+                                  }}
+                                >
+                                  <Power className="mr-2 h-4 w-4" />
+                                  Activate
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600"
                                 onClick={async () => {
+                                  if (!confirm(`Delete location "${location.name}"?`)) return;
                                   try {
-                                    await deactivateDowntimeLocation(location.id);
-                                    toast.success("Location deactivated");
+                                    await deleteDowntimeLocation(location.id);
+                                    toast.success("Location deleted");
                                     await load();
                                   } catch (err) {
                                     toast.error(firstError(err));
                                   }
                                 }}
                               >
-                                Deactivate
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={async () => {
-                                  try {
-                                    await updateDowntimeLocation(location.id, { is_active: true });
-                                    toast.success("Location reactivated");
-                                    await load();
-                                  } catch (err) {
-                                    toast.error(firstError(err));
-                                  }
-                                }}
-                              >
-                                Activate
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={async () => {
-                                try {
-                                  await deleteDowntimeLocation(location.id);
-                                  toast.success("Location deleted");
-                                  await load();
-                                } catch (err) {
-                                  toast.error(firstError(err));
-                                }
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </div>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))

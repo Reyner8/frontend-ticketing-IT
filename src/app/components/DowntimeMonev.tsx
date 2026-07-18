@@ -49,7 +49,10 @@ import {
   TrendingDown,
   Server,
   Activity,
+  Zap,
 } from "lucide-react";
+import { getImpactColor, getStatusColor, getTypeColor } from "../lib/downtime-utils";
+import { Separator } from "./ui/separator";
 
 function firstError(err: unknown): string {
   if (err instanceof ApiError) {
@@ -166,7 +169,10 @@ export function DowntimeMonev() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl tracking-tight">Downtime Monitoring & Evaluation</h2>
+          <h2 className="text-3xl tracking-tight flex items-center gap-2">
+            <Zap className="h-8 w-8" />
+            Downtime Monitoring & Evaluation
+          </h2>
           <p className="text-muted-foreground">
             Track component downtimes, dependency impact, and location-aware reporting
           </p>
@@ -561,40 +567,41 @@ function DowntimeDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex flex-wrap items-center gap-2 pr-8">
+            <Zap className="h-5 w-5" />
             <span>{downtime.id}</span>
-            <Badge
-              className={
-                downtime.status === "ongoing"
-                  ? "text-red-600 bg-red-100"
-                  : "text-green-600 bg-green-100"
-              }
-            >
-              {downtime.status}
-            </Badge>
+            <Badge className={getStatusColor(downtime.status)}>{downtime.status}</Badge>
+            <Badge className={getTypeColor(downtime.type)}>{downtime.type}</Badge>
+            <Badge className={getImpactColor(downtime.impact)}>{downtime.impact}</Badge>
           </DialogTitle>
           <DialogDescription>{downtime.title}</DialogDescription>
         </DialogHeader>
 
         {canManage && downtime.status === "ongoing" && (
-          <div className="flex gap-2 mb-2">
-            <Button size="sm" variant="outline" onClick={() => setEditing((v) => !v)}>
-              {editing ? "Cancel edit" : "Edit"}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setResolving(true);
-                setEndTime(toLocalInput(new Date()));
-              }}
-            >
-              Resolve
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4 bg-slate-50/50 dark:bg-slate-900/20 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Actions
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditing((v) => !v)}>
+                {editing ? "Cancel edit" : "Edit"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setResolving(true);
+                  setEndTime(toLocalInput(new Date()));
+                }}
+              >
+                Resolve
+              </Button>
+            </div>
           </div>
         )}
 
         {editing && (
-          <div className="space-y-3 mb-4">
+          <div className="space-y-3 mb-4 border rounded-md p-3">
+            <h4 className="font-medium text-sm">Edit Incident</h4>
             <div className="space-y-1">
               <Label>Title</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -643,14 +650,20 @@ function DowntimeDetailDialog({
               suggestedIds={suggestedIds}
               helperText="Suggestions from master dependencies are preselected and editable."
             />
-            <Button onClick={saveEdit} disabled={busy}>
-              Save changes
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={saveEdit} disabled={busy}>
+                {busy ? "Saving..." : "Save changes"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
 
         {resolving && downtime.status === "ongoing" && (
           <div className="space-y-3 mb-4 border rounded-md p-3">
+            <h4 className="font-medium text-sm">Resolve Incident</h4>
             <div className="space-y-1">
               <Label>Actual end time</Label>
               <Input
@@ -710,11 +723,11 @@ function DowntimeDetailDialog({
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Type:</span>
-                    <Badge>{downtime.type}</Badge>
+                    <Badge className={getTypeColor(downtime.type)}>{downtime.type}</Badge>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Impact:</span>
-                    <Badge>{downtime.impact}</Badge>
+                    <Badge className={getImpactColor(downtime.impact)}>{downtime.impact}</Badge>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Location:</span>
@@ -954,6 +967,7 @@ function NewDowntimeDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <h4 className="font-medium text-sm text-muted-foreground">Basic Information</h4>
           <div>
             <Label htmlFor="title">Event Title *</Label>
             <Input
@@ -1010,6 +1024,9 @@ function NewDowntimeDialog({
             />
           </div>
 
+          <Separator />
+          <h4 className="font-medium text-sm text-muted-foreground">Timing & Location</h4>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Actual start time *</Label>
@@ -1051,6 +1068,9 @@ function NewDowntimeDialog({
               </SelectContent>
             </Select>
           </div>
+
+          <Separator />
+          <h4 className="font-medium text-sm text-muted-foreground">Impacted Components</h4>
 
           <ComponentMultiSelect
             label="Directly down components *"
@@ -1101,6 +1121,8 @@ function NewDowntimeDialog({
             suggestedIds={suggestedIds}
             helperText="Dependency suggestions are preselected and can be edited before saving."
           />
+
+          <Separator />
 
           <div>
             <Label>Additional Details</Label>

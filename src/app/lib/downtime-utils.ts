@@ -14,6 +14,26 @@ export const getImpactColor = (impact: string) => {
   return IMPACT_COLORS[impact as keyof typeof IMPACT_COLORS] || 'text-gray-600 bg-gray-100';
 };
 
+const COMPONENT_CATEGORY_COLORS: Record<string, string> = {
+  application: 'text-blue-600 bg-blue-100',
+  network: 'text-purple-600 bg-purple-100',
+  utility: 'text-yellow-600 bg-yellow-100',
+  infrastructure: 'text-orange-600 bg-orange-100',
+  equipment: 'text-cyan-600 bg-cyan-100',
+  operational_service: 'text-pink-600 bg-pink-100',
+  other: 'text-gray-600 bg-gray-100',
+};
+
+export const getComponentCategoryColor = (category: string) => {
+  return COMPONENT_CATEGORY_COLORS[category] || 'text-gray-600 bg-gray-100';
+};
+
+export const getUptimeColor = (percent: number) => {
+  if (percent >= 99.5) return 'text-green-700 bg-green-100';
+  if (percent >= 98) return 'text-yellow-700 bg-yellow-100';
+  return 'text-red-700 bg-red-100';
+};
+
 export const formatDuration = (minutes: number) => {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;

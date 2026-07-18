@@ -15,7 +15,7 @@ import {
   fetchDowntimeLocations,
 } from "../../lib/api/services";
 import { DowntimeAnalyticsSummary, DowntimeComponent, DowntimeLocation } from "../../types";
-import { formatDuration } from "../../lib/downtime-utils";
+import { formatDuration, getComponentCategoryColor, getUptimeColor } from "../../lib/downtime-utils";
 import { DowntimeCharts } from "./DowntimeCharts";
 import { Download } from "lucide-react";
 
@@ -207,25 +207,26 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
               </SelectContent>
             </Select>
           </div>
-          <div className="md:col-span-5 flex gap-2">
+          <div className="md:col-span-5 flex flex-wrap items-center justify-between gap-2 pt-1">
             <Button onClick={loadAnalytics} disabled={loading}>
               {loading ? "Loading..." : "Apply Filters"}
             </Button>
             {mode === "reports" && (
-              <>
-                <Button variant="outline" onClick={() => exportData("csv")} disabled={exporting}>
+              <div className="flex flex-wrap gap-2">
+                <span className="w-full text-xs text-muted-foreground md:hidden">Export as:</span>
+                <Button variant="outline" size="sm" onClick={() => exportData("csv")} disabled={exporting}>
                   <Download className="mr-2 h-4 w-4" />
                   CSV
                 </Button>
-                <Button variant="outline" onClick={() => exportData("excel")} disabled={exporting}>
+                <Button variant="outline" size="sm" onClick={() => exportData("excel")} disabled={exporting}>
                   <Download className="mr-2 h-4 w-4" />
                   Excel
                 </Button>
-                <Button variant="outline" onClick={() => exportData("pdf")} disabled={exporting}>
+                <Button variant="outline" size="sm" onClick={() => exportData("pdf")} disabled={exporting}>
                   <Download className="mr-2 h-4 w-4" />
                   PDF/HTML
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </CardContent>
@@ -317,7 +318,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
                     <TableCell>{row.incidentCount}</TableCell>
                     <TableCell>{formatDuration(row.totalMinutes)}</TableCell>
                     <TableCell>
-                      <Badge className="text-green-700 bg-green-100">{row.uptimePercent}%</Badge>
+                      <Badge className={getUptimeColor(row.uptimePercent)}>{row.uptimePercent}%</Badge>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -349,11 +350,15 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
               <TableBody>
                 {(analytics?.categoryUptime ?? []).map((row) => (
                   <TableRow key={row.category}>
-                    <TableCell className="capitalize">{row.category.replaceAll("_", " ")}</TableCell>
+                    <TableCell>
+                      <Badge className={getComponentCategoryColor(row.category)}>
+                        {row.category.replaceAll("_", " ")}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{row.incidentCount}</TableCell>
                     <TableCell>{formatDuration(row.totalMinutes)}</TableCell>
                     <TableCell>
-                      <Badge className="text-green-700 bg-green-100">{row.uptimePercent}%</Badge>
+                      <Badge className={getUptimeColor(row.uptimePercent)}>{row.uptimePercent}%</Badge>
                     </TableCell>
                   </TableRow>
                 ))}
