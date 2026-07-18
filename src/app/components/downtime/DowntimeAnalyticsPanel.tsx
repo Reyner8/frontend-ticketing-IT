@@ -312,7 +312,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
                     <TableCell>
                       <div className="font-medium">{row.name}</div>
                       <div className="text-xs text-muted-foreground capitalize">
-                        {row.category.replaceAll("_", " ")}
+                        {row.category.replace(/_/g, " ")}
                       </div>
                     </TableCell>
                     <TableCell>{row.incidentCount}</TableCell>
@@ -352,7 +352,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
                   <TableRow key={row.category}>
                     <TableCell>
                       <Badge className={getComponentCategoryColor(row.category)}>
-                        {row.category.replaceAll("_", " ")}
+                        {row.category.replace(/_/g, " ")}
                       </Badge>
                     </TableCell>
                     <TableCell>{row.incidentCount}</TableCell>

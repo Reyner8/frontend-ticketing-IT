@@ -354,7 +354,7 @@ export interface DowntimeRecord {
   duration?: number; // in minutes
   /** @deprecated prefer affectedComponents */
   affectedSystems: string[];
-  location?: DowntimeLocation | null;
+  locations: DowntimeLocation[];
   sourceComponents: DowntimeComponentRef[];
   affectedComponents: DowntimeComponentRef[];
   impact: 'low' | 'medium' | 'high' | 'critical';

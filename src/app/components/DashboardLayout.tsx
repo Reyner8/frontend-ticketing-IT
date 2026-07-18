@@ -22,7 +22,8 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { TicketPriority, DowntimeType } from "../types";
+import { TicketPriority, DowntimeComponent, DowntimeLocation, DowntimeType } from "../types";
+import { LocationMultiSelect } from "./downtime/LocationMultiSelect";
 import {
   createTicket,
   createDowntimeRecord,
@@ -30,6 +31,8 @@ import {
   fetchErrorReports,
   fetchFeatureRequests,
   fetchDowntimeRecords,
+  fetchDowntimeComponents,
+  fetchDowntimeLocations,
   fetchUsers,
   downloadServerExport,
   fetchTickets as fetchTicketsForAssign,
@@ -288,10 +291,30 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
     impact: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     startTime: new Date().toISOString().slice(0, 16)
   });
+  const [locations, setLocations] = useState<DowntimeLocation[]>([]);
+  const [components, setComponents] = useState<DowntimeComponent[]>([]);
+  const [locationIds, setLocationIds] = useState<string[]>([]);
+  const [sourceComponentId, setSourceComponentId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetchDowntimeLocations({ per_page: 100, is_active: true }),
+      fetchDowntimeComponents({ per_page: 100, is_active: true }),
+    ])
+      .then(([locationResult, componentResult]) => {
+        setLocations(locationResult.locations);
+        setComponents(componentResult.components);
+      })
+      .catch(() => toast.error("Failed to load downtime master data"));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (locationIds.length === 0 || !sourceComponentId) {
+      toast.error("Select at least one location and one directly-down component");
+      return;
+    }
     setSubmitting(true);
     try {
       await createDowntimeRecord({
@@ -300,6 +323,8 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
         reason: formData.reason,
         impact: formData.impact,
         start_time: new Date(formData.startTime).toISOString().slice(0, 19).replace('T', ' '),
+        location_ids: locationIds.map(Number),
+        source_component_ids: [Number(sourceComponentId)],
       });
       toast.success('Downtime logged successfully');
       onClose();
@@ -351,6 +376,29 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <LocationMultiSelect
+        locations={locations}
+        selectedIds={locationIds}
+        onChange={setLocationIds}
+        helperText="Select each affected unit, or select all."
+      />
+
+      <div>
+        <Label>Directly-down component *</Label>
+        <Select value={sourceComponentId} onValueChange={setSourceComponentId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select component" />
+          </SelectTrigger>
+          <SelectContent>
+            {components.map((component) => (
+              <SelectItem key={component.id} value={component.id}>
+                {component.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div>

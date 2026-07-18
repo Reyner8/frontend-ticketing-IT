@@ -82,7 +82,7 @@ export function ComponentMultiSelect({
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {component.category.replaceAll("_", " ")}
+                      {component.category.replace(/_/g, " ")}
                     </p>
                   </div>
                 </label>

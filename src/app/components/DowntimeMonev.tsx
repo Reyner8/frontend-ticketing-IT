@@ -37,6 +37,7 @@ import { DowntimeCalendar } from "./downtime/DowntimeCalendar";
 import { DowntimeMasterPanel } from "./downtime/DowntimeMasterPanel";
 import { DowntimeAnalyticsPanel } from "./downtime/DowntimeAnalyticsPanel";
 import { ComponentMultiSelect } from "./downtime/ComponentMultiSelect";
+import { LocationMultiSelect } from "./downtime/LocationMultiSelect";
 import { generateCalendarEvents, formatDate, formatDuration } from "../lib/downtime-utils";
 import { getUserName } from "../lib/user-utils";
 import { PAGINATION } from "../lib/constants";
@@ -131,7 +132,7 @@ export function DowntimeMonev() {
           downtime.title.toLowerCase().includes(lower) ||
           downtime.reason.toLowerCase().includes(lower) ||
           downtime.id.toLowerCase().includes(lower) ||
-          downtime.location?.name.toLowerCase().includes(lower) ||
+          downtime.locations.some((location) => location.name.toLowerCase().includes(lower)) ||
           downtime.sourceComponents.some((c) => c.name.toLowerCase().includes(lower)) ||
           downtime.affectedComponents.some((c) => c.name.toLowerCase().includes(lower))
       );
@@ -451,7 +452,7 @@ function DowntimeDetailDialog({
   const [busy, setBusy] = useState(false);
   const [components, setComponents] = useState<DowntimeComponent[]>([]);
   const [locations, setLocations] = useState<DowntimeLocation[]>([]);
-  const [locationId, setLocationId] = useState(downtime.location?.id ?? "");
+  const [locationIds, setLocationIds] = useState(downtime.locations.map((location) => location.id));
   const [sourceIds, setSourceIds] = useState(downtime.sourceComponents.map((c) => c.id));
   const [affectedIds, setAffectedIds] = useState(downtime.affectedComponents.map((c) => c.id));
   const [suggestedIds, setSuggestedIds] = useState<string[]>([]);
@@ -467,7 +468,7 @@ function DowntimeDetailDialog({
     setPreventiveMeasures(downtime.preventiveMeasures ?? "");
     setAffectedUsers(String(downtime.affectedUsers ?? ""));
     setEstimatedCost(String(downtime.estimatedCost ?? ""));
-    setLocationId(downtime.location?.id ?? "");
+    setLocationIds(downtime.locations.map((location) => location.id));
     setSourceIds(downtime.sourceComponents.map((c) => c.id));
     setAffectedIds(downtime.affectedComponents.map((c) => c.id));
     setEditing(false);
@@ -513,6 +514,10 @@ function DowntimeDetailDialog({
   void tick;
 
   const saveEdit = async () => {
+    if (locationIds.length === 0) {
+      toast.error("Select at least one location");
+      return;
+    }
     if (sourceIds.length === 0) {
       toast.error("Select at least one directly-down component");
       return;
@@ -524,7 +529,7 @@ function DowntimeDetailDialog({
         reason,
         description: description || null,
         start_time: toApiDateTime(startTime),
-        location_id: locationId ? Number(locationId) : null,
+        location_ids: locationIds.map(Number),
         source_component_ids: sourceIds.map(Number),
         affected_component_ids: affectedIds.map(Number),
       });
@@ -618,22 +623,11 @@ function DowntimeDetailDialog({
                 onChange={(e) => setStartTime(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
-              <Label>Location</Label>
-              <Select value={locationId || "none"} onValueChange={(v) => setLocationId(v === "none" ? "" : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Unspecified</SelectItem>
-                  {locations.map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <LocationMultiSelect
+              locations={locations}
+              selectedIds={locationIds}
+              onChange={setLocationIds}
+            />
             <ComponentMultiSelect
               label="Directly down components"
               components={components}
@@ -730,8 +724,10 @@ function DowntimeDetailDialog({
                     <Badge className={getImpactColor(downtime.impact)}>{downtime.impact}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Location:</span>
-                    <span>{downtime.location?.name ?? "Unspecified"}</span>
+                    <span className="text-muted-foreground">Locations:</span>
+                    <span className="max-w-[65%] text-right">
+                      {downtime.locations.map((location) => location.name).join(", ") || "Unspecified"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Duration:</span>
@@ -852,8 +848,8 @@ function NewDowntimeDialog({
     startTime: toLocalInput(new Date()),
     endTime: "",
     description: "",
-    locationId: "",
   });
+  const [locationIds, setLocationIds] = useState<string[]>([]);
   const [sourceIds, setSourceIds] = useState<string[]>([]);
   const [affectedIds, setAffectedIds] = useState<string[]>([]);
   const [suggestedIds, setSuggestedIds] = useState<string[]>([]);
@@ -915,6 +911,10 @@ function NewDowntimeDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (locationIds.length === 0) {
+      toast.error("Select at least one location");
+      return;
+    }
     if (sourceIds.length === 0) {
       toast.error("Select at least one directly-down component");
       return;
@@ -929,7 +929,7 @@ function NewDowntimeDialog({
         start_time: toApiDateTime(formData.startTime),
         end_time: formData.endTime ? toApiDateTime(formData.endTime) : undefined,
         description: formData.description || undefined,
-        location_id: formData.locationId ? Number(formData.locationId) : null,
+        location_ids: locationIds.map(Number),
         source_component_ids: sourceIds.map(Number),
         affected_component_ids: affectedIds.map(Number),
       });
@@ -944,8 +944,8 @@ function NewDowntimeDialog({
         startTime: toLocalInput(new Date()),
         endTime: "",
         description: "",
-        locationId: "",
       });
+      setLocationIds([]);
       setSourceIds([]);
       setAffectedIds([]);
       setSuggestedIds([]);
@@ -1047,27 +1047,12 @@ function NewDowntimeDialog({
             </div>
           </div>
 
-          <div>
-            <Label>Location</Label>
-            <Select
-              value={formData.locationId || "none"}
-              onValueChange={(value) =>
-                setFormData({ ...formData, locationId: value === "none" ? "" : value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Unspecified</SelectItem>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <LocationMultiSelect
+            locations={locations}
+            selectedIds={locationIds}
+            onChange={setLocationIds}
+            helperText="Select each affected unit, or use Select all locations."
+          />
 
           <Separator />
           <h4 className="font-medium text-sm text-muted-foreground">Impacted Components</h4>

@@ -266,7 +266,7 @@ export function DowntimeMasterPanel() {
                         </TableCell>
                         <TableCell>
                           <Badge className={getComponentCategoryColor(component.category)}>
-                            {component.category.replaceAll("_", " ")}
+                            {component.category.replace(/_/g, " ")}
                           </Badge>
                         </TableCell>
                         <TableCell>

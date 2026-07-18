@@ -506,7 +506,7 @@ export async function createDowntimeRecord(payload: {
   impact: string;
   description?: string;
   end_time?: string;
-  location_id?: number | null;
+  location_ids: number[];
   source_component_ids: number[];
   affected_component_ids?: number[];
   affected_users?: number;

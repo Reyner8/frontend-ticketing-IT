@@ -365,7 +365,7 @@ export function mapDowntimeRecord(data: Record<string, unknown>): DowntimeRecord
   const status = data.status as { value?: string } | string;
   const duration = data.duration as { minutes?: number } | number | null;
   const reportedBy = data.reported_by as { id?: number } | null;
-  const location = data.location as Record<string, unknown> | null | undefined;
+  const locations = ((data.locations as Record<string, unknown>[]) ?? []).map(mapDowntimeLocation);
   const sourceComponents = ((data.source_components as Record<string, unknown>[]) ?? []).map(
     mapDowntimeComponentRef
   );
@@ -390,7 +390,7 @@ export function mapDowntimeRecord(data: Record<string, unknown>): DowntimeRecord
     endTime: data.end_time ? parseDate(data.end_time as string) : undefined,
     duration: durationMinutes ?? undefined,
     affectedSystems: affectedComponents.map((c) => c.name),
-    location: location ? mapDowntimeLocation(location) : null,
+    locations,
     sourceComponents,
     affectedComponents,
     impact: (impactValue as DowntimeRecord['impact']) || 'medium',

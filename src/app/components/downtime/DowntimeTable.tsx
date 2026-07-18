@@ -54,7 +54,22 @@ export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTab
                 </div>
               </TableCell>
               <TableCell>
-                <span className="text-sm">{downtime.location?.name ?? "—"}</span>
+                <div className="flex max-w-[180px] flex-wrap gap-1">
+                  {downtime.locations.length === 0 ? (
+                    <span className="text-sm text-muted-foreground">—</span>
+                  ) : (
+                    <>
+                      {downtime.locations.slice(0, 2).map((location) => (
+                        <Badge key={location.id} variant="outline">
+                          {location.name}
+                        </Badge>
+                      ))}
+                      {downtime.locations.length > 2 && (
+                        <Badge variant="outline">+{downtime.locations.length - 2}</Badge>
+                      )}
+                    </>
+                  )}
+                </div>
               </TableCell>
               <TableCell>
                 <Badge className={getTypeColor(downtime.type)}>{downtime.type}</Badge>
