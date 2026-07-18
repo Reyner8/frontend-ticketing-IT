@@ -20,7 +20,11 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { ArrowRightCircle, Calendar as CalendarIcon } from "lucide-react";
-import { updateResourceStatus, updateFeatureRequest } from "../lib/api/services";
+import {
+  updateResourceStatus,
+  updateErrorReport,
+  updateFeatureRequest,
+} from "../lib/api/services";
 import { ApiError } from "../lib/api/client";
 import { useApp } from "../lib/store";
 import { Calendar } from "./ui/calendar";
@@ -80,12 +84,17 @@ export function StatusChangeActions({
         reason: reason || undefined,
         notes: notes || undefined,
       };
-      if (target === "features") {
+      if (target === "features" || target === "errors") {
         payload.effective_at = new Date(effectiveAt).toISOString();
       }
       await updateResourceStatus(target, resourceId, payload);
       if (target === "features" && status === "development" && dueDate) {
         await updateFeatureRequest(resourceId, {
+          due_date: format(dueDate, "yyyy-MM-dd"),
+        });
+      }
+      if (target === "errors" && status === "in_progress" && dueDate) {
+        await updateErrorReport(resourceId, {
           due_date: format(dueDate, "yyyy-MM-dd"),
         });
       }
@@ -155,11 +164,11 @@ export function StatusChangeActions({
               />
             </div>
 
-            {target === "features" && (
+            {(target === "features" || target === "errors") && (
               <div>
                 <Label>Effective Date & Time</Label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  When this status change took effect (required for progress tracking).
+                  When this status change took effect (required for lifecycle tracking).
                 </p>
                 <Input
                   type="datetime-local"
@@ -184,6 +193,34 @@ export function StatusChangeActions({
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dueDate ? format(dueDate, "PPP") : "Pilih tanggal target selesai"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={setDueDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+
+            {target === "errors" && status === "in_progress" && (
+              <div>
+                <Label>Due Date (opsional)</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Due date dapat disesuaikan saat penanganan dimulai. Bisa juga diubah lewat Edit.
+                </p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dueDate ? format(dueDate, "PPP") : "Pilih target penyelesaian"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">

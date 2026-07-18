@@ -37,6 +37,70 @@ const ERROR_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "completed", label: "Completed" },
   { value: "overdue", label: "Overdue" },
 ];
+
+const ERROR_LIFECYCLE: { status: ErrorReportStatus; label: string }[] = [
+  { status: "pending_approval", label: "Reported" },
+  { status: "assigned", label: "Assigned" },
+  { status: "in_progress", label: "In Progress" },
+  { status: "completed", label: "Completed" },
+];
+
+const ERROR_STATUS_ORDER: Record<ErrorReportStatus, number> = {
+  pending_approval: 0,
+  assigned: 1,
+  in_progress: 2,
+  overdue: 2,
+  completed: 3,
+};
+
+function formatPhaseDuration(from: Date, to: Date): string {
+  const ms = to.getTime() - from.getTime();
+  if (ms <= 0) return "";
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  if (days >= 1) return `${days}d ${hours % 24}h`;
+  if (hours >= 1) return `${hours}h`;
+  return `${Math.floor(ms / (1000 * 60))}m`;
+}
+
+function buildErrorLifecycleSteps(
+  history: StatusHistoryEntry[],
+  currentStatus: ErrorReportStatus,
+  createdAt: Date
+) {
+  const sorted = [...history].sort(
+    (a, b) => a.effectiveAt.getTime() - b.effectiveAt.getTime()
+  );
+  const statusAt = new Map<string, Date>();
+  for (const entry of sorted) {
+    if (entry.newStatus && !statusAt.has(entry.newStatus)) {
+      statusAt.set(entry.newStatus, entry.effectiveAt);
+    }
+  }
+  if (!statusAt.has("pending_approval")) {
+    statusAt.set("pending_approval", createdAt);
+  }
+
+  const lifecycleStatus = currentStatus === "overdue" ? "in_progress" : currentStatus;
+  const currentIdx = ERROR_STATUS_ORDER[lifecycleStatus];
+
+  return ERROR_LIFECYCLE.map((step, index) => {
+    const effectiveAt = statusAt.get(step.status);
+    const nextStep = ERROR_LIFECYCLE[index + 1];
+    const nextAt = nextStep ? statusAt.get(nextStep.status) : undefined;
+    const stepState =
+      lifecycleStatus === step.status
+        ? "current"
+        : currentIdx > ERROR_STATUS_ORDER[step.status]
+          ? "completed"
+          : "pending";
+    const durationEnd = nextAt ?? (stepState === "current" ? new Date() : undefined);
+    const duration =
+      effectiveAt && durationEnd ? formatPhaseDuration(effectiveAt, durationEnd) : undefined;
+
+    return { ...step, effectiveAt, stepState, duration };
+  });
+}
 import { 
   Search, 
   Filter, 
@@ -284,20 +348,8 @@ export function ErrorReports() {
     if (report.slaBreached) {
       return { status: 'Breached', color: 'text-red-600 bg-red-100' };
     }
-    
-    if (report.slaTimeRemaining <= 2) {
-      return { status: 'At Risk', color: 'text-yellow-600 bg-yellow-100' };
-    }
-    
-    return { status: 'On Time', color: 'text-green-600 bg-green-100' };
-  };
 
-  const formatSLATime = (hours: number) => {
-    if (hours <= 0) return '0h';
-    if (hours < 24) return `${Math.round(hours * 10) / 10}h`;
-    const days = Math.floor(hours / 24);
-    const remainingHours = Math.round(hours % 24);
-    return `${days}d ${remainingHours}h`;
+    return { status: 'On Track', color: 'text-green-600 bg-green-100' };
   };
 
   const getUserName = (userId: string) => {
@@ -554,7 +606,6 @@ export function ErrorReports() {
                     )}
                   </TableHead>
                   <TableHead>Assigned To</TableHead>
-                  <TableHead>Effort</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('dueDate')}
@@ -620,14 +671,6 @@ export function ErrorReports() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {report.actualEffort ? `${report.actualEffort}h` : '-'}
-                          {report.estimatedEffort && (
-                            <span className="text-muted-foreground"> / {report.estimatedEffort}h</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
                         {report.dueDate ? (
                           <div className="text-sm">
                             {formatDate(report.dueDate)}
@@ -640,17 +683,9 @@ export function ErrorReports() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
-                          <Badge className={slaStatus.color}>
-                            {slaStatus.status}
-                          </Badge>
-                          <div className="text-xs text-muted-foreground">
-                            {report.slaTimeRemaining > 0 
-                              ? `${formatSLATime(report.slaTimeRemaining)} left`
-                              : `${formatSLATime(Math.abs(report.slaTimeRemaining))} overdue`
-                            }
-                          </div>
-                        </div>
+                        <Badge className={slaStatus.color}>
+                          {slaStatus.status}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -723,6 +758,7 @@ export function ErrorReports() {
           report={selectedReport}
           open={!!selectedReport}
           onOpenChange={(open) => !open && setSelectedReport(null)}
+          onUpdated={refreshReports}
         />
       )}
 
@@ -751,7 +787,6 @@ function NewErrorReportDialog({
     description: '',
     priority: 'medium' as TicketPriority,
     category: 'software' as 'hardware' | 'network' | 'software',
-    estimatedEffort: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -773,7 +808,6 @@ function NewErrorReportDialog({
         description: '',
         priority: 'medium',
         category: 'software',
-        estimatedEffort: '',
       });
     } catch {
       toast.error('Failed to create error report');
@@ -847,21 +881,6 @@ function NewErrorReportDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="estimatedEffort">Estimated Effort (hours)</Label>
-              <Input
-                id="estimatedEffort"
-                type="number"
-                min="0"
-                step="0.5"
-                value={formData.estimatedEffort}
-                onChange={(e) => setFormData({ ...formData, estimatedEffort: e.target.value })}
-                placeholder="e.g., 4"
-              />
-            </div>
-          </div>
-
           <div className="border rounded-lg p-4 bg-muted/30">
             <h4 className="font-medium mb-2">SLA Information</h4>
             <p className="text-sm text-muted-foreground">
@@ -894,26 +913,45 @@ function ErrorReportDetailDialog({
   report,
   open,
   onOpenChange,
+  onUpdated,
 }: {
   report: ErrorReport;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUpdated?: () => void;
 }) {
   const [liveReport, setLiveReport] = useState(report);
+  const [statusHistory, setStatusHistory] = useState<StatusHistoryEntry[]>(report.statusHistory);
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>(report.activityLog);
+  const [activityLoading, setActivityLoading] = useState(false);
   const users = getCachedUsers();
 
   useEffect(() => {
     setLiveReport(report);
-    fetchErrorReportDetail(report.id)
-      .then(setLiveReport)
-      .catch(() => setLiveReport(report));
+    setStatusHistory(report.statusHistory);
+    setActivityLog(report.activityLog);
   }, [report.id]);
 
-  const refreshDetail = () => {
-    fetchErrorReportDetail(liveReport.id)
-      .then(setLiveReport)
-      .catch(() => {});
+  const refreshDetail = async () => {
+    setActivityLoading(true);
+    try {
+      const [detail, history, activity] = await Promise.all([
+        fetchErrorReportDetail(liveReport.id),
+        fetchErrorStatusHistory(liveReport.id).catch(() => []),
+        fetchErrorActivityLogs(liveReport.id).catch(() => []),
+      ]);
+      setLiveReport(detail);
+      setStatusHistory(history);
+      setActivityLog(activity);
+      onUpdated?.();
+    } finally {
+      setActivityLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (open) void refreshDetail();
+  }, [open, report.id]);
   
   const slaStatus = liveReport.slaBreached 
     ? { status: 'Breached', color: 'text-red-600 bg-red-100' }
@@ -971,28 +1009,30 @@ function ErrorReportDetailDialog({
     }
   };
 
-  const formatSLATime = (hours: number) => {
-    if (hours <= 0) return '0h';
-    if (hours < 24) return `${Math.round(hours * 10) / 10}h`;
-    const days = Math.floor(hours / 24);
-    const remainingHours = Math.round(hours % 24);
-    return `${days}d ${remainingHours}h`;
-  };
+  const lifecycleSteps = buildErrorLifecycleSteps(
+    statusHistory,
+    liveReport.status,
+    liveReport.createdAt
+  );
+  const sortedHistory = [...statusHistory].sort(
+    (a, b) => a.effectiveAt.getTime() - b.effectiveAt.getTime()
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span>{report.id}</span>
-            <Badge className={`${report.slaBreached ? 'text-red-600 bg-red-100' : 'text-green-600 bg-green-100'}`}>
+          <DialogTitle className="flex flex-wrap items-center gap-2 pr-8">
+            <AlertTriangle className="h-5 w-5" />
+            <span>{liveReport.id}</span>
+            <Badge className={liveReport.slaBreached ? 'text-red-600 bg-red-100' : 'text-green-600 bg-green-100'}>
               {slaStatus.status}
             </Badge>
-            <Badge className={getCategoryColor(report.category)}>
-              {report.category}
+            <Badge className={getCategoryColor(liveReport.category)}>
+              {liveReport.category}
             </Badge>
           </DialogTitle>
-          <DialogDescription>{report.title}</DialogDescription>
+          <DialogDescription>{liveReport.title}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col md:flex-row md:items-stretch justify-between gap-4 border-b pb-4 bg-slate-50/50 dark:bg-slate-900/20 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
@@ -1041,14 +1081,17 @@ function ErrorReportDetailDialog({
               Kelola
             </span>
             <ResourceEditActions
-              title={report.title}
-              description={report.description}
+              title={liveReport.title}
+              description={liveReport.description}
+              showDueDate
+              dueDate={liveReport.dueDate}
               onUpdate={async (payload) => {
-                await updateErrorReport(report.id, payload);
-                onOpenChange(false);
+                const updated = await updateErrorReport(liveReport.id, payload);
+                setLiveReport(updated);
+                onUpdated?.();
               }}
               onDelete={async () => {
-                await deleteErrorReport(report.id);
+                await deleteErrorReport(liveReport.id);
                 onOpenChange(false);
               }}
             />
@@ -1056,14 +1099,16 @@ function ErrorReportDetailDialog({
         </div>
 
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="inline-flex h-auto w-max min-w-full flex-wrap gap-1 p-1">
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="timeline">Progress Timeline</TabsTrigger>
-            <TabsTrigger value="activity">Activity Log</TabsTrigger>
+            <TabsTrigger value="progress">Progress Timeline</TabsTrigger>
+            <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="mt-4">
-            <ScrollArea className="h-[500px] pr-4">
+            <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-6">
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-6">
@@ -1072,35 +1117,35 @@ function ErrorReportDetailDialog({
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Report ID:</span>
-                        <span className="font-mono">{report.id}</span>
+                        <span className="font-mono">{liveReport.id}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Category:</span>
-                        <Badge className={getCategoryColor(report.category)}>
-                          {report.category}
+                        <Badge className={getCategoryColor(liveReport.category)}>
+                          {liveReport.category}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Priority:</span>
-                        <Badge className={getPriorityColor(report.priority)}>
-                          {report.priority}
+                        <Badge className={getPriorityColor(liveReport.priority)}>
+                          {liveReport.priority}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Status:</span>
-                        <Badge className={getStatusColor(report.status, report.approvalStatus)}>
-                          {getStatusLabel(report)}
+                        <Badge className={getStatusColor(liveReport.status, liveReport.approvalStatus)}>
+                          {getStatusLabel(liveReport)}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Assigned Team:</span>
-                        <span className="capitalize">{report.assignedTeam || 'Unassigned'}</span>
+                        <span className="capitalize">{liveReport.assignedTeam || 'Unassigned'}</span>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-medium mb-3">SLA & Timing</h4>
+                    <h4 className="font-medium mb-3">Target Penyelesaian</h4>
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">SLA Status:</span>
@@ -1108,26 +1153,17 @@ function ErrorReportDetailDialog({
                           {slaStatus.status}
                         </Badge>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Time Elapsed:</span>
-                        <span>{formatSLATime(report.slaTimeElapsed)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Time Remaining:</span>
-                        <span className={report.slaTimeRemaining <= 0 ? 'text-red-600' : ''}>
-                          {report.slaTimeRemaining <= 0 
-                            ? `${formatSLATime(Math.abs(report.slaTimeRemaining))} overdue`
-                            : formatSLATime(report.slaTimeRemaining)
-                          }
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Due Date:</span>
+                        <span className={
+                          liveReport.dueDate &&
+                          new Date() > liveReport.dueDate &&
+                          liveReport.status !== 'completed'
+                            ? 'text-red-600'
+                            : ''
+                        }>
+                          {liveReport.dueDate ? formatDateTime(liveReport.dueDate) : 'Belum diatur'}
                         </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Estimated Effort:</span>
-                        <span>{report.estimatedEffort ? `${report.estimatedEffort}h` : 'Not estimated'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Actual Effort:</span>
-                        <span>{report.actualEffort ? `${report.actualEffort}h` : 'Not logged'}</span>
                       </div>
                     </div>
                   </div>
@@ -1137,7 +1173,7 @@ function ErrorReportDetailDialog({
                 <div>
                   <h4 className="font-medium mb-3">Description</h4>
                   <div className="p-4 bg-muted rounded-lg text-sm">
-                    {report.description}
+                    {liveReport.description}
                   </div>
                 </div>
 
@@ -1148,37 +1184,37 @@ function ErrorReportDetailDialog({
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Date Reported:</span>
-                        <span>{formatDateTime(report.dateReported)}</span>
+                        <span>{formatDateTime(liveReport.dateReported)}</span>
                       </div>
-                      {report.startDate && (
+                      {liveReport.startDate && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Start Date:</span>
-                          <span>{formatDateTime(report.startDate)}</span>
+                          <span>{formatDateTime(liveReport.startDate)}</span>
                         </div>
                       )}
-                      {report.dueDate && (
+                      {liveReport.dueDate && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Due Date:</span>
-                          <span className={new Date() > report.dueDate && report.status !== 'completed' ? 'text-red-600' : ''}>
-                            {formatDateTime(report.dueDate)}
+                          <span className={new Date() > liveReport.dueDate && liveReport.status !== 'completed' ? 'text-red-600' : ''}>
+                            {formatDateTime(liveReport.dueDate)}
                           </span>
                         </div>
                       )}
                     </div>
                     <div className="space-y-2">
-                      {report.completionDate && (
+                      {liveReport.completionDate && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Completion Date:</span>
-                          <span>{formatDateTime(report.completionDate)}</span>
+                          <span>{formatDateTime(liveReport.completionDate)}</span>
                         </div>
                       )}
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Created:</span>
-                        <span>{formatDateTime(report.createdAt)}</span>
+                        <span>{formatDateTime(liveReport.createdAt)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Last Updated:</span>
-                        <span>{formatDateTime(report.updatedAt)}</span>
+                        <span>{formatDateTime(liveReport.updatedAt)}</span>
                       </div>
                     </div>
                   </div>
@@ -1193,53 +1229,142 @@ function ErrorReportDetailDialog({
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarFallback className="text-xs">
-                            {getUserName(report.reporterId).split(' ').map(n => n[0]).join('')}
+                            {getUserName(liveReport.reporterId).split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{getUserName(report.reporterId)}</span>
+                        <span>{getUserName(liveReport.reporterId)}</span>
                       </div>
                     </div>
-                    {report.assignedToId && (
+                    {liveReport.assignedToId && (
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Assigned To:</span>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
                             <AvatarFallback className="text-xs">
-                              {getUserName(report.assignedToId).split(' ').map(n => n[0]).join('')}
+                              {getUserName(liveReport.assignedToId).split(' ').map(n => n[0]).join('')}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{getUserName(report.assignedToId)}</span>
+                          <span>{getUserName(liveReport.assignedToId)}</span>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Attachments */}
-                <div>
-                  <AttachmentPanel
-                    parent="errors"
-                    parentId={report.id}
-                    canUpload
-                    canDelete
-                  />
-                </div>
               </div>
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="activity" className="mt-4">
-            <div className="space-y-4">
-              <h4 className="font-medium">Comments</h4>
-              <CommentThread parent="errors" resourceId={report.id} />
-            </div>
+          <TabsContent value="progress" className="mt-4">
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-medium mb-3">Lifecycle Penanganan Error</h4>
+                  <div className="space-y-4">
+                    {lifecycleSteps.map((step) => (
+                      <div key={step.status} className="flex items-start gap-3">
+                        <div className={`w-4 h-4 rounded-full mt-1 ${
+                          step.stepState === 'completed' ? 'bg-green-500' :
+                          step.stepState === 'current' ? 'bg-blue-500' :
+                          'bg-gray-300'
+                        }`} />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`font-medium ${
+                              step.stepState === 'completed' ? 'text-green-700' :
+                              step.stepState === 'current' ? 'text-blue-700' :
+                              'text-gray-500'
+                            }`}>
+                              {step.label}
+                            </span>
+                            {step.effectiveAt && (
+                              <span className="text-xs text-muted-foreground">
+                                {format(step.effectiveAt, 'PPp')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {step.stepState === 'completed' ? 'Completed' :
+                             step.stepState === 'current' ? 'In Progress' :
+                             'Pending'}
+                            {step.duration && ` · ${step.duration}`}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {liveReport.status === 'overdue' && (
+                  <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    Target penyelesaian terlewati. Tahap penanganan tetap dihitung sebagai In Progress.
+                  </div>
+                )}
+
+                {sortedHistory.length > 0 ? (
+                  <div>
+                    <h4 className="font-medium mb-3">Status Transitions</h4>
+                    <div className="space-y-3">
+                      {sortedHistory.map((entry, index) => {
+                        const next = sortedHistory[index + 1];
+                        const duration = next
+                          ? formatPhaseDuration(entry.effectiveAt, next.effectiveAt)
+                          : liveReport.status === entry.newStatus ||
+                              (liveReport.status === 'overdue' && entry.newStatus === 'in_progress')
+                            ? formatPhaseDuration(entry.effectiveAt, new Date())
+                            : undefined;
+
+                        return (
+                          <div key={entry.id} className="border rounded-md p-3 text-sm">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium capitalize">
+                                {entry.previousStatus.replace(/_/g, ' ')} → {entry.newStatus.replace(/_/g, ' ')}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {format(entry.effectiveAt, 'PPp')}
+                              </span>
+                            </div>
+                            {entry.reason && (
+                              <p className="text-muted-foreground mt-1">{entry.reason}</p>
+                            )}
+                            {duration && (
+                              <p className="text-xs text-muted-foreground mt-1">Duration: {duration}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No status history recorded yet
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="timeline" className="mt-4">
-            <ActivityTimelinePanel
-              statusHistory={report.statusHistory}
-              activityLog={report.activityLog}
-            />
+          <TabsContent value="comments" className="mt-4">
+            <CommentThread parent="errors" resourceId={liveReport.id} />
+          </TabsContent>
+
+          <TabsContent value="activity" className="mt-4">
+            {activityLoading ? (
+              <p className="text-sm text-muted-foreground">Loading activity...</p>
+            ) : (
+              <ActivityTimelinePanel activityLog={activityLog} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="files" className="mt-4">
+            <ScrollArea className="h-[400px]">
+              <AttachmentPanel
+                parent="errors"
+                parentId={liveReport.id}
+                canUpload
+                canDelete
+              />
+            </ScrollArea>
           </TabsContent>
         </Tabs>
       </DialogContent>

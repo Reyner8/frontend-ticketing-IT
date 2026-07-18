@@ -174,8 +174,6 @@ export function mapErrorReportListItem(data: Record<string, unknown>): ErrorRepo
     completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
     attachments: [],
     comments: [],
-    slaTimeElapsed: 0,
-    slaTimeRemaining: 0,
     slaBreached: (data.sla_breached as boolean) ?? false,
     statusHistory: [],
     activityLog: [],
@@ -189,7 +187,6 @@ export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport
   const assignedUser = data.assigned_user as { id?: number } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
   const sla = (data.sla ?? {}) as Record<string, unknown>;
-  const effort = (data.effort ?? {}) as Record<string, unknown>;
 
   return {
     id: String(data.id),
@@ -210,10 +207,6 @@ export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport
     startDate: data.start_date ? parseDate(data.start_date as string) : undefined,
     dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
     completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
-    estimatedEffort: effort.estimated as number | undefined,
-    actualEffort: effort.actual as number | undefined,
-    slaTimeElapsed: (sla.elapsed as number) ?? 0,
-    slaTimeRemaining: (sla.time_remaining as number) ?? 0,
     slaBreached: (sla.breached as boolean) ?? false,
     attachments: [],
     comments: [],

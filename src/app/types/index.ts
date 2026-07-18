@@ -133,12 +133,8 @@ export interface ErrorReport {
   startDate?: Date;
   dueDate?: Date;
   completionDate?: Date;
-  estimatedEffort?: number; // in hours
-  actualEffort?: number; // in hours
   attachments: Attachment[];
   comments: Comment[];
-  slaTimeElapsed: number; // in hours since creation
-  slaTimeRemaining: number; // in hours until deadline
   slaBreached: boolean;
   statusHistory: StatusHistoryEntry[];
   activityLog: ActivityLogEntry[];
