@@ -2,17 +2,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
-import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useApp } from '../lib/store';
-import { fetchDashboardData, getCachedUsers, fetchGlobalActivityLogs } from '../lib/api/services';
-import { Ticket, DowntimeRecord, DashboardStats, TeamWorkload, ActivityLogEntry } from '../types';
-import { AlertTriangle, CheckCircle, Clock, TrendingUp, Zap, Users, Target, Star, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+import { fetchDashboardData, fetchUsers, fetchGlobalActivityLogs } from '../lib/api/services';
+import { Ticket, DowntimeRecord, DashboardStats, TeamWorkload, ActivityLogEntry, User } from '../types';
+import { AlertTriangle, CheckCircle, Clock, TrendingUp, Users, Target, Star, Activity } from "lucide-react";
 
 export function Dashboard() {
   const { state } = useApp();
@@ -21,6 +17,7 @@ export function Dashboard() {
   const [downtimes, setDowntimes] = useState<DowntimeRecord[]>([]);
   const [teamWorkload, setTeamWorkload] = useState<TeamWorkload[]>([]);
   const [globalActivity, setGlobalActivity] = useState<ActivityLogEntry[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   
   const currentUser = state.currentUser;
@@ -37,6 +34,9 @@ export function Dashboard() {
         fetchGlobalActivityLogs({ per_page: 20 })
           .then(setGlobalActivity)
           .catch(() => setGlobalActivity([]));
+        if (currentUser?.role === 'admin' || currentUser?.role === 'team_lead') {
+          fetchUsers().then(setUsers).catch(() => setUsers([]));
+        }
       } catch {
         setStats({
           totalTickets: 0, openTickets: 0, resolvedToday: 0, overdueTickets: 0,
@@ -48,7 +48,7 @@ export function Dashboard() {
       }
     };
     load();
-  }, []);
+  }, [currentUser?.role]);
   
   if (loading || !stats) {
     return (
@@ -58,18 +58,12 @@ export function Dashboard() {
     );
   }
 
-  const mockUsers = getCachedUsers();
-
-  // Get user-specific data based on role
   const getUserSpecificData = () => {
-    if (!currentUser) return { tickets: [], downtimes: [] };
+    if (!currentUser) return { tickets: [] as Ticket[], downtimes: [] as DowntimeRecord[] };
     
     switch (currentUser.role) {
       case 'admin':
-        return { 
-          tickets, 
-          downtimes 
-        };
+        return { tickets, downtimes };
       case 'team_lead':
         return { 
           tickets: tickets.filter(t => t.assignedTeam === currentUser.team),
@@ -108,32 +102,111 @@ export function Dashboard() {
           time: ticket.dateReported,
         }));
   
-  // Active downtimes
   const activeDowntimes = downtimes.filter(d => d.status === 'ongoing');
 
-  // Ticket status distribution
+  const inProgressCount =
+    stats.statusBreakdown?.inProgress ??
+    tickets.filter((t) => t.status === 'in_progress').length;
+  const resolvedCount =
+    stats.statusBreakdown?.resolved ??
+    tickets.filter((t) => ['resolved', 'closed'].includes(t.status)).length;
+  const otherOpen = Math.max(0, stats.openTickets - inProgressCount);
+
   const statusData = [
-    { name: 'Open', value: stats.openTickets, color: '#FFBB28' },
-    { name: 'In Progress', value: 15, color: '#0088FE' },
-    { name: 'Resolved', value: stats.totalTickets - stats.openTickets - 15, color: '#00C49F' },
+    { name: 'Open', value: otherOpen, color: '#FFBB28' },
+    { name: 'In Progress', value: inProgressCount, color: '#0088FE' },
+    { name: 'Resolved', value: resolvedCount, color: '#00C49F' },
     { name: 'Overdue', value: stats.overdueTickets, color: '#FF8042' },
-  ];
+  ].filter((d) => d.value > 0);
 
-  // Performance trends (mock data)
-  const performanceTrends = [
-    { month: 'Aug', tickets: 98, resolved: 89, sla: 92 },
-    { month: 'Sep', tickets: 112, resolved: 95, sla: 89 },
-    { month: 'Oct', tickets: 125, resolved: 108, sla: 86 },
-    { month: 'Nov', tickets: 134, resolved: 118, sla: 88 },
-    { month: 'Dec', tickets: 108, resolved: 95, sla: 91 }
-  ];
+  const teamSlaChart = teamWorkload.map((t) => ({
+    team: t.team,
+    sla: t.slaCompliance,
+    open: t.openTickets,
+    resolved: t.resolvedTickets,
+    workload: t.workloadPercentage,
+  }));
 
-  // Team productivity over time
-  const teamProductivity = [
-    { week: 'W1', programmer: 85, network: 92, hardware: 78 },
-    { week: 'W2', programmer: 88, network: 89, hardware: 82 },
-    { week: 'W3', programmer: 91, network: 94, hardware: 85 },
-    { week: 'W4', programmer: 87, network: 96, hardware: 88 }
+  const downtimeCostThisMonth = downtimes
+    .filter((d) => {
+      const start = new Date(d.startTime);
+      const now = new Date();
+      return start.getMonth() === now.getMonth() && start.getFullYear() === now.getFullYear();
+    })
+    .reduce((sum, d) => sum + (d.estimatedCost ?? 0), 0);
+
+  const insights = (() => {
+    const items: { icon: 'trend' | 'warn' | 'ok'; title: string; detail: string }[] = [];
+    if (teamWorkload.length === 0) {
+      items.push({
+        icon: 'warn',
+        title: 'No workload data',
+        detail: 'Generate a team workload snapshot to see performance insights.',
+      });
+      return items;
+    }
+    const bySla = [...teamWorkload].sort((a, b) => b.slaCompliance - a.slaCompliance);
+    const byLoad = [...teamWorkload].sort((a, b) => b.workloadPercentage - a.workloadPercentage);
+    const top = bySla[0];
+    const loaded = byLoad[0];
+    if (top) {
+      items.push({
+        icon: 'ok',
+        title: 'Highest SLA',
+        detail: `${top.team} leads with ${top.slaCompliance}% SLA compliance.`,
+      });
+    }
+    if (loaded && loaded.workloadPercentage >= 70) {
+      items.push({
+        icon: 'warn',
+        title: 'Capacity pressure',
+        detail: `${loaded.team} workload is at ${loaded.workloadPercentage}%.`,
+      });
+    } else if (loaded) {
+      items.push({
+        icon: 'trend',
+        title: 'Workload balanced',
+        detail: `Highest load is ${loaded.team} at ${loaded.workloadPercentage}%.`,
+      });
+    }
+    if (stats.slaCompliance >= 90) {
+      items.push({
+        icon: 'ok',
+        title: 'SLA on track',
+        detail: `Overall SLA compliance is ${stats.slaCompliance}%.`,
+      });
+    } else if (stats.overdueTickets > 0) {
+      items.push({
+        icon: 'warn',
+        title: 'Overdue backlog',
+        detail: `${stats.overdueTickets} ticket(s) breached SLA and need attention.`,
+      });
+    }
+    return items;
+  })();
+
+  const upcomingActions = [
+    ...(stats.overdueTickets > 0
+      ? [{
+          title: 'Review overdue tickets',
+          detail: `${stats.overdueTickets} ticket(s) need attention`,
+          badge: 'Urgent' as const,
+        }]
+      : []),
+    ...(activeDowntimes.length > 0
+      ? [{
+          title: 'Resolve active downtimes',
+          detail: `${activeDowntimes.length} ongoing incident(s)`,
+          badge: 'Urgent' as const,
+        }]
+      : []),
+    ...(stats.criticalTickets > 0
+      ? [{
+          title: 'Triage critical tickets',
+          detail: `${stats.criticalTickets} critical ticket(s) open`,
+          badge: 'Urgent' as const,
+        }]
+      : []),
   ];
 
   const getGreeting = () => {
@@ -156,9 +229,9 @@ export function Dashboard() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{mockUsers.length}</div>
+                <div className="text-2xl font-bold">{users.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  {mockUsers.filter(u => u.isActive).length} active
+                  {users.filter(u => u.isActive).length} active
                 </p>
               </CardContent>
             </Card>
@@ -169,22 +242,24 @@ export function Dashboard() {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">98.5%</div>
+                <div className={`text-2xl font-bold ${(stats.uptimePercent ?? 100) >= 95 ? 'text-green-600' : 'text-amber-600'}`}>
+                  {stats.uptimePercent != null ? `${stats.uptimePercent}%` : '—'}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Uptime this month
+                  Uptime this month ({stats.downtimeHours}h downtime)
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">User Satisfaction</CardTitle>
-                <Star className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Active Downtimes</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.userSatisfactionScore}/5</div>
+                <div className="text-2xl font-bold">{stats.activeDowntimes}</div>
                 <p className="text-xs text-muted-foreground">
-                  Based on 150 responses
+                  Ongoing incidents
                 </p>
               </CardContent>
             </Card>
@@ -195,16 +270,20 @@ export function Dashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$28k</div>
+                <div className="text-2xl font-bold">
+                  {downtimeCostThisMonth > 0
+                    ? `Rp ${Math.round(downtimeCostThisMonth).toLocaleString('id-ID')}`
+                    : '—'}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Downtime cost this month
+                  Estimated downtime cost this month
                 </p>
               </CardContent>
             </Card>
           </div>
         );
 
-      case 'team_lead':
+      case 'team_lead': {
         const teamStats = teamWorkload.find(t => t.team === currentUser.team);
         return (
           <div className="grid gap-4 md:grid-cols-4">
@@ -261,11 +340,19 @@ export function Dashboard() {
             </Card>
           </div>
         );
+      }
 
-      case 'it_staff':
+      case 'it_staff': {
         const myTickets = userSpecificData.tickets;
         const myOpenTickets = myTickets.filter(t => !['resolved', 'closed'].includes(t.status));
         const myOverdueTickets = myTickets.filter(t => t.slaBreached);
+        const today = new Date();
+        const myResolvedToday = myTickets.filter((t) =>
+          t.resolvedDate && t.resolvedDate.toDateString() === today.toDateString()
+        ).length;
+        const mySla = myTickets.length > 0
+          ? Math.round(((myTickets.length - myOverdueTickets.length) / myTickets.length) * 100)
+          : 100;
         return (
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
@@ -300,9 +387,9 @@ export function Dashboard() {
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">3</div>
+                <div className="text-2xl font-bold">{myResolvedToday}</div>
                 <p className="text-xs text-muted-foreground">
-                  Great progress!
+                  Closed or resolved today
                 </p>
               </CardContent>
             </Card>
@@ -313,7 +400,7 @@ export function Dashboard() {
                 <Star className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">94%</div>
+                <div className="text-2xl font-bold">{mySla}%</div>
                 <p className="text-xs text-muted-foreground">
                   SLA compliance rate
                 </p>
@@ -321,10 +408,22 @@ export function Dashboard() {
             </Card>
           </div>
         );
+      }
 
-      case 'reporter':
+      case 'reporter': {
         const myReportedTickets = userSpecificData.tickets;
         const myPendingTickets = myReportedTickets.filter(t => !['resolved', 'closed'].includes(t.status));
+        const resolvedWithDates = myReportedTickets.filter(
+          (t) => t.resolvedDate && t.dateReported
+        );
+        const avgHours = resolvedWithDates.length > 0
+          ? Math.round(
+              resolvedWithDates.reduce((sum, t) => {
+                const ms = t.resolvedDate!.getTime() - t.dateReported.getTime();
+                return sum + ms / (1000 * 60 * 60);
+              }, 0) / resolvedWithDates.length
+            )
+          : null;
         return (
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
@@ -374,14 +473,15 @@ export function Dashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">18h</div>
+                <div className="text-2xl font-bold">{avgHours != null ? `${avgHours}h` : '—'}</div>
                 <p className="text-xs text-muted-foreground">
-                  Average response time
+                  Average time to resolve
                 </p>
               </CardContent>
             </Card>
           </div>
         );
+      }
 
       default:
         return null;
@@ -390,7 +490,6 @@ export function Dashboard() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      {/* Welcome Header */}
       <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-3xl tracking-tight">
@@ -407,7 +506,6 @@ export function Dashboard() {
         </div>
       </div>
       
-      {/* Role-specific Stats */}
       {getRoleSpecificStats()}
 
       <Tabs defaultValue="overview" className="w-full">
@@ -419,7 +517,6 @@ export function Dashboard() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          {/* Key Stats Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -428,9 +525,8 @@ export function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalTickets}</div>
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <ArrowUpRight className="h-3 w-3 text-green-600 mr-1" />
-                  +12% from last month
+                <p className="text-xs text-muted-foreground">
+                  {stats.resolvedToday} resolved today
                 </p>
               </CardContent>
             </Card>
@@ -455,9 +551,8 @@ export function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.averageResolutionTime}h</div>
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <ArrowDownRight className="h-3 w-3 text-green-600 mr-1" />
-                  -2.5h from last month
+                <p className="text-xs text-muted-foreground">
+                  From latest team snapshots
                 </p>
               </CardContent>
             </Card>
@@ -474,9 +569,7 @@ export function Dashboard() {
             </Card>
           </div>
           
-          {/* Charts and Detailed Views */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            {/* Team Workload Chart */}
             <Card className="col-span-4">
               <CardHeader>
                 <CardTitle>Team Workload Overview</CardTitle>
@@ -485,20 +578,25 @@ export function Dashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={teamWorkload}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="team" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="openTickets" fill="#FF6B6B" name="Open Tickets" />
-                    <Bar dataKey="resolvedTickets" fill="#4ECDC4" name="Resolved Tickets" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {teamWorkload.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-12 text-center">
+                    No workload snapshot available yet.
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={teamWorkload}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="team" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="openTickets" fill="#FF6B6B" name="Open Tickets" />
+                      <Bar dataKey="resolvedTickets" fill="#4ECDC4" name="Resolved Tickets" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
             
-            {/* Ticket Status Distribution */}
             <Card className="col-span-3">
               <CardHeader>
                 <CardTitle>Ticket Status</CardTitle>
@@ -507,25 +605,29 @@ export function Dashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                {statusData.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-12 text-center">No tickets yet.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={statusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {statusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -534,51 +636,57 @@ export function Dashboard() {
         <TabsContent value="performance" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Performance Trends</CardTitle>
+              <CardTitle>Team SLA Compliance</CardTitle>
               <CardDescription>
-                Monthly ticket volume and resolution trends
+                Latest snapshot per team
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={performanceTrends}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="tickets" stackId="1" stroke="#8884d8" fill="#8884d8" name="Total Tickets" />
-                  <Area type="monotone" dataKey="resolved" stackId="2" stroke="#82ca9d" fill="#82ca9d" name="Resolved" />
-                </AreaChart>
-              </ResponsiveContainer>
+              {teamSlaChart.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-12 text-center">
+                  No performance data. Generate a workload snapshot first.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={teamSlaChart}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="team" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Bar dataKey="sla" fill="#8884d8" name="SLA %" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Team Productivity</CardTitle>
+              <CardTitle>Team Workload %</CardTitle>
               <CardDescription>
-                Weekly SLA compliance by team
+                Capacity utilization from latest snapshots
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={teamProductivity}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="week" />
-                  <YAxis domain={[70, 100]} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="programmer" stroke="#4ECDC4" strokeWidth={2} name="Programmer Team" />
-                  <Line type="monotone" dataKey="network" stroke="#45B7D1" strokeWidth={2} name="Network Team" />
-                  <Line type="monotone" dataKey="hardware" stroke="#96CEB4" strokeWidth={2} name="Hardware Team" />
-                </LineChart>
-              </ResponsiveContainer>
+              {teamSlaChart.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-12 text-center">No workload data.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={teamSlaChart}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="team" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Bar dataKey="workload" fill="#45B7D1" name="Workload %" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            {/* Recent Activity */}
             <Card>
               <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
@@ -589,28 +697,31 @@ export function Dashboard() {
               <CardContent>
                 <ScrollArea className="h-80">
                   <div className="space-y-4">
-                    {recentActivity.map((activity, index) => (
-                      <div key={index} className="flex items-start space-x-3">
-                        <div className={`w-2 h-2 rounded-full mt-2 ${
-                          activity.type === 'ticket_created' ? 'bg-blue-500' :
-                          activity.type === 'ticket_resolved' ? 'bg-green-500' :
-                          activity.type === 'downtime_started' ? 'bg-orange-500' :
-                          'bg-red-500'
-                        }`} />
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm">{activity.message}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {activity.time.toLocaleTimeString()}
-                          </p>
+                    {recentActivity.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No recent activity.</p>
+                    ) : (
+                      recentActivity.map((activity, index) => (
+                        <div key={index} className="flex items-start space-x-3">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${
+                            activity.type === 'ticket_created' ? 'bg-blue-500' :
+                            activity.type === 'ticket_resolved' ? 'bg-green-500' :
+                            activity.type === 'downtime_started' ? 'bg-orange-500' :
+                            'bg-red-500'
+                          }`} />
+                          <div className="flex-1 space-y-1">
+                            <p className="text-sm">{activity.message}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {activity.time.toLocaleTimeString()}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </ScrollArea>
               </CardContent>
             </Card>
 
-            {/* Recent Tickets */}
             <Card>
               <CardHeader>
                 <CardTitle>Recent Tickets</CardTitle>
@@ -621,34 +732,37 @@ export function Dashboard() {
               <CardContent>
                 <ScrollArea className="h-80">
                   <div className="space-y-4">
-                    {recentTickets.map((ticket) => (
-                      <div key={ticket.id} className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {ticket.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {ticket.id} • {ticket.category} • {ticket.priority}
-                          </p>
+                    {recentTickets.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No tickets to show.</p>
+                    ) : (
+                      recentTickets.map((ticket) => (
+                        <div key={ticket.id} className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium leading-none">
+                              {ticket.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {ticket.id} • {ticket.category} • {ticket.priority}
+                            </p>
+                          </div>
+                          <Badge 
+                            variant={
+                              ticket.status === 'resolved' ? 'default' : 
+                              ticket.status === 'in_progress' ? 'secondary' : 
+                              ticket.slaBreached ? 'destructive' : 'outline'
+                            }
+                          >
+                            {ticket.status.replace(/_/g, ' ')}
+                          </Badge>
                         </div>
-                        <Badge 
-                          variant={
-                            ticket.status === 'resolved' ? 'default' : 
-                            ticket.status === 'in_progress' ? 'secondary' : 
-                            ticket.slaBreached ? 'destructive' : 'outline'
-                          }
-                        >
-                          {ticket.status.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </ScrollArea>
               </CardContent>
             </Card>
           </div>
 
-          {/* Active Downtimes Alert */}
           {activeDowntimes.length > 0 && (
             <Card className="border-destructive">
               <CardHeader>
@@ -689,75 +803,62 @@ export function Dashboard() {
               <CardHeader>
                 <CardTitle>Key Insights</CardTitle>
                 <CardDescription>
-                  AI-powered insights and recommendations
+                  Derived from current tickets and workload snapshots
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Performance Improvement</p>
-                    <p className="text-xs text-muted-foreground">
-                      Network team has improved response time by 25% this month
-                    </p>
+                {insights.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex items-start space-x-3 p-3 rounded-lg ${
+                      item.icon === 'warn'
+                        ? 'bg-yellow-50 dark:bg-yellow-950'
+                        : item.icon === 'ok'
+                          ? 'bg-green-50 dark:bg-green-950'
+                          : 'bg-blue-50 dark:bg-blue-950'
+                    }`}
+                  >
+                    {item.icon === 'warn' ? (
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    ) : item.icon === 'ok' ? (
+                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                    ) : (
+                      <TrendingUp className="h-5 w-5 text-blue-600 mt-0.5" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">{item.title}</p>
+                      <p className="text-xs text-muted-foreground">{item.detail}</p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Attention Needed</p>
-                    <p className="text-xs text-muted-foreground">
-                      Hardware team workload is at 85% capacity
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Goal Achievement</p>
-                    <p className="text-xs text-muted-foreground">
-                      SLA compliance target of 90% exceeded this month
-                    </p>
-                  </div>
-                </div>
+                ))}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Upcoming Actions</CardTitle>
+                <CardTitle>Recommended Actions</CardTitle>
                 <CardDescription>
-                  Recommended actions and scheduled tasks
+                  Based on overdue tickets and active incidents
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <p className="text-sm font-medium">Database Maintenance</p>
-                      <p className="text-xs text-muted-foreground">Scheduled for tomorrow 2:00 AM</p>
-                    </div>
-                    <Badge variant="outline">Planned</Badge>
+                {upcomingActions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No urgent actions right now.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {upcomingActions.map((action, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                        <div>
+                          <p className="text-sm font-medium">{action.title}</p>
+                          <p className="text-xs text-muted-foreground">{action.detail}</p>
+                        </div>
+                        <Badge variant="destructive">{action.badge}</Badge>
+                      </div>
+                    ))}
                   </div>
-
-                  <div className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <p className="text-sm font-medium">Review Overdue Tickets</p>
-                      <p className="text-xs text-muted-foreground">6 tickets need attention</p>
-                    </div>
-                    <Badge variant="destructive">Urgent</Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <p className="text-sm font-medium">Team Performance Review</p>
-                      <p className="text-xs text-muted-foreground">Monthly review due Friday</p>
-                    </div>
-                    <Badge variant="secondary">Upcoming</Badge>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -86,8 +86,8 @@ export function mapUser(data: Record<string, unknown>): User {
 }
 
 export function mapTicketListItem(data: Record<string, unknown>): Ticket {
-  const reporter = data.reporter as { id?: number } | null;
-  const assignedUser = data.assigned_user as { id?: number } | null;
+  const reporter = data.reporter as { id?: number; name?: string } | null;
+  const assignedUser = data.assigned_user as { id?: number; name?: string } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
 
   return {
@@ -98,7 +98,9 @@ export function mapTicketListItem(data: Record<string, unknown>): Ticket {
     priority: unwrapValue(data.priority as WrappedValue<Ticket['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<TicketStatus>) || 'draft',
     reporterId: reporter?.id ? String(reporter.id) : '',
+    reporterName: reporter?.name,
     assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
+    assignedToName: assignedUser?.name,
     assignedTeam: assignedTeam?.value as Ticket['assignedTeam'],
     dateReported: parseDate((data.date_reported ?? data.created_at) as string),
     dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
@@ -112,8 +114,8 @@ export function mapTicketListItem(data: Record<string, unknown>): Ticket {
 }
 
 export function mapTicketDetail(data: Record<string, unknown>): Ticket {
-  const reporter = data.reporter as { id?: number } | null;
-  const assignedUser = data.assigned_user as { id?: number } | null;
+  const reporter = data.reporter as { id?: number; name?: string } | null;
+  const assignedUser = data.assigned_user as { id?: number; name?: string } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
   const effort = (data.effort ?? {}) as Record<string, unknown>;
   const time = (data.time ?? {}) as Record<string, unknown>;
@@ -137,7 +139,9 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
       | string
       | undefined,
     reporterId: reporter?.id ? String(reporter.id) : '',
+    reporterName: reporter?.name,
     assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
+    assignedToName: assignedUser?.name,
     assignedTeam: assignedTeam?.value as Ticket['assignedTeam'],
     dateReported: parseDate(data.date_reported as string),
     dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
@@ -160,8 +164,8 @@ export function mapTicketDetail(data: Record<string, unknown>): Ticket {
 }
 
 export function mapErrorReportListItem(data: Record<string, unknown>): ErrorReport {
-  const reporter = data.reporter as { id?: number } | null;
-  const assignedUser = data.assigned_user as { id?: number } | null;
+  const reporter = data.reporter as { id?: number; name?: string } | null;
+  const assignedUser = data.assigned_user as { id?: number; name?: string } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
 
   return {
@@ -172,7 +176,9 @@ export function mapErrorReportListItem(data: Record<string, unknown>): ErrorRepo
     priority: unwrapValue(data.priority as WrappedValue<ErrorReport['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<ErrorReportStatus>) || 'pending_approval',
     reporterId: reporter?.id ? String(reporter.id) : '',
+    reporterName: reporter?.name,
     assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
+    assignedToName: assignedUser?.name,
     assignedTeam: assignedTeam?.value as ErrorReport['assignedTeam'],
     dateReported: parseDate((data.date_reported ?? data.created_at) as string),
     completionDate: data.completion_date ? parseDate(data.completion_date as string) : undefined,
@@ -187,8 +193,8 @@ export function mapErrorReportListItem(data: Record<string, unknown>): ErrorRepo
 }
 
 export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport {
-  const reporter = data.reporter as { id?: number } | null;
-  const assignedUser = data.assigned_user as { id?: number } | null;
+  const reporter = data.reporter as { id?: number; name?: string } | null;
+  const assignedUser = data.assigned_user as { id?: number; name?: string } | null;
   const assignedTeam = data.assigned_team as { value?: string } | null;
   const sla = (data.sla ?? {}) as Record<string, unknown>;
 
@@ -205,7 +211,9 @@ export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport
       | string
       | undefined,
     reporterId: reporter?.id ? String(reporter.id) : '',
+    reporterName: reporter?.name,
     assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
+    assignedToName: assignedUser?.name,
     assignedTeam: assignedTeam?.value as ErrorReport['assignedTeam'],
     dateReported: parseDate(data.date_reported as string),
     startDate: data.start_date ? parseDate(data.start_date as string) : undefined,
@@ -222,10 +230,14 @@ export function mapErrorReportDetail(data: Record<string, unknown>): ErrorReport
 }
 
 export function mapFeatureListItem(data: Record<string, unknown>): FeatureRequest {
-  const reporter = data.reporter as { id?: number } | null;
-  const assignedUser = data.assigned_user as { id?: number } | null;
-  const assignedTeam = data.assigned_team as { value?: string } | null;
+  const reporter = data.reporter as { id?: number; name?: string } | null;
+  const assignedUser = data.assigned_user as { id?: number; name?: string } | null;
+  const assignedTeam = data.assigned_team as { value?: string } | string | null;
   const targetApplication = data.target_application as { value?: string } | null;
+  const assignedTeamValue =
+    typeof assignedTeam === 'object' && assignedTeam?.value
+      ? assignedTeam.value
+      : (assignedTeam as string | undefined);
 
   return {
     id: String(data.id),
@@ -236,9 +248,15 @@ export function mapFeatureListItem(data: Record<string, unknown>): FeatureReques
     priority: unwrapValue(data.priority as WrappedValue<FeatureRequest['priority']>) || 'medium',
     status: unwrapValue(data.status as WrappedValue<FeatureRequestStatus>) || 'submission',
     progress: (data.progress as number) ?? 0,
-    reporterId: reporter?.id ? String(reporter.id) : '',
-    assignedToId: assignedUser?.id ? String(assignedUser.id) : undefined,
-    assignedTeam: assignedTeam?.value as FeatureRequest['assignedTeam'],
+    reporterId: reporter?.id ? String(reporter.id) : (data.reporter_id ? String(data.reporter_id) : ''),
+    reporterName: reporter?.name,
+    assignedToId: assignedUser?.id
+      ? String(assignedUser.id)
+      : data.assigned_to_id
+        ? String(data.assigned_to_id)
+        : undefined,
+    assignedToName: assignedUser?.name,
+    assignedTeam: assignedTeamValue as FeatureRequest['assignedTeam'],
     dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
     attachments: [],
     comments: [],
@@ -252,16 +270,9 @@ export function mapFeatureListItem(data: Record<string, unknown>): FeatureReques
 }
 
 export function mapFeatureDetail(data: Record<string, unknown>): FeatureRequest {
-  const assignedTeam = data.assigned_team as { value?: string } | null;
-
   return {
     ...mapFeatureListItem(data),
     description: String(data.description ?? ''),
-    reporterId: data.reporter_id ? String(data.reporter_id) : '',
-    assignedToId: data.assigned_to_id ? String(data.assigned_to_id) : undefined,
-    assignedTeam: assignedTeam?.value as FeatureRequest['assignedTeam'],
-    dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
-    slaBreached: (data.sla_breached as boolean) ?? false,
     approvalStatus: mapApprovalStatus(data),
     approvedBy: data.approved_by ? String(data.approved_by) : undefined,
     rejectionReason: data.rejection_reason as string | undefined,
@@ -441,7 +452,7 @@ export function mapTeamWorkload(data: Record<string, unknown>): TeamWorkload {
     averageResponseTime: avgResponse?.hours ?? 0,
     averageResolutionTime: avgResolution?.hours ?? 0,
     slaCompliance: (performance.sla_compliance as number) ?? 0,
-    workloadPercentage: 0,
+    workloadPercentage: Number(data.workload_percentage ?? 0),
     members: [],
   };
 }
@@ -613,6 +624,7 @@ export function mapSystemConfigItem(data: Record<string, unknown>): import('../.
 }
 
 export function mapDashboardStatsFromApi(data: Record<string, unknown>): import('../../types').DashboardStats {
+  const breakdown = (data.status_breakdown ?? {}) as Record<string, number>;
   return {
     totalTickets: Number(data.total_tickets ?? 0),
     openTickets: Number(data.open_tickets ?? 0),
@@ -623,7 +635,14 @@ export function mapDashboardStatsFromApi(data: Record<string, unknown>): import(
     downtimeHours: Number(data.downtime_hours ?? 0),
     averageResolutionTime: Number(data.average_resolution_time ?? 0),
     slaCompliance: Number(data.sla_compliance ?? 0),
-    userSatisfactionScore: Number(data.user_satisfaction_score ?? 0),
+    userSatisfactionScore: data.user_satisfaction_score != null
+      ? Number(data.user_satisfaction_score)
+      : 0,
+    uptimePercent: data.uptime_percent != null ? Number(data.uptime_percent) : undefined,
+    statusBreakdown: {
+      inProgress: Number(breakdown.in_progress ?? 0),
+      resolved: Number(breakdown.resolved ?? 0),
+    },
   };
 }
 
@@ -680,7 +699,7 @@ export function computeDashboardStats(
     downtimeHours: Math.round(downtimeHours * 10) / 10,
     activeDowntimes,
     criticalTickets,
-    userSatisfactionScore: 4.2,
+    userSatisfactionScore: 0,
   };
 }
 

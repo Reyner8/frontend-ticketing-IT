@@ -94,7 +94,9 @@ export interface Ticket {
   approvalStatus?: ApprovalStatusValue;
   rejectionReason?: string;
   reporterId: string;
+  reporterName?: string;
   assignedToId?: string;
+  assignedToName?: string;
   assignedTeam?: TeamType;
   dateReported: Date;
   dueDate?: Date;
@@ -127,7 +129,9 @@ export interface ErrorReport {
   approvalStatus?: ApprovalStatusValue;
   rejectionReason?: string;
   reporterId: string;
+  reporterName?: string;
   assignedToId?: string;
+  assignedToName?: string;
   assignedTeam?: TeamType;
   dateReported: Date;
   startDate?: Date;
@@ -154,7 +158,9 @@ export interface FeatureRequest {
   approvalStatus?: ApprovalStatusValue;
   progress: number; // percentage 0-100
   reporterId: string;
+  reporterName?: string;
   assignedToId?: string;
+  assignedToName?: string;
   assignedTeam?: TeamType;
   dueDate?: Date;
   attachments: Attachment[];
@@ -391,6 +397,11 @@ export interface DashboardStats {
   activeDowntimes: number;
   criticalTickets: number;
   userSatisfactionScore: number;
+  uptimePercent?: number;
+  statusBreakdown?: {
+    inProgress: number;
+    resolved: number;
+  };
 }
 
 export interface Notification {
