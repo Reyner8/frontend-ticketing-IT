@@ -5,6 +5,7 @@ import type {
   FeatureRequest,
   DowntimeRecord,
   User,
+  TeamWorkload,
 } from '../types';
 
 function escapeCsv(value: unknown): string {
@@ -126,4 +127,32 @@ export function exportUsersCsv(users: User[]): void {
     ])
   );
   downloadCsv(`users-${timestamp()}.csv`, csv);
+}
+
+export function exportTeamWorkloadCsv(workloads: TeamWorkload[]): void {
+  const csv = toCsv(
+    [
+      'team',
+      'total_tickets',
+      'open',
+      'resolved',
+      'overdue',
+      'avg_response_h',
+      'avg_resolution_h',
+      'sla_compliance',
+      'workload_pct',
+    ],
+    workloads.map((t) => [
+      t.team,
+      t.totalTickets,
+      t.openTickets,
+      t.resolvedTickets,
+      t.overdueTickets,
+      t.averageResponseTime,
+      t.averageResolutionTime,
+      t.slaCompliance,
+      t.workloadPercentage,
+    ])
+  );
+  downloadCsv(`team-workload-${timestamp()}.csv`, csv);
 }

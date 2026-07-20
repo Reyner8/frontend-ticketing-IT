@@ -9,14 +9,20 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Progress } from "./ui/progress";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
-import { fetchTeamWorkloadLatest, fetchTickets, getCachedUsers, fetchTeamWorkloadCompare, generateTeamWorkload } from "../lib/api/services";
-import { TeamType, TeamWorkload } from "../types";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import {
+  fetchTeamWorkloadLatest,
+  fetchTickets,
+  fetchUsers,
+  fetchTeamWorkloadCompare,
+  generateTeamWorkload,
+} from "../lib/api/services";
+import { exportTeamWorkloadCsv } from "../lib/export-utils";
+import { TeamType, TeamWorkload, User } from "../types";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { 
   Users, 
   Target, 
   Clock, 
-  TrendingUp, 
   Award, 
   CheckCircle,
   AlertTriangle,
@@ -26,27 +32,29 @@ import {
 export function TeamPerformance() {
   const { state } = useApp();
   const [selectedTeam, setSelectedTeam] = useState<TeamType | "all">("all");
-  const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [teamWorkload, setTeamWorkload] = useState<TeamWorkload[]>([]);
   const [tickets, setTickets] = useState<Awaited<ReturnType<typeof fetchTickets>>['tickets']>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   
   const currentUser = state.currentUser;
-  const mockUsers = getCachedUsers();
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [workload, ticketsResult] = await Promise.all([
+        const [workload, ticketsResult, userList] = await Promise.all([
           fetchTeamWorkloadLatest(),
           fetchTickets({ per_page: 100 }),
+          fetchUsers().catch(() => [] as User[]),
         ]);
         setTeamWorkload(workload);
         setTickets(ticketsResult.tickets);
+        setUsers(userList);
       } catch {
         setTeamWorkload([]);
         setTickets([]);
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -54,7 +62,6 @@ export function TeamPerformance() {
     load();
   }, []);
   
-  // Filter data based on user role
   const accessibleTeams = useMemo(() => {
     if (currentUser?.role === 'admin') {
       return [...teamWorkload];
@@ -64,26 +71,34 @@ export function TeamPerformance() {
     return [];
   }, [currentUser, teamWorkload]);
 
-  // Generate performance metrics
   const performanceData = useMemo(() => {
     const teamData = selectedTeam === "all" ? accessibleTeams : accessibleTeams.filter(t => t.team === selectedTeam);
     
-    // Team comparison data
     const teamComparison = teamData.map(team => ({
       team: team.team,
       slaCompliance: team.slaCompliance,
       responseTime: team.averageResponseTime,
       resolutionTime: team.averageResolutionTime,
       workload: team.workloadPercentage,
-      efficiency: Math.round((team.resolvedTickets / team.totalTickets) * 100)
+      efficiency: team.totalTickets > 0
+        ? Math.round((team.resolvedTickets / team.totalTickets) * 100)
+        : 0,
     }));
 
-    // Individual performance (for team leads)
     const individualPerformance = currentUser?.team 
-      ? mockUsers.filter(u => u.team === currentUser.team && u.role === 'it_staff').map(user => {
+      ? users.filter(u => u.team === currentUser.team && u.role === 'it_staff').map(user => {
           const userTickets = tickets.filter(t => t.assignedToId === user.id);
           const resolvedTickets = userTickets.filter(t => ['resolved', 'closed'].includes(t.status));
           const overdueTickets = userTickets.filter(t => t.slaBreached);
+          const resolvedWithDates = resolvedTickets.filter((t) => t.resolvedDate && t.dateReported);
+          const avgResponseTime = resolvedWithDates.length > 0
+            ? Math.round(
+                (resolvedWithDates.reduce((sum, t) => {
+                  const ms = t.resolvedDate!.getTime() - t.dateReported.getTime();
+                  return sum + ms / (1000 * 60 * 60);
+                }, 0) / resolvedWithDates.length) * 10
+              ) / 10
+            : 0;
           
           return {
             id: user.id,
@@ -92,27 +107,17 @@ export function TeamPerformance() {
             resolvedTickets: resolvedTickets.length,
             overdueTickets: overdueTickets.length,
             efficiency: userTickets.length > 0 ? Math.round((resolvedTickets.length / userTickets.length) * 100) : 0,
-            avgResponseTime: 2.5,
+            avgResponseTime,
             slaCompliance: userTickets.length > 0 ? Math.round(((userTickets.length - overdueTickets.length) / userTickets.length) * 100) : 100
           };
         })
       : [];
 
-    // Monthly trends
-    const monthlyTrends = [
-      { month: 'Aug', tickets: 98, resolved: 89, sla: 92 },
-      { month: 'Sep', tickets: 112, resolved: 95, sla: 89 },
-      { month: 'Oct', tickets: 125, resolved: 108, sla: 86 },
-      { month: 'Nov', tickets: 134, resolved: 118, sla: 88 },
-      { month: 'Dec', tickets: 108, resolved: 95, sla: 91 }
-    ];
-
     return {
       teamComparison,
       individualPerformance,
-      monthlyTrends
     };
-  }, [selectedTeam, accessibleTeams, currentUser, tickets]);
+  }, [selectedTeam, accessibleTeams, currentUser, tickets, users]);
 
   const chartColors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -124,15 +129,12 @@ export function TeamPerformance() {
     );
   }
 
-  // Calculate top performer with safe access
   const getTopPerformer = () => {
     if (accessibleTeams.length === 0) return 'N/A';
-    // Create a copy of the array before sorting to avoid mutation
     const sortedTeams = [...accessibleTeams].sort((a, b) => b.slaCompliance - a.slaCompliance);
     return sortedTeams[0]?.team || 'N/A';
   };
 
-  // Check access rights
   if (currentUser?.role === 'reporter' || currentUser?.role === 'it_staff') {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -149,7 +151,6 @@ export function TeamPerformance() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl tracking-tight">Team Performance</h2>
@@ -158,16 +159,6 @@ export function TeamPerformance() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="quarter">This Quarter</SelectItem>
-            </SelectContent>
-          </Select>
           <Button variant="outline" onClick={async () => {
             try {
               const data = await fetchTeamWorkloadCompare(new Date().toISOString().slice(0, 10));
@@ -190,20 +181,29 @@ export function TeamPerformance() {
           }}>
             Generate Snapshot
           </Button>
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (accessibleTeams.length === 0) {
+                toast.error("No workload data to export");
+                return;
+              }
+              exportTeamWorkloadCsv(accessibleTeams);
+              toast.success("Exported team workload CSV");
+            }}
+          >
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
         </div>
       </div>
 
-      {/* Team Filter */}
       {currentUser?.role === 'admin' && (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium">Filter by Team:</span>
-              <Select value={selectedTeam} onValueChange={(value: any) => setSelectedTeam(value)}>
+              <Select value={selectedTeam} onValueChange={(value: TeamType | "all") => setSelectedTeam(value)}>
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
@@ -219,7 +219,6 @@ export function TeamPerformance() {
         </Card>
       )}
 
-      {/* Performance Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -277,16 +276,14 @@ export function TeamPerformance() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="teams">Team Details</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="individual">Individual</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            {/* Team Performance Comparison */}
             <Card>
               <CardHeader>
                 <CardTitle>Team SLA Compliance</CardTitle>
@@ -305,7 +302,6 @@ export function TeamPerformance() {
               </CardContent>
             </Card>
 
-            {/* Workload Distribution */}
             <Card>
               <CardHeader>
                 <CardTitle>Team Workload</CardTitle>
@@ -324,7 +320,7 @@ export function TeamPerformance() {
                       fill="#8884d8"
                       dataKey="workload"
                     >
-                      {performanceData.teamComparison.map((entry, index) => (
+                      {performanceData.teamComparison.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                       ))}
                     </Pie>
@@ -334,7 +330,6 @@ export function TeamPerformance() {
               </CardContent>
             </Card>
 
-            {/* Response Time Comparison */}
             <Card>
               <CardHeader>
                 <CardTitle>Response Time Analysis</CardTitle>
@@ -354,7 +349,6 @@ export function TeamPerformance() {
               </CardContent>
             </Card>
 
-            {/* Team Efficiency Radar */}
             <Card>
               <CardHeader>
                 <CardTitle>Team Performance Radar</CardTitle>
@@ -436,28 +430,6 @@ export function TeamPerformance() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="trends" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Trends</CardTitle>
-              <CardDescription>Monthly performance trends across teams</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={performanceData.monthlyTrends}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="tickets" stroke="#8884d8" strokeWidth={2} name="Total Tickets" />
-                  <Line type="monotone" dataKey="resolved" stroke="#82ca9d" strokeWidth={2} name="Resolved Tickets" />
-                  <Line type="monotone" dataKey="sla" stroke="#ffc658" strokeWidth={2} name="SLA Compliance %" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="individual" className="space-y-4">
           {currentUser?.role === 'team_lead' ? (
             <Card>
@@ -466,56 +438,62 @@ export function TeamPerformance() {
                 <CardDescription>Performance metrics for team members</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Team Member</TableHead>
-                      <TableHead>Total Tickets</TableHead>
-                      <TableHead>Resolved</TableHead>
-                      <TableHead>Overdue</TableHead>
-                      <TableHead>Efficiency</TableHead>
-                      <TableHead>SLA Compliance</TableHead>
-                      <TableHead>Avg Response</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {performanceData.individualPerformance.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="text-xs">
-                                {member.name.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{member.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{member.totalTickets}</TableCell>
-                        <TableCell>{member.resolvedTickets}</TableCell>
-                        <TableCell>
-                          <Badge variant={member.overdueTickets > 0 ? "destructive" : "default"}>
-                            {member.overdueTickets}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={member.efficiency} className="w-16 h-2" />
-                            <span className="text-sm font-medium">{member.efficiency}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={member.slaCompliance >= 95 ? "default" : member.slaCompliance >= 85 ? "secondary" : "destructive"}
-                          >
-                            {member.slaCompliance}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{member.avgResponseTime}h</TableCell>
+                {performanceData.individualPerformance.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No team members found. Ensure users are loaded and assigned to your team.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Team Member</TableHead>
+                        <TableHead>Total Tickets</TableHead>
+                        <TableHead>Resolved</TableHead>
+                        <TableHead>Overdue</TableHead>
+                        <TableHead>Efficiency</TableHead>
+                        <TableHead>SLA Compliance</TableHead>
+                        <TableHead>Avg Resolution</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {performanceData.individualPerformance.map((member) => (
+                        <TableRow key={member.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="text-xs">
+                                  {member.name.split(' ').map(n => n[0]).join('')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium">{member.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{member.totalTickets}</TableCell>
+                          <TableCell>{member.resolvedTickets}</TableCell>
+                          <TableCell>
+                            <Badge variant={member.overdueTickets > 0 ? "destructive" : "default"}>
+                              {member.overdueTickets}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress value={member.efficiency} className="w-16 h-2" />
+                              <span className="text-sm font-medium">{member.efficiency}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={member.slaCompliance >= 95 ? "default" : member.slaCompliance >= 85 ? "secondary" : "destructive"}
+                            >
+                              {member.slaCompliance}%
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{member.avgResponseTime}h</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           ) : (
