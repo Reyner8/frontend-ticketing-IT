@@ -350,7 +350,8 @@ export function FeatureRequests() {
     }
   };
 
-  const getUserName = (userId: string) => {
+  const getUserName = (userId: string, fallbackName?: string) => {
+    if (fallbackName) return fallbackName;
     const user = mockUsers.find(u => u.id === userId);
     return user?.name || 'Unknown User';
   };
@@ -715,10 +716,10 @@ export function FeatureRequests() {
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarFallback className="text-xs">
-                                {getUserName(ticket.assignedToId).split(' ').map((n: string) => n[0]).join('')}
+                                {getUserName(ticket.assignedToId, ticket.assignedToName).split(' ').map((n: string) => n[0]).join('')}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm">{getUserName(ticket.assignedToId)}</span>
+                            <span className="text-sm">{getUserName(ticket.assignedToId, ticket.assignedToName)}</span>
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">Unassigned</span>
@@ -881,7 +882,8 @@ function FeatureRequestDetailDialog({
   const progress = Math.max(0, Math.min(100, Math.round(liveTicket.progress ?? 0)));
 
   const users = getCachedUsers();
-  const getUserName = (userId: string) => {
+  const getUserName = (userId: string, fallbackName?: string) => {
+    if (fallbackName) return fallbackName;
     const user = users.find(u => u.id === userId);
     return user?.name || 'Unknown User';
   };
@@ -1096,10 +1098,10 @@ function FeatureRequestDetailDialog({
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarFallback className="text-xs">
-                            {getUserName(ticket.reporterId).split(' ').map((n: string) => n[0]).join('')}
+                            {getUserName(ticket.reporterId, ticket.reporterName).split(' ').map((n: string) => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{getUserName(ticket.reporterId)}</span>
+                        <span>{getUserName(ticket.reporterId, ticket.reporterName)}</span>
                       </div>
                     </div>
                     {ticket.assignedToId && (
@@ -1108,10 +1110,10 @@ function FeatureRequestDetailDialog({
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
                             <AvatarFallback className="text-xs">
-                              {getUserName(ticket.assignedToId).split(' ').map((n: string) => n[0]).join('')}
+                              {getUserName(ticket.assignedToId, ticket.assignedToName).split(' ').map((n: string) => n[0]).join('')}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{getUserName(ticket.assignedToId)}</span>
+                          <span>{getUserName(ticket.assignedToId, ticket.assignedToName)}</span>
                         </div>
                       </div>
                     )}

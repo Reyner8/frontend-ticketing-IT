@@ -338,8 +338,11 @@ function TicketDetailDialog({
     });
   }, [ticket.id]);
 
-  const getUserName = (userId: string) =>
-    users.find((u) => u.id === userId)?.name ?? "Unknown";
+  const getUserName = (userId: string) => {
+    if (userId === detail.reporterId && detail.reporterName) return detail.reporterName;
+    if (userId === detail.assignedToId && detail.assignedToName) return detail.assignedToName;
+    return users.find((u) => u.id === userId)?.name ?? "Unknown";
+  };
 
   const refreshDetail = () => {
     fetchTicketDetail(detail.id)

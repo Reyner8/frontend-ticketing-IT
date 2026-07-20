@@ -352,7 +352,8 @@ export function ErrorReports() {
     return { status: 'On Track', color: 'text-green-600 bg-green-100' };
   };
 
-  const getUserName = (userId: string) => {
+  const getUserName = (userId: string, fallbackName?: string) => {
+    if (fallbackName) return fallbackName;
     const user = mockUsers.find(u => u.id === userId);
     return user?.name || 'Unknown User';
   };
@@ -661,10 +662,10 @@ export function ErrorReports() {
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarFallback className="text-xs">
-                                {getUserName(report.assignedToId).split(' ').map(n => n[0]).join('')}
+                                {getUserName(report.assignedToId, report.assignedToName).split(' ').map(n => n[0]).join('')}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm">{getUserName(report.assignedToId)}</span>
+                            <span className="text-sm">{getUserName(report.assignedToId, report.assignedToName)}</span>
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">Unassigned</span>
@@ -957,7 +958,8 @@ function ErrorReportDetailDialog({
     ? { status: 'Breached', color: 'text-red-600 bg-red-100' }
     : { status: 'On Time', color: 'text-green-600 bg-green-100' };
 
-  const getUserName = (userId: string) => {
+  const getUserName = (userId: string, fallbackName?: string) => {
+    if (fallbackName) return fallbackName;
     const user = users.find(u => u.id === userId);
     return user?.name || 'Unknown User';
   };
@@ -1229,10 +1231,10 @@ function ErrorReportDetailDialog({
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarFallback className="text-xs">
-                            {getUserName(liveReport.reporterId).split(' ').map(n => n[0]).join('')}
+                            {getUserName(liveReport.reporterId, liveReport.reporterName).split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{getUserName(liveReport.reporterId)}</span>
+                        <span>{getUserName(liveReport.reporterId, liveReport.reporterName)}</span>
                       </div>
                     </div>
                     {liveReport.assignedToId && (
@@ -1241,10 +1243,10 @@ function ErrorReportDetailDialog({
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
                             <AvatarFallback className="text-xs">
-                              {getUserName(liveReport.assignedToId).split(' ').map(n => n[0]).join('')}
+                              {getUserName(liveReport.assignedToId, liveReport.assignedToName).split(' ').map(n => n[0]).join('')}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{getUserName(liveReport.assignedToId)}</span>
+                          <span>{getUserName(liveReport.assignedToId, liveReport.assignedToName)}</span>
                         </div>
                       </div>
                     )}
