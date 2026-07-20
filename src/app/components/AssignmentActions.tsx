@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -23,11 +23,12 @@ import {
   assignTeam,
   unassignUser,
   unassignTeam,
+  fetchUsers,
   getCachedUsers,
 } from "../lib/api/services";
 import { ApiError } from "../lib/api/client";
 import { useApp } from "../lib/store";
-import type { TeamType } from "../types";
+import type { TeamType, User } from "../types";
 
 interface AssignmentActionsProps {
   target: "tickets" | "errors" | "features";
@@ -56,14 +57,31 @@ export function AssignmentActions({
   const [selectedUser, setSelectedUser] = useState<string>(currentAssigneeId ?? "");
   const [selectedTeam, setSelectedTeam] = useState<TeamType | "">(currentTeam ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [users, setUsers] = useState<User[]>(() =>
+    getCachedUsers().filter((u) => u.role === "it_staff" && u.isActive)
+  );
+
+  useEffect(() => {
+    if (!showUserDialog) return;
+    let cancelled = false;
+    fetchUsers()
+      .then((list) => {
+        if (cancelled) return;
+        setUsers(list.filter((u) => u.role === "it_staff" && u.isActive));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUsers(getCachedUsers().filter((u) => u.role === "it_staff" && u.isActive));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showUserDialog]);
 
   if (state.currentUser?.role !== "team_lead" && state.currentUser?.role !== "admin") {
     return null;
   }
-
-  const users = getCachedUsers().filter(
-    (u) => u.role === "it_staff" && u.isActive
-  );
 
   const withSubmitting = async <T,>(fn: () => Promise<T>) => {
     setSubmitting(true);

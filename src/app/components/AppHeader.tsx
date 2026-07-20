@@ -122,7 +122,7 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
           type: 'user' as const,
           title: user.name,
           description: `${user.email} • ${user.role}${user.team ? ` • ${user.team}` : ''}`,
-          url: `/settings`,
+          url: `/users`,
           relevanceScore: 1,
           createdAt: user.createdAt,
         })),
@@ -187,7 +187,7 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
       error: '/error-reports',
       feature: '/feature-requests',
       downtime: '/downtime',
-      user: '/settings',
+      user: '/users',
       comment: '/mentions',
     };
 
