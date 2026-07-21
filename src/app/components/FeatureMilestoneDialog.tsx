@@ -62,10 +62,10 @@ export function FeatureMilestoneDialog({
       setMsDate("");
       await load();
       onUpdated?.();
-      toast.success("Milestone created");
+      toast.success("Milestone dibuat");
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message : "Failed to create milestone";
+        err instanceof ApiError ? err.message : "Gagal membuat milestone";
       toast.error(message);
     }
   };
@@ -76,15 +76,15 @@ export function FeatureMilestoneDialog({
         <DialogHeader>
           <DialogTitle>Milestones</DialogTitle>
           <DialogDescription>
-            {featureId ? `Feature ${featureId}` : "Manage delivery milestones"}
+            {featureId ? `Feature ${featureId}` : "Kelola milestone pengiriman"}
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="h-[320px] pr-4">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading milestones...</p>
+            <p className="text-sm text-muted-foreground">Memuat milestone...</p>
           ) : milestones.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">No milestones yet</p>
+            <p className="text-sm text-muted-foreground italic">Belum ada milestone</p>
           ) : (
             <div className="space-y-2">
               {milestones.map((m) => (
@@ -93,7 +93,7 @@ export function FeatureMilestoneDialog({
                     <p className="font-medium">{m.title}</p>
                     <p className="text-muted-foreground">
                       Target: {format(m.targetDate, "PP")} · {m.progress}%
-                      {m.isCompleted && " · Completed"}
+                      {m.isCompleted && " · Selesai"}
                     </p>
                   </div>
                   <div className="flex gap-1 shrink-0">
@@ -108,7 +108,7 @@ export function FeatureMilestoneDialog({
                           onUpdated?.();
                         }}
                       >
-                        Complete
+                        Selesaikan
                       </Button>
                     )}
                     <Button
@@ -121,7 +121,7 @@ export function FeatureMilestoneDialog({
                         onUpdated?.();
                       }}
                     >
-                      Delete
+                      Hapus
                     </Button>
                   </div>
                 </div>
@@ -131,7 +131,7 @@ export function FeatureMilestoneDialog({
         </ScrollArea>
 
         <div className="grid gap-2 sm:grid-cols-3 pt-2 border-t">
-          <Input placeholder="Title" value={msTitle} onChange={(e) => setMsTitle(e.target.value)} />
+          <Input placeholder="Judul" value={msTitle} onChange={(e) => setMsTitle(e.target.value)} />
           <Input
             type="date"
             min={format(new Date(), "yyyy-MM-dd")}
@@ -139,7 +139,7 @@ export function FeatureMilestoneDialog({
             onChange={(e) => setMsDate(e.target.value)}
           />
           <Button onClick={addMilestone} disabled={!featureId}>
-            Add Milestone
+            Tambah milestone
           </Button>
         </div>
       </DialogContent>

@@ -69,7 +69,7 @@ export function StatusChangeActions({
 
   const handleSubmit = async () => {
     if (status === currentStatus) {
-      toast.error("Select a different status");
+      toast.error("Pilih status yang berbeda");
       return;
     }
     setSubmitting(true);
@@ -98,13 +98,13 @@ export function StatusChangeActions({
           due_date: format(dueDate, "yyyy-MM-dd"),
         });
       }
-      toast.success("Status updated");
+      toast.success("Status diperbarui");
       setOpen(false);
       setDueDate(undefined);
       setEffectiveAt(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
       onCompleted?.();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Update failed");
+      toast.error(err instanceof ApiError ? err.message : "Pembaruan gagal");
     } finally {
       setSubmitting(false);
     }
@@ -114,21 +114,21 @@ export function StatusChangeActions({
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
         <ArrowRightCircle className="mr-2 h-4 w-4" />
-        Change Status
+        Ubah status
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Change Status</DialogTitle>
+            <DialogTitle>Ubah status</DialogTitle>
             <DialogDescription>
-              Move this item to a different state. History is recorded.
+              Pindahkan item ke status lain. Riwayat perubahan akan tercatat.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div>
-              <Label>New Status</Label>
+              <Label>Status baru</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger>
                   <SelectValue />
@@ -144,21 +144,21 @@ export function StatusChangeActions({
             </div>
 
             <div>
-              <Label>Reason (optional)</Label>
+              <Label>Alasan (opsional)</Label>
               <Input
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Short summary shown in status history"
+                placeholder="Ringkasan singkat di riwayat status"
                 maxLength={500}
               />
             </div>
 
             <div>
-              <Label>Notes (optional)</Label>
+              <Label>Catatan (opsional)</Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Detailed context for the audit trail"
+                placeholder="Konteks detail untuk jejak audit"
                 maxLength={1000}
                 rows={3}
               />
@@ -166,9 +166,9 @@ export function StatusChangeActions({
 
             {(target === "features" || target === "errors") && (
               <div>
-                <Label>Effective Date & Time</Label>
+                <Label>Tanggal & waktu efektif</Label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  When this status change took effect (required for lifecycle tracking).
+                  Kapan perubahan status ini berlaku (wajib untuk pelacakan siklus hidup).
                 </p>
                 <Input
                   type="datetime-local"
@@ -238,10 +238,10 @@ export function StatusChangeActions({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              Batal
             </Button>
             <Button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? "Saving..." : "Update"}
+              {submitting ? "Menyimpan..." : "Perbarui"}
             </Button>
           </DialogFooter>
         </DialogContent>

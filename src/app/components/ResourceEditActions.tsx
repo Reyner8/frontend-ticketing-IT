@@ -91,23 +91,23 @@ export function ResourceEditActions({
           ? { due_date: editDueDate ? format(editDueDate, "yyyy-MM-dd") : null }
           : {}),
       });
-      toast.success("Updated");
+      toast.success("Berhasil diperbarui");
       setEditOpen(false);
     } catch {
-      toast.error("Update failed");
+      toast.error("Pembaruan gagal");
     } finally {
       setBusy(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Delete "${title}"?`)) return;
+    if (!confirm(`Hapus "${title}"?`)) return;
     setBusy(true);
     try {
       await onDelete();
-      toast.success("Deleted");
+      toast.success("Berhasil dihapus");
     } catch {
-      toast.error("Delete failed");
+      toast.error("Penghapusan gagal");
     } finally {
       setBusy(false);
     }
@@ -120,27 +120,27 @@ export function ResourceEditActions({
       {canEdit && (
         <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           <Pencil className="h-4 w-4 mr-1" />
-          Edit
+          Ubah
         </Button>
       )}
       {canDelete && (
         <Button size="sm" variant="destructive" onClick={handleDelete} disabled={busy}>
           <Trash2 className="h-4 w-4 mr-1" />
-          Delete
+          Hapus
         </Button>
       )}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit</DialogTitle>
+            <DialogTitle>Ubah</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label>Title</Label>
+              <Label>Judul</Label>
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Description</Label>
+              <Label>Deskripsi</Label>
               <Textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
@@ -205,10 +205,10 @@ export function ResourceEditActions({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
+              Batal
             </Button>
             <Button onClick={handleSave} disabled={busy || !editTitle.trim()}>
-              Save
+              Simpan
             </Button>
           </DialogFooter>
         </DialogContent>

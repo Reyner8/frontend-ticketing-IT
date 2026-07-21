@@ -39,9 +39,9 @@ interface AssignmentActionsProps {
 }
 
 const TEAMS: { value: TeamType; label: string }[] = [
-  { value: "programmer", label: "Programmer Team" },
-  { value: "network", label: "Network Team" },
-  { value: "hardware", label: "Hardware Team" },
+  { value: "programmer", label: "Tim Programmer" },
+  { value: "network", label: "Tim Jaringan" },
+  { value: "hardware", label: "Tim Hardware" },
 ];
 
 export function AssignmentActions({
@@ -89,7 +89,7 @@ export function AssignmentActions({
       await fn();
       onCompleted?.();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Action failed");
+      toast.error(err instanceof ApiError ? err.message : "Aksi gagal");
     } finally {
       setSubmitting(false);
     }
@@ -99,7 +99,7 @@ export function AssignmentActions({
     withSubmitting(async () => {
       if (!selectedUser) return;
       await assignUser(target, resourceId, selectedUser);
-      toast.success("Assigned to user");
+      toast.success("Berhasil ditugaskan ke pengguna");
       setShowUserDialog(false);
     });
 
@@ -107,20 +107,20 @@ export function AssignmentActions({
     withSubmitting(async () => {
       if (!selectedTeam) return;
       await assignTeam(target, resourceId, selectedTeam);
-      toast.success("Assigned to team");
+      toast.success("Berhasil ditugaskan ke tim");
       setShowTeamDialog(false);
     });
 
   const handleUnassignUser = () =>
     withSubmitting(async () => {
       await unassignUser(target, resourceId);
-      toast.success("User unassigned");
+      toast.success("Penugasan pengguna dihapus");
     });
 
   const handleUnassignTeam = () =>
     withSubmitting(async () => {
       await unassignTeam(target, resourceId);
-      toast.success("Team unassigned");
+      toast.success("Penugasan tim dihapus");
     });
 
   return (
@@ -128,11 +128,11 @@ export function AssignmentActions({
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={() => setShowUserDialog(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
-          {currentAssigneeId ? "Reassign User" : "Assign User"}
+          {currentAssigneeId ? "Tugaskan Ulang Pengguna" : "Tugaskan Pengguna"}
         </Button>
         <Button variant="outline" size="sm" onClick={() => setShowTeamDialog(true)}>
           <Users className="mr-2 h-4 w-4" />
-          {currentTeam ? "Reassign Team" : "Assign Team"}
+          {currentTeam ? "Tugaskan Ulang Tim" : "Tugaskan Tim"}
         </Button>
         {currentAssigneeId && (
           <Button
@@ -142,7 +142,7 @@ export function AssignmentActions({
             disabled={submitting}
           >
             <UserMinus className="mr-2 h-4 w-4" />
-            Clear User
+            Hapus Pengguna
           </Button>
         )}
         {currentTeam && (
@@ -153,7 +153,7 @@ export function AssignmentActions({
             disabled={submitting}
           >
             <UserMinus className="mr-2 h-4 w-4" />
-            Clear Team
+            Hapus Tim
           </Button>
         )}
       </div>
@@ -161,16 +161,16 @@ export function AssignmentActions({
       <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign to IT Staff</DialogTitle>
+            <DialogTitle>Tugaskan ke Staf IT</DialogTitle>
             <DialogDescription>
-              Select an active IT staff member to own this item.
+              Pilih anggota staf IT aktif untuk menangani item ini.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Assignee</Label>
+            <Label>Penerima Tugas</Label>
             <Select value={selectedUser} onValueChange={setSelectedUser}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose a user" />
+                <SelectValue placeholder="Pilih pengguna" />
               </SelectTrigger>
               <SelectContent>
                 {users.map((u) => (
@@ -180,7 +180,7 @@ export function AssignmentActions({
                 ))}
                 {users.length === 0 && (
                   <SelectItem value="none" disabled>
-                    No active IT staff available
+                    Tidak ada staf IT aktif
                   </SelectItem>
                 )}
               </SelectContent>
@@ -188,13 +188,13 @@ export function AssignmentActions({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowUserDialog(false)}>
-              Cancel
+              Batal
             </Button>
             <Button
               onClick={handleAssignUser}
               disabled={submitting || !selectedUser}
             >
-              {submitting ? "Assigning..." : "Assign"}
+              {submitting ? "Menugaskan..." : "Tugaskan"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -203,19 +203,19 @@ export function AssignmentActions({
       <Dialog open={showTeamDialog} onOpenChange={setShowTeamDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign to Team</DialogTitle>
+            <DialogTitle>Tugaskan ke Tim</DialogTitle>
             <DialogDescription>
-              Route this item to a specific IT team.
+              Arahkan item ini ke tim IT tertentu.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Team</Label>
+            <Label>Tim</Label>
             <Select
               value={selectedTeam}
               onValueChange={(v) => setSelectedTeam(v as TeamType)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Choose a team" />
+                <SelectValue placeholder="Pilih tim" />
               </SelectTrigger>
               <SelectContent>
                 {TEAMS.map((t) => (
@@ -228,13 +228,13 @@ export function AssignmentActions({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTeamDialog(false)}>
-              Cancel
+              Batal
             </Button>
             <Button
               onClick={handleAssignTeam}
               disabled={submitting || !selectedTeam}
             >
-              {submitting ? "Assigning..." : "Assign"}
+              {submitting ? "Menugaskan..." : "Tugaskan"}
             </Button>
           </DialogFooter>
         </DialogContent>

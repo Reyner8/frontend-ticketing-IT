@@ -49,11 +49,11 @@ export function ApprovalActions({
     setApproving(true);
     try {
       await approveResource(target, resourceId);
-      toast.success("Approved");
+      toast.success("Disetujui");
       onCompleted?.();
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? err.message : "Failed to approve"
+        err instanceof ApiError ? err.message : "Gagal menyetujui"
       );
     } finally {
       setApproving(false);
@@ -62,18 +62,18 @@ export function ApprovalActions({
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      toast.error("Rejection reason is required");
+      toast.error("Alasan penolakan wajib diisi");
       return;
     }
     setRejecting(true);
     try {
       await rejectResource(target, resourceId, rejectReason.trim());
-      toast.success("Rejected");
+      toast.success("Ditolak");
       setShowRejectDialog(false);
       setRejectReason("");
       onCompleted?.();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Failed to reject");
+      toast.error(err instanceof ApiError ? err.message : "Gagal menolak");
     } finally {
       setRejecting(false);
     }
@@ -89,7 +89,7 @@ export function ApprovalActions({
           disabled={approving}
         >
           <CheckCircle2 className="mr-2 h-4 w-4" />
-          {approving ? "Approving..." : "Approve"}
+          {approving ? "Menyetujui..." : "Setujui"}
         </Button>
         <Button
           variant="destructive"
@@ -97,26 +97,26 @@ export function ApprovalActions({
           onClick={() => setShowRejectDialog(true)}
         >
           <XCircle className="mr-2 h-4 w-4" />
-          Reject
+          Tolak
         </Button>
       </div>
 
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Submission</DialogTitle>
+            <DialogTitle>Tolak pengajuan</DialogTitle>
             <DialogDescription>
-              Provide a reason so the submitter knows how to resubmit.
+              Berikan alasan agar pengaju tahu cara mengajukan ulang.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="reason">Reason</Label>
+            <Label htmlFor="reason">Alasan</Label>
             <Textarea
               id="reason"
               rows={4}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Explain why this is being rejected..."
+              placeholder="Jelaskan alasan penolakan..."
               required
             />
           </div>
@@ -126,14 +126,14 @@ export function ApprovalActions({
               onClick={() => setShowRejectDialog(false)}
               disabled={rejecting}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               variant="destructive"
               onClick={handleReject}
               disabled={rejecting || !rejectReason.trim()}
             >
-              {rejecting ? "Rejecting..." : "Confirm Reject"}
+              {rejecting ? "Menolak..." : "Konfirmasi tolak"}
             </Button>
           </DialogFooter>
         </DialogContent>

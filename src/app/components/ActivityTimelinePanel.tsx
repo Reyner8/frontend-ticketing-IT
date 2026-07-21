@@ -37,7 +37,7 @@ export function ActivityTimelinePanel({
       <div>
         <h4 className="font-medium mb-2">Activity Log</h4>
         {activityLog.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No activity recorded</p>
+          <p className="text-sm text-muted-foreground">Belum ada aktivitas tercatat</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {activityLog.map((entry) => (

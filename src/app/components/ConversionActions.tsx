@@ -28,6 +28,7 @@ import { ApiError } from "../lib/api/client";
 import { useApp } from "../lib/store";
 import type { ConversionHistoryEntry, TargetApplication, TicketPriority } from "../types";
 import { TARGET_APPLICATION_OPTIONS } from "../lib/constants";
+import { labelPriority } from "../lib/ui-labels";
 
 interface ConversionActionsProps {
   ticketId: string;
@@ -123,7 +124,7 @@ export function ConversionActions({
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
         <ArrowRightLeft className="mr-2 h-4 w-4" />
-        Convert
+        Konversi
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -215,10 +216,10 @@ export function ConversionActions({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
+                  <SelectItem value="low">{labelPriority("low")}</SelectItem>
+                  <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
+                  <SelectItem value="high">{labelPriority("high")}</SelectItem>
+                  <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -239,7 +240,7 @@ export function ConversionActions({
               Batal
             </Button>
             <Button onClick={handleConvert} disabled={submitting}>
-              {submitting ? "Mengonversi..." : "Convert"}
+              {submitting ? "Mengonversi..." : "Konversi"}
             </Button>
           </DialogFooter>
         </DialogContent>
