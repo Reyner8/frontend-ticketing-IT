@@ -31,6 +31,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useApp, useNotifications } from '../lib/store';
 import { searchTickets, searchDowntimes, searchUsers, searchErrorReports, searchFeatures } from '../lib/api/services';
 import { setFocusResource } from '../lib/resource-focus';
+import { labelRole } from '../lib/ui-labels';
 import { SearchResult } from '../types';
 import { 
   Search, 
@@ -234,14 +235,14 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
     
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1) return 'Baru saja';
+    if (diffInMinutes < 60) return `${diffInMinutes} mnt lalu`;
     
     const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInHours < 24) return `${diffInHours} jam lalu`;
     
     const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}d ago`;
+    return `${diffInDays} hari lalu`;
   };
 
   if (!state.currentUser) return null;
@@ -257,7 +258,7 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
             onClick={() => setSearchOpen(true)}
           >
             <Search className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline-flex">Search everything...</span>
+            <span className="hidden md:inline-flex">Cari di seluruh sistem...</span>
             <kbd className="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 md:flex">
               <span className="text-xs">⌘</span>K
             </kbd>
@@ -327,10 +328,10 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="end">
             <div className="flex items-center justify-between p-4 border-b">
-              <h4 className="font-medium">Notifications</h4>
+              <h4 className="font-medium">Notifikasi</h4>
               {unreadCount > 0 && (
                 <Button variant="ghost" size="sm" onClick={markAllAsRead}>
-                  Mark all read
+                  Tandai semua dibaca
                 </Button>
               )}
             </div>
@@ -362,7 +363,7 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
               ) : (
                 <div className="p-8 text-center text-muted-foreground">
                   <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No notifications</p>
+                  <p>Tidak ada notifikasi</p>
                 </div>
               )}
             </ScrollArea>
@@ -389,14 +390,14 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
                   {state.currentUser.email}
                 </p>
                 <Badge variant="outline" className="w-fit mt-1">
-                  {state.currentUser.role.replace('_', ' ')}
+                  {labelRole(state.currentUser.role)}
                 </Badge>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onNavigate('/settings')}>
               <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>Profil</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onNavigate('/settings')}>
               <Settings className="mr-2 h-4 w-4" />
@@ -406,19 +407,19 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
               {state.currentUser.preferences.darkMode ? (
                 <>
                   <Sun className="mr-2 h-4 w-4" />
-                  <span>Light Mode</span>
+                  <span>Mode terang</span>
                 </>
               ) : (
                 <>
                   <Moon className="mr-2 h-4 w-4" />
-                  <span>Dark Mode</span>
+                  <span>Mode gelap</span>
                 </>
               )}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+              <span>Keluar</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -427,15 +428,15 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
       {/* Global Search Dialog */}
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput 
-          placeholder="Search tickets, errors, features, downtimes..."
+          placeholder="Cari ticket, error, fitur, downtime..."
           value={searchQuery}
           onValueChange={setSearchQuery}
         />
         <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandEmpty>Tidak ada hasil.</CommandEmpty>
           {searchResults.length > 0 && (
             <>
-              <CommandGroup heading="Search Results">
+              <CommandGroup heading="Hasil pencarian">
                 {searchResults.map((result) => {
                   const IconComponent = getSearchIcon(result.type);
                   return (
@@ -459,22 +460,22 @@ export function AppHeader({ onNavigate, onOpenQuickAction }: AppHeaderProps) {
               <CommandSeparator />
             </>
           )}
-          <CommandGroup heading="Quick Actions">
+          <CommandGroup heading="Aksi cepat">
             <CommandItem onSelect={() => { setSearchOpen(false); onNavigate('/'); }}>
               <Calendar className="mr-2 h-4 w-4" />
-              Go to Dashboard
+              Buka Dashboard
             </CommandItem>
             <CommandItem onSelect={() => { setSearchOpen(false); onNavigate('/error-reports'); }}>
               <Bug className="mr-2 h-4 w-4" />
-              View Error Reports
+              Lihat Error Reports
             </CommandItem>
             <CommandItem onSelect={() => { setSearchOpen(false); onNavigate('/downtime'); }}>
               <Zap className="mr-2 h-4 w-4" />
-              View Downtime Records
+              Lihat Downtime Monitoring
             </CommandItem>
             <CommandItem onSelect={() => { setSearchOpen(false); onNavigate('/team-performance'); }}>
               <Wrench className="mr-2 h-4 w-4" />
-              Team Performance
+              Buka Team Performance
             </CommandItem>
           </CommandGroup>
         </CommandList>

@@ -25,11 +25,11 @@ export function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token.trim()) {
-      toast.error("Reset token is missing. Open the link from your email.");
+      toast.error("Token reset tidak ditemukan. Buka tautan dari email Anda.");
       return;
     }
     if (password !== passwordConfirmation) {
-      toast.error("Password confirmation does not match");
+      toast.error("Konfirmasi kata sandi tidak cocok");
       return;
     }
 
@@ -41,10 +41,10 @@ export function ResetPassword() {
         password,
         password_confirmation: passwordConfirmation,
       });
-      toast.success("Password updated. You can sign in now.");
+      toast.success("Kata sandi diperbarui. Anda dapat masuk sekarang.");
       navigate("/login");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Reset failed");
+      toast.error(err instanceof ApiError ? err.message : "Reset gagal");
     } finally {
       setLoading(false);
     }
@@ -58,14 +58,14 @@ export function ResetPassword() {
             <KeyRound className="h-6 w-6" />
           </div>
           <CardTitle>Reset Password</CardTitle>
-          <CardDescription>Choose a new password for your account</CardDescription>
+          <CardDescription>Pilih kata sandi baru untuk akun Anda</CardDescription>
         </CardHeader>
         <CardContent>
           {missingToken ? (
             <p className="text-sm text-center text-muted-foreground">
-              Invalid or expired reset link. Request a new one from{" "}
+              Tautan reset tidak valid atau sudah kedaluwarsa. Minta tautan baru dari{" "}
               <Link to="/forgot-password" className="text-primary hover:underline">
-                forgot password
+                lupa kata sandi
               </Link>
               .
             </p>
@@ -82,7 +82,7 @@ export function ResetPassword() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">New password</Label>
+                <Label htmlFor="password">Kata sandi baru</Label>
                 <Input
                   id="password"
                   type="password"
@@ -93,7 +93,7 @@ export function ResetPassword() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password_confirmation">Confirm password</Label>
+                <Label htmlFor="password_confirmation">Konfirmasi kata sandi</Label>
                 <Input
                   id="password_confirmation"
                   type="password"
@@ -104,13 +104,13 @@ export function ResetPassword() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Updating..." : "Update password"}
+                {loading ? "Memperbarui..." : "Perbarui kata sandi"}
               </Button>
             </form>
           )}
           <p className="text-center text-sm text-muted-foreground mt-4">
             <Link to="/login" className="text-primary hover:underline">
-              Back to sign in
+              Kembali ke masuk
             </Link>
           </p>
         </CardContent>

@@ -29,10 +29,10 @@ export function Login() {
     try {
       const { user } = await login(email, password);
       dispatch({ type: 'SET_USER', payload: user });
-      toast.success(`Welcome back, ${user.name}!`);
+      toast.success(`Selamat datang, ${user.name}!`);
       navigate('/');
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Login failed';
+      const message = err instanceof ApiError ? err.message : 'Login gagal';
       toast.error(message);
     } finally {
       setLoading(false);
@@ -47,7 +47,7 @@ export function Login() {
             <Ticket className="h-6 w-6" />
           </div>
           <CardTitle className="text-2xl">Ticketing System</CardTitle>
-          <CardDescription>Sign in to access the dashboard</CardDescription>
+          <CardDescription>Masuk untuk mengakses dashboard</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -64,7 +64,7 @@ export function Login() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Kata sandi</Label>
               <Input
                 id="password"
                 type="password"
@@ -76,15 +76,15 @@ export function Login() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Sedang masuk...' : 'Masuk'}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               <Link to="/forgot-password" className="text-primary hover:underline">
-                Forgot password?
+                Lupa kata sandi?
               </Link>
               {" · "}
               <Link to="/register" className="text-primary hover:underline">
-                Create account
+                Buat akun
               </Link>
             </p>
           </form>
@@ -92,7 +92,7 @@ export function Login() {
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium text-foreground">Demo accounts (password: 12345678)</p>
+                <p className="font-medium text-foreground">Akun demo (kata sandi: 12345678)</p>
                 <p>anton@example.com — admin</p>
                 <p>rusdi@example.com — team_lead</p>
                 <p>amba@example.com — it_staff</p>

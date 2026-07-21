@@ -197,7 +197,7 @@ export function AppProvider({ children }: AppProviderProps) {
       const quickActions: QuickAction[] = [
         {
           id: 'new-ticket',
-          label: 'New Ticket',
+          label: 'Tiket baru',
           icon: 'Plus',
           action: () => {},
           shortcut: 'Ctrl+N',
@@ -208,7 +208,7 @@ export function AppProvider({ children }: AppProviderProps) {
       if (state.currentUser.role === 'it_staff') {
         quickActions.push({
           id: 'log-downtime',
-          label: 'Log Downtime',
+          label: 'Catat downtime',
           icon: 'Zap',
           action: () => {},
           shortcut: 'Ctrl+D',
@@ -219,7 +219,7 @@ export function AppProvider({ children }: AppProviderProps) {
       if (['admin', 'team_lead'].includes(state.currentUser.role)) {
         quickActions.push({
           id: 'assign-ticket',
-          label: 'Assign Ticket',
+          label: 'Tugaskan ticket',
           icon: 'UserPlus',
           action: () => {},
           shortcut: 'Ctrl+A',
@@ -230,7 +230,7 @@ export function AppProvider({ children }: AppProviderProps) {
       if (state.currentUser.role === 'admin') {
         quickActions.push({
           id: 'export-reports',
-          label: 'Export Reports',
+          label: 'Ekspor laporan',
           icon: 'Download',
           action: () => {},
           shortcut: 'Ctrl+E',
