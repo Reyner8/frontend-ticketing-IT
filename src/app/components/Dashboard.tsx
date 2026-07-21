@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cel
 import { useApp } from '../lib/store';
 import { fetchDashboardData, fetchUsers, fetchGlobalActivityLogs } from '../lib/api/services';
 import { Ticket, DowntimeRecord, DashboardStats, TeamWorkload, ActivityLogEntry, User } from '../types';
+import { labelStatus, labelPriority, labelTeam } from '../lib/ui-labels';
 import { AlertTriangle, CheckCircle, Clock, TrendingUp, Users, Target, Star, Activity } from "lucide-react";
 
 export function Dashboard() {
@@ -98,7 +99,7 @@ export function Dashboard() {
         }))
       : recentTickets.map((ticket) => ({
           type: 'ticket_created' as const,
-          message: `${ticket.title} — ${ticket.status.replace(/_/g, ' ')}`,
+          message: `${ticket.title} — ${labelStatus(ticket.status)}`,
           time: ticket.dateReported,
         }));
   
@@ -113,10 +114,10 @@ export function Dashboard() {
   const otherOpen = Math.max(0, stats.openTickets - inProgressCount);
 
   const statusData = [
-    { name: 'Open', value: otherOpen, color: '#FFBB28' },
-    { name: 'In Progress', value: inProgressCount, color: '#0088FE' },
-    { name: 'Resolved', value: resolvedCount, color: '#00C49F' },
-    { name: 'Overdue', value: stats.overdueTickets, color: '#FF8042' },
+    { name: 'Terbuka', value: otherOpen, color: '#FFBB28' },
+    { name: 'Sedang dikerjakan', value: inProgressCount, color: '#0088FE' },
+    { name: 'Selesai', value: resolvedCount, color: '#00C49F' },
+    { name: 'Terlambat', value: stats.overdueTickets, color: '#FF8042' },
   ].filter((d) => d.value > 0);
 
   const teamSlaChart = teamWorkload.map((t) => ({
@@ -140,8 +141,8 @@ export function Dashboard() {
     if (teamWorkload.length === 0) {
       items.push({
         icon: 'warn',
-        title: 'No workload data',
-        detail: 'Generate a team workload snapshot to see performance insights.',
+        title: 'Tidak ada data beban kerja',
+        detail: 'Buat snapshot beban kerja tim untuk melihat insight performa.',
       });
       return items;
     }
@@ -152,34 +153,34 @@ export function Dashboard() {
     if (top) {
       items.push({
         icon: 'ok',
-        title: 'Highest SLA',
-        detail: `${top.team} leads with ${top.slaCompliance}% SLA compliance.`,
+        title: 'SLA tertinggi',
+        detail: `${labelTeam(top.team)} memimpin dengan kepatuhan SLA ${top.slaCompliance}%.`,
       });
     }
     if (loaded && loaded.workloadPercentage >= 70) {
       items.push({
         icon: 'warn',
-        title: 'Capacity pressure',
-        detail: `${loaded.team} workload is at ${loaded.workloadPercentage}%.`,
+        title: 'Tekanan kapasitas',
+        detail: `Beban kerja ${labelTeam(loaded.team)} mencapai ${loaded.workloadPercentage}%.`,
       });
     } else if (loaded) {
       items.push({
         icon: 'trend',
-        title: 'Workload balanced',
-        detail: `Highest load is ${loaded.team} at ${loaded.workloadPercentage}%.`,
+        title: 'Beban kerja seimbang',
+        detail: `Beban tertinggi ada di ${labelTeam(loaded.team)} (${loaded.workloadPercentage}%).`,
       });
     }
     if (stats.slaCompliance >= 90) {
       items.push({
         icon: 'ok',
         title: 'SLA on track',
-        detail: `Overall SLA compliance is ${stats.slaCompliance}%.`,
+        detail: `Kepatuhan SLA keseluruhan ${stats.slaCompliance}%.`,
       });
     } else if (stats.overdueTickets > 0) {
       items.push({
         icon: 'warn',
-        title: 'Overdue backlog',
-        detail: `${stats.overdueTickets} ticket(s) breached SLA and need attention.`,
+        title: 'Backlog terlambat',
+        detail: `${stats.overdueTickets} tiket melanggar SLA dan perlu perhatian.`,
       });
     }
     return items;
@@ -188,32 +189,32 @@ export function Dashboard() {
   const upcomingActions = [
     ...(stats.overdueTickets > 0
       ? [{
-          title: 'Review overdue tickets',
-          detail: `${stats.overdueTickets} ticket(s) need attention`,
-          badge: 'Urgent' as const,
+          title: 'Tinjau tiket terlambat',
+          detail: `${stats.overdueTickets} tiket perlu perhatian`,
+          badge: 'Mendesak' as const,
         }]
       : []),
     ...(activeDowntimes.length > 0
       ? [{
-          title: 'Resolve active downtimes',
-          detail: `${activeDowntimes.length} ongoing incident(s)`,
-          badge: 'Urgent' as const,
+          title: 'Selesaikan downtime aktif',
+          detail: `${activeDowntimes.length} insiden berlangsung`,
+          badge: 'Mendesak' as const,
         }]
       : []),
     ...(stats.criticalTickets > 0
       ? [{
-          title: 'Triage critical tickets',
-          detail: `${stats.criticalTickets} critical ticket(s) open`,
-          badge: 'Urgent' as const,
+          title: 'Triase tiket kritis',
+          detail: `${stats.criticalTickets} tiket kritis masih terbuka`,
+          badge: 'Mendesak' as const,
         }]
       : []),
   ];
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return 'Selamat pagi';
+    if (hour < 18) return 'Selamat siang';
+    return 'Selamat malam';
   };
 
   const getRoleSpecificStats = () => {
@@ -225,7 +226,7 @@ export function Dashboard() {
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <CardTitle className="text-sm font-medium">Total pengguna</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -238,7 +239,7 @@ export function Dashboard() {
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">System Health</CardTitle>
+                <CardTitle className="text-sm font-medium">Kesehatan sistem</CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -246,27 +247,27 @@ export function Dashboard() {
                   {stats.uptimePercent != null ? `${stats.uptimePercent}%` : '—'}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Uptime this month ({stats.downtimeHours}h downtime)
+                  Uptime bulan ini ({stats.downtimeHours}j downtime)
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Downtimes</CardTitle>
+                <CardTitle className="text-sm font-medium">Downtime aktif</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.activeDowntimes}</div>
                 <p className="text-xs text-muted-foreground">
-                  Ongoing incidents
+                  Insiden berlangsung
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Cost Impact</CardTitle>
+                <CardTitle className="text-sm font-medium">Dampak biaya</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -276,7 +277,7 @@ export function Dashboard() {
                     : '—'}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Estimated downtime cost this month
+                  Estimasi biaya downtime bulan ini
                 </p>
               </CardContent>
             </Card>
@@ -289,20 +290,20 @@ export function Dashboard() {
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Team Tickets</CardTitle>
+                <CardTitle className="text-sm font-medium">Tiket tim</CardTitle>
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{teamStats?.openTickets || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  {teamStats?.totalTickets || 0} total this month
+                  {teamStats?.totalTickets || 0} total bulan ini
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Team SLA</CardTitle>
+                <CardTitle className="text-sm font-medium">SLA tim</CardTitle>
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -315,26 +316,26 @@ export function Dashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Response</CardTitle>
+                <CardTitle className="text-sm font-medium">Rata-rata respons</CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{teamStats?.averageResponseTime || 0}h</div>
                 <p className="text-xs text-muted-foreground">
-                  Team average
+                  Rata-rata tim
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Team Workload</CardTitle>
+                <CardTitle className="text-sm font-medium">Beban kerja tim</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{teamStats?.workloadPercentage || 0}%</div>
                 <p className="text-xs text-muted-foreground">
-                  Capacity utilization
+                  Utilisasi kapasitas
                 </p>
               </CardContent>
             </Card>
@@ -357,52 +358,52 @@ export function Dashboard() {
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">My Open Tickets</CardTitle>
+                <CardTitle className="text-sm font-medium">Tiket terbuka saya</CardTitle>
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{myOpenTickets.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  {myTickets.length} total assigned
+                  {myTickets.length} total ditugaskan
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+                <CardTitle className="text-sm font-medium">Terlambat</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{myOverdueTickets.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  Require immediate attention
+                  Perlu perhatian segera
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Resolved Today</CardTitle>
+                <CardTitle className="text-sm font-medium">Selesai hari ini</CardTitle>
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{myResolvedToday}</div>
                 <p className="text-xs text-muted-foreground">
-                  Closed or resolved today
+                  Ditutup atau diselesaikan hari ini
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">My Performance</CardTitle>
+                <CardTitle className="text-sm font-medium">Performa saya</CardTitle>
                 <Star className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{mySla}%</div>
                 <p className="text-xs text-muted-foreground">
-                  SLA compliance rate
+                  Tingkat kepatuhan SLA
                 </p>
               </CardContent>
             </Card>
@@ -428,33 +429,33 @@ export function Dashboard() {
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">My Tickets</CardTitle>
+                <CardTitle className="text-sm font-medium">Tiket saya</CardTitle>
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{myReportedTickets.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  Total reported
+                  Total dilaporkan
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                <CardTitle className="text-sm font-medium">Menunggu</CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{myPendingTickets.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  Awaiting resolution
+                  Menunggu penyelesaian
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Resolved</CardTitle>
+                <CardTitle className="text-sm font-medium">Selesai</CardTitle>
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -462,20 +463,20 @@ export function Dashboard() {
                   {myReportedTickets.filter(t => ['resolved', 'closed'].includes(t.status)).length}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Issues fixed
+                  Masalah terselesaikan
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Resolution</CardTitle>
+                <CardTitle className="text-sm font-medium">Rata-rata penyelesaian</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{avgHours != null ? `${avgHours}h` : '—'}</div>
                 <p className="text-xs text-muted-foreground">
-                  Average time to resolve
+                  Rata-rata waktu penyelesaian
                 </p>
               </CardContent>
             </Card>
@@ -496,12 +497,12 @@ export function Dashboard() {
             {getGreeting()}, {currentUser?.name.split(' ')[0]}!
           </h2>
           <p className="text-muted-foreground">
-            Here's what's happening with your IT systems today.
+            Berikut ringkasan sistem IT Anda hari ini.
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="hidden md:flex">
-            Last updated: {new Date().toLocaleTimeString()}
+            Terakhir diperbarui: {new Date().toLocaleTimeString()}
           </Badge>
         </div>
       </div>
@@ -520,46 +521,46 @@ export function Dashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
+                <CardTitle className="text-sm font-medium">Total tiket</CardTitle>
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalTickets}</div>
                 <p className="text-xs text-muted-foreground">
-                  {stats.resolvedToday} resolved today
+                  {stats.resolvedToday} diselesaikan hari ini
                 </p>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Open Tickets</CardTitle>
+                <CardTitle className="text-sm font-medium">Tiket terbuka</CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.openTickets}</div>
                 <p className="text-xs text-muted-foreground">
-                  {stats.overdueTickets} overdue
+                  {stats.overdueTickets} terlambat
                 </p>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg. Resolution</CardTitle>
+                <CardTitle className="text-sm font-medium">Rata-rata penyelesaian</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.averageResolutionTime}h</div>
                 <p className="text-xs text-muted-foreground">
-                  From latest team snapshots
+                  Dari snapshot tim terbaru
                 </p>
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">SLA Compliance</CardTitle>
+                <CardTitle className="text-sm font-medium">Kepatuhan SLA</CardTitle>
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -572,15 +573,15 @@ export function Dashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4">
               <CardHeader>
-                <CardTitle>Team Workload Overview</CardTitle>
+                <CardTitle>Ringkasan beban kerja tim</CardTitle>
                 <CardDescription>
-                  Current ticket distribution by team
+                  Distribusi tiket saat ini per tim
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {teamWorkload.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-12 text-center">
-                    No workload snapshot available yet.
+                    Belum ada snapshot beban kerja.
                   </p>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
@@ -589,8 +590,8 @@ export function Dashboard() {
                       <XAxis dataKey="team" />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="openTickets" fill="#FF6B6B" name="Open Tickets" />
-                      <Bar dataKey="resolvedTickets" fill="#4ECDC4" name="Resolved Tickets" />
+                      <Bar dataKey="openTickets" fill="#FF6B6B" name="Tiket terbuka" />
+                      <Bar dataKey="resolvedTickets" fill="#4ECDC4" name="Tiket selesai" />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -599,14 +600,14 @@ export function Dashboard() {
             
             <Card className="col-span-3">
               <CardHeader>
-                <CardTitle>Ticket Status</CardTitle>
+                <CardTitle>Status tiket</CardTitle>
                 <CardDescription>
-                  Current ticket distribution
+                  Distribusi tiket saat ini
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {statusData.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-12 text-center">No tickets yet.</p>
+                  <p className="text-sm text-muted-foreground py-12 text-center">Belum ada tiket.</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
@@ -636,15 +637,15 @@ export function Dashboard() {
         <TabsContent value="performance" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Team SLA Compliance</CardTitle>
+              <CardTitle>Kepatuhan SLA tim</CardTitle>
               <CardDescription>
-                Latest snapshot per team
+                Snapshot terbaru per tim
               </CardDescription>
             </CardHeader>
             <CardContent>
               {teamSlaChart.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-12 text-center">
-                  No performance data. Generate a workload snapshot first.
+                  Tidak ada data performa. Buat snapshot beban kerja terlebih dahulu.
                 </p>
               ) : (
                 <ResponsiveContainer width="100%" height={300}>
@@ -662,14 +663,14 @@ export function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Team Workload %</CardTitle>
+              <CardTitle>Beban kerja tim %</CardTitle>
               <CardDescription>
-                Capacity utilization from latest snapshots
+                Utilisasi kapasitas from latest snapshots
               </CardDescription>
             </CardHeader>
             <CardContent>
               {teamSlaChart.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-12 text-center">No workload data.</p>
+                <p className="text-sm text-muted-foreground py-12 text-center">Tidak ada data beban kerja.</p>
               ) : (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={teamSlaChart}>
@@ -677,7 +678,7 @@ export function Dashboard() {
                     <XAxis dataKey="team" />
                     <YAxis domain={[0, 100]} />
                     <Tooltip />
-                    <Bar dataKey="workload" fill="#45B7D1" name="Workload %" />
+                    <Bar dataKey="workload" fill="#45B7D1" name="Beban kerja %" />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -689,16 +690,16 @@ export function Dashboard() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle>Aktivitas terbaru</CardTitle>
                 <CardDescription>
-                  Latest system events and updates
+                  Peristiwa dan pembaruan sistem terbaru
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-80">
                   <div className="space-y-4">
                     {recentActivity.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No recent activity.</p>
+                      <p className="text-sm text-muted-foreground">Tidak ada aktivitas terbaru.</p>
                     ) : (
                       recentActivity.map((activity, index) => (
                         <div key={index} className="flex items-start space-x-3">
@@ -724,16 +725,16 @@ export function Dashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Recent Tickets</CardTitle>
+                <CardTitle>Tiket terbaru</CardTitle>
                 <CardDescription>
-                  Latest ticket activity
+                  Aktivitas tiket terbaru
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-80">
                   <div className="space-y-4">
                     {recentTickets.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No tickets to show.</p>
+                      <p className="text-sm text-muted-foreground">Tidak ada tiket untuk ditampilkan.</p>
                     ) : (
                       recentTickets.map((ticket) => (
                         <div key={ticket.id} className="flex items-center justify-between">
@@ -742,7 +743,7 @@ export function Dashboard() {
                               {ticket.title}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {ticket.id} • {ticket.category} • {ticket.priority}
+                              {ticket.id} • {ticket.category} • {labelPriority(ticket.priority)}
                             </p>
                           </div>
                           <Badge 
@@ -752,7 +753,7 @@ export function Dashboard() {
                               ticket.slaBreached ? 'destructive' : 'outline'
                             }
                           >
-                            {ticket.status.replace(/_/g, ' ')}
+                            {labelStatus(ticket.status)}
                           </Badge>
                         </div>
                       ))
@@ -768,10 +769,10 @@ export function Dashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-destructive" />
-                  Active Downtimes
+                  Downtime aktif
                 </CardTitle>
                 <CardDescription>
-                  Systems currently experiencing issues
+                  Sistem yang sedang mengalami masalah
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -781,13 +782,13 @@ export function Dashboard() {
                       <div className="space-y-1">
                         <p className="font-medium">{downtime.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          Started: {downtime.startTime.toLocaleString()} • 
-                          Impact: {downtime.impact} • 
-                          Sources: {(downtime.sourceComponents?.map((c) => c.name).join(', ') || downtime.affectedSystems.join(', ') || '—')}
+                          Mulai: {downtime.startTime.toLocaleString()} • 
+                          Dampak: {downtime.impact} • 
+                          Sumber: {(downtime.sourceComponents?.map((c) => c.name).join(', ') || downtime.affectedSystems.join(', ') || '—')}
                         </p>
                       </div>
                       <Badge variant="destructive">
-                        Ongoing
+                        Berlangsung
                       </Badge>
                     </div>
                   ))}
@@ -801,9 +802,9 @@ export function Dashboard() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Key Insights</CardTitle>
+                <CardTitle>Insight utama</CardTitle>
                 <CardDescription>
-                  Derived from current tickets and workload snapshots
+                  Diambil dari tiket saat ini dan snapshot beban kerja
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -836,15 +837,15 @@ export function Dashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Recommended Actions</CardTitle>
+                <CardTitle>Tindakan disarankan</CardTitle>
                 <CardDescription>
-                  Based on overdue tickets and active incidents
+                  Berdasarkan tiket terlambat dan insiden aktif
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {upcomingActions.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No urgent actions right now.
+                    Tidak ada tindakan mendesak saat ini.
                   </p>
                 ) : (
                   <div className="space-y-3">

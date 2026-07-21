@@ -78,10 +78,10 @@ export function NoTicketsFound({ onCreateTicket }: { onCreateTicket: () => void 
   return (
     <EmptyState
       icon={Search}
-      title="No tickets found"
-      description="No tickets match your current filters. Try adjusting your search criteria or create a new ticket."
+      title="Tidak ada tiket ditemukan"
+      description="Tidak ada tiket yang sesuai filter saat ini. Coba ubah kriteria pencarian atau buat tiket baru."
       action={{
-        label: "Create New Ticket",
+        label: "Buat tiket baru",
         onClick: onCreateTicket
       }}
     />
@@ -92,12 +92,12 @@ export function NoDowntimeRecords({ onLogDowntime }: { onLogDowntime?: () => voi
   return (
     <EmptyState
       icon={Zap}
-      title="No downtime records"
-      description="No downtime events have been logged yet. Start by recording a planned maintenance or unplanned outage."
+      title="Tidak ada catatan downtime"
+      description="Belum ada peristiwa downtime tercatat. Mulai dengan mencatat pemeliharaan terencana atau gangguan tidak terencana."
       action={
         onLogDowntime
           ? {
-              label: "Log Downtime Event",
+              label: "Catat peristiwa downtime",
               onClick: onLogDowntime,
             }
           : undefined
@@ -154,8 +154,8 @@ export function LoadingDashboard() {
 }
 
 export function DataLoadingError({ 
-  title = "Failed to load data",
-  description = "There was an error loading the data. Please try again.",
+  title = "Gagal memuat data",
+  description = "Terjadi kesalahan saat memuat data. Silakan coba lagi.",
   onRetry
 }: {
   title?: string;
@@ -173,7 +173,7 @@ export function DataLoadingError({
       </p>
       {onRetry && (
         <Button onClick={onRetry} variant="outline">
-          Try Again
+          Coba lagi
         </Button>
       )}
     </div>

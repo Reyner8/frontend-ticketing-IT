@@ -16,6 +16,7 @@ import { useApp } from "../lib/store";
 import { toast } from "sonner";
 import { fetchFeatureRequests, fetchFeatureDetail, createFeatureRequest, getCachedUsers, fetchFeatureActivityLogs, fetchFeatureStatusHistory, updateFeatureRequest, deleteFeatureRequest } from "../lib/api/services";
 import type { ActivityLogEntry, StatusHistoryEntry, FeatureRequest, FeatureRequestStatus, TargetApplication, TicketPriority } from "../types";
+import { labelStatus, labelPriority, labelTeam } from "../lib/ui-labels";
 import { CommentThread } from "./CommentThread";
 import { FeatureMilestoneDialog } from "./FeatureMilestoneDialog";
 import { ResourceEditActions } from "./ResourceEditActions";
@@ -47,28 +48,28 @@ import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
 import { getApplicationColor, getApplicationLabel, TARGET_APPLICATION_OPTIONS, canShowFeatureDueDate } from "../lib/constants";
 
 const FEATURE_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: "submission", label: "Submission" },
-  { value: "pending_approval", label: "Pending Approval" },
-  { value: "approved", label: "Approved" },
-  { value: "assigned", label: "Assigned" },
-  { value: "development", label: "Development" },
-  { value: "testing", label: "Testing" },
-  { value: "validation", label: "Validation" },
-  { value: "completed", label: "Completed" },
-  { value: "post_implementation_review", label: "Post-Implementation Review" },
-  { value: "rejected", label: "Rejected" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "submission", label: labelStatus("submission") },
+  { value: "pending_approval", label: labelStatus("pending_approval") },
+  { value: "approved", label: labelStatus("approved") },
+  { value: "assigned", label: labelStatus("assigned") },
+  { value: "development", label: labelStatus("development") },
+  { value: "testing", label: labelStatus("testing") },
+  { value: "validation", label: labelStatus("validation") },
+  { value: "completed", label: labelStatus("completed") },
+  { value: "post_implementation_review", label: labelStatus("post_implementation_review") },
+  { value: "rejected", label: labelStatus("rejected") },
+  { value: "cancelled", label: labelStatus("cancelled") },
 ];
 
 const FEATURE_LIFECYCLE: { status: FeatureRequestStatus; label: string }[] = [
-  { status: "pending_approval", label: "Submitted" },
-  { status: "approved", label: "Approved" },
-  { status: "assigned", label: "Assigned" },
-  { status: "development", label: "Development" },
-  { status: "testing", label: "Testing" },
-  { status: "validation", label: "Validation" },
-  { status: "completed", label: "Completed" },
-  { status: "post_implementation_review", label: "Post-Implementation Review" },
+  { status: "pending_approval", label: "Diajukan" },
+  { status: "approved", label: labelStatus("approved") },
+  { status: "assigned", label: labelStatus("assigned") },
+  { status: "development", label: labelStatus("development") },
+  { status: "testing", label: labelStatus("testing") },
+  { status: "validation", label: labelStatus("validation") },
+  { status: "completed", label: labelStatus("completed") },
+  { status: "post_implementation_review", label: labelStatus("post_implementation_review") },
 ];
 
 const FEATURE_STATUS_ORDER: Record<FeatureRequestStatus, number> = {
@@ -353,7 +354,7 @@ export function FeatureRequests() {
   const getUserName = (userId: string, fallbackName?: string) => {
     if (fallbackName) return fallbackName;
     const user = mockUsers.find(u => u.id === userId);
-    return user?.name || 'Unknown User';
+    return user?.name || 'Pengguna tidak dikenal';
   };
 
   const formatDate = (date: Date) => {
@@ -395,13 +396,13 @@ export function FeatureRequests() {
         <div>
           <h2 className="text-3xl tracking-tight">Feature Requests & Bug Fixes</h2>
           <p className="text-muted-foreground">
-            Track development requests and software improvements
+            Lacak permintaan pengembangan dan perbaikan perangkat lunak
           </p>
         </div>
         {currentUser?.role === 'it_staff' && (
           <Button onClick={() => setShowNewRequestDialog(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            New Request
+            Permintaan baru
           </Button>
         )}
       </div>
@@ -410,7 +411,7 @@ export function FeatureRequests() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+            <CardTitle className="text-sm font-medium">Total permintaan</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -430,7 +431,7 @@ export function FeatureRequests() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bug Fixes</CardTitle>
+            <CardTitle className="text-sm font-medium">Perbaikan bug</CardTitle>
             <Bug className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -440,7 +441,7 @@ export function FeatureRequests() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <CardTitle className="text-sm font-medium">Sedang dikerjakan</CardTitle>
             <Timer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -450,7 +451,7 @@ export function FeatureRequests() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -460,7 +461,7 @@ export function FeatureRequests() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+            <CardTitle className="text-sm font-medium">Terlambat</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -472,17 +473,17 @@ export function FeatureRequests() {
       {/* Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filter & Search</CardTitle>
+          <CardTitle className="text-lg">Filter & pencarian</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="search">Search</Label>
+              <Label htmlFor="search">Cari</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Search requests, descriptions..."
+                  placeholder="Cari permintaan, deskripsi..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -491,15 +492,15 @@ export function FeatureRequests() {
             </div>
             
             <div>
-              <Label htmlFor="type">Type</Label>
+              <Label htmlFor="type">Tipe</Label>
               <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="feature_request">Feature Requests</SelectItem>
-                  <SelectItem value="bug_fix">Bug Fixes</SelectItem>
+                  <SelectItem value="all">Semua tipe</SelectItem>
+                  <SelectItem value="feature_request">Permintaan fitur</SelectItem>
+                  <SelectItem value="bug_fix">Perbaikan bug</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -526,18 +527,18 @@ export function FeatureRequests() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="submission">Submission</SelectItem>
-                  <SelectItem value="pending_approval">Pending Approval</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="assigned">Assigned</SelectItem>
-                  <SelectItem value="development">Development</SelectItem>
-                  <SelectItem value="testing">Testing</SelectItem>
-                  <SelectItem value="validation">Validation</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="post_implementation_review">Post-Implementation Review</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="all">Semua status</SelectItem>
+                  <SelectItem value="submission">{labelStatus("submission")}</SelectItem>
+                  <SelectItem value="pending_approval">{labelStatus("pending_approval")}</SelectItem>
+                  <SelectItem value="approved">{labelStatus("approved")}</SelectItem>
+                  <SelectItem value="assigned">{labelStatus("assigned")}</SelectItem>
+                  <SelectItem value="development">{labelStatus("development")}</SelectItem>
+                  <SelectItem value="testing">{labelStatus("testing")}</SelectItem>
+                  <SelectItem value="validation">{labelStatus("validation")}</SelectItem>
+                  <SelectItem value="completed">{labelStatus("completed")}</SelectItem>
+                  <SelectItem value="post_implementation_review">{labelStatus("post_implementation_review")}</SelectItem>
+                  <SelectItem value="rejected">{labelStatus("rejected")}</SelectItem>
+                  <SelectItem value="cancelled">{labelStatus("cancelled")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -549,11 +550,11 @@ export function FeatureRequests() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Priorities</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="all">Semua prioritas</SelectItem>
+                  <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
+                  <SelectItem value="high">{labelPriority("high")}</SelectItem>
+                  <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
+                  <SelectItem value="low">{labelPriority("low")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -565,10 +566,10 @@ export function FeatureRequests() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Progress</SelectItem>
-                  <SelectItem value="not_started">Not Started</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="all">Semua progress</SelectItem>
+                  <SelectItem value="not_started">Belum dimulai</SelectItem>
+                  <SelectItem value="in_progress">Sedang berjalan</SelectItem>
+                  <SelectItem value="completed">{labelStatus("completed")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -579,17 +580,17 @@ export function FeatureRequests() {
       {/* Results Summary */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {paginatedTickets.length} of {filteredTickets.length} requests
+          Menampilkan {paginatedTickets.length} dari {filteredTickets.length} permintaan
         </p>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Sort by:</span>
+          <span className="text-sm text-muted-foreground">Urutkan:</span>
           <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="createdAt">Date Created</SelectItem>
-              <SelectItem value="dueDate">Due Date</SelectItem>
+              <SelectItem value="createdAt">Tanggal dibuat</SelectItem>
+              <SelectItem value="dueDate">Tenggat waktu</SelectItem>
               <SelectItem value="priority">Priority</SelectItem>
               <SelectItem value="status">Status</SelectItem>
               <SelectItem value="progress">Progress</SelectItem>
@@ -609,12 +610,12 @@ export function FeatureRequests() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Tipe</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('createdAt')}
                   >
-                    Request ID
+                    ID permintaan
                     {sortBy === 'createdAt' && (
                       <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
                     )}
@@ -672,7 +673,7 @@ export function FeatureRequests() {
                         <div className="flex flex-wrap items-center gap-2">
                           <TypeIcon className="h-4 w-4" />
                           <Badge className={getTypeColor(ticket.requestType)}>
-                            {ticket.requestType === 'feature_request' ? 'Feature' : 'Bug Fix'}
+                            {ticket.requestType === 'feature_request' ? 'Fitur' : 'Perbaikan bug'}
                           </Badge>
                           {ticket.targetApplication && (
                             <Badge className={getApplicationColor(ticket.targetApplication)}>
@@ -686,18 +687,18 @@ export function FeatureRequests() {
                         <div className="max-w-xs">
                           <p className="truncate font-medium">{ticket.title}</p>
                           <p className="text-xs text-muted-foreground">
-                            Created {formatDate(ticket.createdAt)}
+                            Dibuat {formatDate(ticket.createdAt)}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(ticket.status)}>
-                          {ticket.status.replace('_', ' ')}
+                          {labelStatus(ticket.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge className={getPriorityColor(ticket.priority)}>
-                          {ticket.priority}
+                          {labelPriority(ticket.priority)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -705,7 +706,7 @@ export function FeatureRequests() {
                           <div className="flex items-center justify-between">
                             <span className="text-sm">{progress}%</span>
                             <Badge className={getProgressColor(progress)}>
-                              {progress === 100 ? 'Done' : progress === 0 ? 'Not Started' : 'In Progress'}
+                              {progress === 100 ? 'Selesai' : progress === 0 ? 'Belum dimulai' : 'Sedang berjalan'}
                             </Badge>
                           </div>
                           <Progress value={progress} className="h-2" />
@@ -722,7 +723,7 @@ export function FeatureRequests() {
                             <span className="text-sm">{getUserName(ticket.assignedToId, ticket.assignedToName)}</span>
                           </div>
                         ) : (
-                          <span className="text-sm text-muted-foreground">Unassigned</span>
+                          <span className="text-sm text-muted-foreground">Belum ditugaskan</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -737,10 +738,10 @@ export function FeatureRequests() {
                                   'text-muted-foreground'
                                 }`}>
                                   {daysUntilDue < 0 
-                                    ? `${Math.abs(daysUntilDue)} days overdue`
+                                    ? `${Math.abs(daysUntilDue)} hari terlambat`
                                     : daysUntilDue === 0 
-                                    ? 'Due today'
-                                    : `${daysUntilDue} days left`
+                                    ? 'Jatuh tempo hari ini'
+                                    : `${daysUntilDue} hari tersisa`
                                   }
                                 </div>
                               )}
@@ -762,11 +763,11 @@ export function FeatureRequests() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleSelectFeature(ticket)}>
                               <Eye className="mr-2 h-4 w-4" />
-                              View Details
+                              Lihat detail
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setMilestoneFeatureId(ticket.id)}>
                               <Target className="mr-2 h-4 w-4" />
-                              View Milestones
+                              Lihat milestone
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -793,7 +794,7 @@ export function FeatureRequests() {
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
             >
-              Previous
+              Sebelumnya
             </Button>
             <Button
               variant="outline"
@@ -801,7 +802,7 @@ export function FeatureRequests() {
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
             >
-              Next
+              Berikutnya
             </Button>
           </div>
         </div>
@@ -885,7 +886,7 @@ function FeatureRequestDetailDialog({
   const getUserName = (userId: string, fallbackName?: string) => {
     if (fallbackName) return fallbackName;
     const user = users.find(u => u.id === userId);
-    return user?.name || 'Unknown User';
+    return user?.name || 'Pengguna tidak dikenal';
   };
 
   const getStatusColor = (status: FeatureRequestStatus) => {
@@ -927,7 +928,7 @@ function FeatureRequestDetailDialog({
             {ticket.requestType === 'feature_request' ? <Lightbulb className="h-5 w-5" /> : <Bug className="h-5 w-5" />}
             <span>{ticket.id}</span>
             <Badge className={ticket.requestType === 'feature_request' ? 'text-blue-600 bg-blue-100' : 'text-red-600 bg-red-100'}>
-              {ticket.requestType === 'feature_request' ? 'Feature Request' : 'Bug Fix'}
+              {ticket.requestType === 'feature_request' ? 'Permintaan fitur' : 'Perbaikan bug'}
             </Badge>
             {ticket.targetApplication && (
               <Badge className={getApplicationColor(ticket.targetApplication)}>
@@ -1005,11 +1006,11 @@ function FeatureRequestDetailDialog({
 
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="inline-flex h-auto w-max min-w-full flex-wrap gap-1 p-1">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="progress">Progress Timeline</TabsTrigger>
-            <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsTrigger value="details">Detail</TabsTrigger>
+            <TabsTrigger value="progress">Linimasa progress</TabsTrigger>
+            <TabsTrigger value="comments">Komentar</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="files">Berkas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="mt-4">
@@ -1017,20 +1018,20 @@ function FeatureRequestDetailDialog({
               <div className="space-y-6">
                 {/* Progress Overview */}
                 <div>
-                  <h4 className="font-medium mb-1">Progress Overview</h4>
+                  <h4 className="font-medium mb-1">Ringkasan progress</h4>
                   <p className="text-xs text-muted-foreground mb-3">
                     Dihitung dari rata-rata progress milestone (100% saat status Completed).
                   </p>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Overall Progress</span>
+                      <span className="text-sm">Progress keseluruhan</span>
                       <span className="text-sm font-medium">{progress}%</span>
                     </div>
                     <Progress value={progress} className="h-3" />
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Started {formatDate(liveTicket.createdAt)}</span>
+                      <span>Mulai {formatDate(liveTicket.createdAt)}</span>
                       {canShowFeatureDueDate(liveTicket.status) && liveTicket.dueDate && (
-                        <span>Due {formatDate(liveTicket.dueDate)}</span>
+                        <span>Jatuh tempo {formatDate(liveTicket.dueDate)}</span>
                       )}
                     </div>
                   </div>
@@ -1038,22 +1039,22 @@ function FeatureRequestDetailDialog({
 
                 {/* Basic Info */}
                 <div>
-                  <h4 className="font-medium mb-2">Request Information</h4>
+                  <h4 className="font-medium mb-2">Informasi permintaan</h4>
                   <div className="space-y-2 text-sm max-w-md">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Status:</span>
                         <Badge className={getStatusColor(ticket.status)}>
-                          {ticket.status.replace(/_/g, ' ')}
+                          {labelStatus(ticket.status)}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Priority:</span>
                         <Badge className={`${ticket.priority === 'critical' ? 'text-red-600 bg-red-100' : 'text-yellow-600 bg-yellow-100'}`}>
-                          {ticket.priority}
+                          {labelPriority(ticket.priority)}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Type:</span>
+                        <span className="text-muted-foreground">Tipe:</span>
                         <span className="capitalize">{ticket.requestType.replace('_', ' ')}</span>
                       </div>
                       <div className="flex justify-between">
@@ -1067,8 +1068,8 @@ function FeatureRequestDetailDialog({
                         )}
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Assigned Team:</span>
-                        <span className="capitalize">{ticket.assignedTeam || 'Unassigned'}</span>
+                        <span className="text-muted-foreground">Tim penanggung jawab:</span>
+                        <span className="capitalize">{ticket.assignedTeam || 'Belum ditugaskan'}</span>
                       </div>
                       {canShowFeatureDueDate(liveTicket.status) && (
                         <div className="flex justify-between">
@@ -1083,7 +1084,7 @@ function FeatureRequestDetailDialog({
 
                 {/* Description */}
                 <div>
-                  <h4 className="font-medium mb-2">Description</h4>
+                  <h4 className="font-medium mb-2">Deskripsi</h4>
                   <div className="p-4 bg-muted rounded-lg text-sm">
                     {ticket.description}
                   </div>
@@ -1091,10 +1092,10 @@ function FeatureRequestDetailDialog({
 
                 {/* People Involved */}
                 <div>
-                  <h4 className="font-medium mb-2">People Involved</h4>
+                  <h4 className="font-medium mb-2">Orang terlibat</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Requested By:</span>
+                      <span className="text-muted-foreground">Diminta oleh:</span>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarFallback className="text-xs">
@@ -1106,7 +1107,7 @@ function FeatureRequestDetailDialog({
                     </div>
                     {ticket.assignedToId && (
                       <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Developer:</span>
+                        <span className="text-muted-foreground">Pengembang:</span>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
                             <AvatarFallback className="text-xs">
@@ -1152,8 +1153,8 @@ function FeatureRequestDetailDialog({
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {step.stepState === 'completed' ? 'Completed' :
-                             step.stepState === 'current' ? 'In Progress' :
+                            {step.stepState === 'completed' ? 'Selesai' :
+                             step.stepState === 'current' ? 'Sedang dikerjakan' :
                              'Pending'}
                             {step.duration && ` · ${step.duration}`}
                           </div>
@@ -1178,7 +1179,7 @@ function FeatureRequestDetailDialog({
                           <div key={entry.id} className="border rounded-md p-3 text-sm">
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-medium capitalize">
-                                {entry.previousStatus.replace(/_/g, ' ')} → {entry.newStatus.replace(/_/g, ' ')}
+                                {labelStatus(entry.previousStatus)} → {labelStatus(entry.newStatus)}
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {format(entry.effectiveAt, 'PPp')}
@@ -1199,7 +1200,7 @@ function FeatureRequestDetailDialog({
 
                 {sortedHistory.length === 0 && (
                   <p className="text-sm text-muted-foreground italic">
-                    No status history recorded yet
+                    Belum ada riwayat status tercatat
                   </p>
                 )}
               </div>
@@ -1264,7 +1265,7 @@ function NewFeatureRequestDialog({
         target_application: formData.targetApplication,
         priority: formData.priority,
       });
-      toast.success('Feature request created');
+      toast.success('Permintaan fitur dibuat');
       onCreated?.();
       onOpenChange(false);
       setFormData({
@@ -1275,7 +1276,7 @@ function NewFeatureRequestDialog({
         targetApplication: 'simrs',
       });
     } catch {
-      toast.error('Failed to create feature request');
+      toast.error('Gagal membuat permintaan fitur');
     } finally {
       setSubmitting(false);
     }
@@ -1285,22 +1286,22 @@ function NewFeatureRequestDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Create New Request</DialogTitle>
+          <DialogTitle>Buat permintaan baru</DialogTitle>
           <DialogDescription>
-            Submit a new feature request or bug fix for the development team
+            Ajukan feature request atau perbaikan bug baru untuk tim pengembangan
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="type">Request Type</Label>
+            <Label htmlFor="type">Tipe permintaan</Label>
             <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="feature_request">Feature Request</SelectItem>
-                <SelectItem value="bug_fix">Bug Fix</SelectItem>
+                <SelectItem value="feature_request">Permintaan fitur</SelectItem>
+                <SelectItem value="bug_fix">Perbaikan bug</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1325,7 +1326,7 @@ function NewFeatureRequestDialog({
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Brief description of the feature or bug"
+              placeholder="Deskripsi singkat fitur atau bug"
               required
             />
           </div>
@@ -1336,7 +1337,7 @@ function NewFeatureRequestDialog({
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Detailed description including business requirements, user stories, or bug reproduction steps..."
+              placeholder="Deskripsi detail termasuk kebutuhan bisnis, user story, atau langkah reproduksi bug..."
               rows={5}
               required
             />
@@ -1349,20 +1350,20 @@ function NewFeatureRequestDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">Low - Nice to have</SelectItem>
-                <SelectItem value="medium">Medium - Standard request</SelectItem>
-                <SelectItem value="high">High - Important feature</SelectItem>
-                <SelectItem value="critical">Critical - Urgent bug fix</SelectItem>
+                <SelectItem value="low">Rendah — nice to have</SelectItem>
+                <SelectItem value="medium">Sedang — permintaan standar</SelectItem>
+                <SelectItem value="high">Tinggi — fitur penting</SelectItem>
+                <SelectItem value="critical">Kritis — perbaikan bug mendesak</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Batal
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Creating...' : 'Create Request'}
+              {submitting ? 'Membuat...' : 'Buat permintaan'}
             </Button>
           </div>
         </form>
@@ -1381,7 +1382,7 @@ function FeatureActivityTab({
   loading: boolean;
 }) {
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading activity...</p>;
+    return <p className="text-sm text-muted-foreground">Memuat aktivitas...</p>;
   }
 
   return (

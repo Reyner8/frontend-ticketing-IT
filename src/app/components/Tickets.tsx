@@ -35,16 +35,17 @@ import { TableSkeleton } from "./LoadingStates";
 import { Search, Eye, Ticket as TicketIcon, MessageSquare } from "lucide-react";
 import { consumeFocusResource } from "../lib/resource-focus";
 import type { Ticket, TicketStatus, TicketPriority, StatusHistoryEntry, ActivityLogEntry } from "../types";
+import { labelStatus, labelPriority, labelTeam } from "../lib/ui-labels";
 
 const TICKET_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "pending_approval", label: "Pending Approval" },
-  { value: "assigned", label: "Assigned" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "waiting_for_user", label: "Waiting for User" },
-  { value: "resolved", label: "Resolved" },
-  { value: "closed", label: "Closed" },
-  { value: "converted", label: "Converted" },
+  { value: "draft", label: labelStatus("draft") },
+  { value: "pending_approval", label: labelStatus("pending_approval") },
+  { value: "assigned", label: labelStatus("assigned") },
+  { value: "in_progress", label: labelStatus("in_progress") },
+  { value: "waiting_for_user", label: labelStatus("waiting_for_user") },
+  { value: "resolved", label: labelStatus("resolved") },
+  { value: "closed", label: labelStatus("closed") },
+  { value: "converted", label: labelStatus("converted") },
 ];
 
 function statusColor(status: TicketStatus) {
@@ -96,7 +97,7 @@ export function Tickets() {
       setTickets(data);
     } catch {
       setTickets([]);
-      toast.error("Failed to load tickets");
+      toast.error("Gagal memuat tiket");
     } finally {
       setLoading(false);
     }
@@ -178,19 +179,19 @@ export function Tickets() {
             Antrian laporan masuk — termasuk form publik (PUB-*). IT meninjau, lalu convert ke Error Report / Feature Request
           </p>
         </div>
-        <Badge variant="outline">{filtered.length} shown</Badge>
+        <Badge variant="outline">{filtered.length} ditampilkan</Badge>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle>Filter</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Search by ID, title..."
+              placeholder="Cari ID, judul..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -200,7 +201,7 @@ export function Tickets() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all">Semua status</SelectItem>
               {TICKET_STATUS_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}
@@ -210,14 +211,14 @@ export function Tickets() {
           </Select>
           <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as TicketPriority | "all")}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Priority" />
+              <SelectValue placeholder="Prioritas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All priorities</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="all">Semua prioritas</SelectItem>
+              <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
+              <SelectItem value="high">{labelPriority("high")}</SelectItem>
+              <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
+              <SelectItem value="low">{labelPriority("low")}</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -232,24 +233,24 @@ export function Tickets() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Ticket List</CardTitle>
-          <CardDescription>Click a row to open details, comments, attachments, and actions</CardDescription>
+          <CardTitle>Daftar tiket</CardTitle>
+          <CardDescription>Klik baris untuk membuka detail, komentar, lampiran, dan tindakan</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <TableSkeleton />
           ) : filtered.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">No tickets found</p>
+            <p className="text-center py-8 text-muted-foreground">Tiket tidak ditemukan</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Title</TableHead>
+                  <TableHead>Judul</TableHead>
                   <TableHead>Pelapor</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Reported</TableHead>
+                  <TableHead>Prioritas</TableHead>
+                  <TableHead>Dilaporkan</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -274,11 +275,11 @@ export function Tickets() {
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColor(ticket.status)}>
-                        {ticket.status.replace(/_/g, " ")}
+                        {labelStatus(ticket.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={priorityColor(ticket.priority)}>{ticket.priority}</Badge>
+                      <Badge className={priorityColor(ticket.priority)}>{labelPriority(ticket.priority)}</Badge>
                     </TableCell>
                     <TableCell>{format(ticket.dateReported, "MMM d, yyyy")}</TableCell>
                     <TableCell>
@@ -341,7 +342,7 @@ function TicketDetailDialog({
   const getUserName = (userId: string) => {
     if (userId === detail.reporterId && detail.reporterName) return detail.reporterName;
     if (userId === detail.assignedToId && detail.assignedToName) return detail.assignedToName;
-    return users.find((u) => u.id === userId)?.name ?? "Unknown";
+    return users.find((u) => u.id === userId)?.name ?? "Tidak dikenal";
   };
 
   const refreshDetail = () => {
@@ -357,9 +358,9 @@ function TicketDetailDialog({
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             <span className="font-mono">{detail.id}</span>
             <Badge className={statusColor(detail.status)}>
-              {detail.status.replace(/_/g, " ")}
+              {labelStatus(detail.status)}
             </Badge>
-            <Badge className={priorityColor(detail.priority)}>{detail.priority}</Badge>
+            <Badge className={priorityColor(detail.priority)}>{labelPriority(detail.priority)}</Badge>
             {detail.isPublicSubmission && (
               <Badge variant="outline">Laporan Publik</Badge>
             )}
@@ -445,10 +446,10 @@ function TicketDetailDialog({
         <Tabs defaultValue="details" className="w-full min-h-0">
           <div className="overflow-x-auto pb-1">
             <TabsList className="inline-flex h-auto w-max min-w-full flex-wrap gap-1 p-1">
-              <TabsTrigger value="details" className="flex-none px-3">Details</TabsTrigger>
-              <TabsTrigger value="comments" className="flex-none px-3">Comments</TabsTrigger>
-              <TabsTrigger value="files" className="flex-none px-3">Files</TabsTrigger>
-              <TabsTrigger value="merge" className="flex-none px-3">Merge</TabsTrigger>
+              <TabsTrigger value="details" className="flex-none px-3">Detail</TabsTrigger>
+              <TabsTrigger value="comments" className="flex-none px-3">Komentar</TabsTrigger>
+              <TabsTrigger value="files" className="flex-none px-3">Berkas</TabsTrigger>
+              <TabsTrigger value="merge" className="flex-none px-3">Gabung</TabsTrigger>
               <TabsTrigger value="activity" className="flex-none px-3">Activity</TabsTrigger>
             </TabsList>
           </div>
@@ -470,34 +471,34 @@ function TicketDetailDialog({
                 )}
 
                 <div>
-                  <Label>Description</Label>
+                  <Label>Deskripsi</Label>
                   <p className="mt-1 whitespace-pre-wrap">{detail.description || "—"}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Category</Label>
+                    <Label>Kategori</Label>
                     <p className="mt-1 capitalize">{detail.category.replace(/_/g, " ")}</p>
                   </div>
                   <div>
-                    <Label>Reporter</Label>
+                    <Label>Pelapor</Label>
                     <p className="mt-1">{getUserName(detail.reporterId)}</p>
                   </div>
                   <div>
-                    <Label>Assignee</Label>
+                    <Label>Penanggung jawab</Label>
                     <p className="mt-1">
-                      {detail.assignedToId ? getUserName(detail.assignedToId) : "Unassigned"}
+                      {detail.assignedToId ? getUserName(detail.assignedToId) : "Belum ditugaskan"}
                     </p>
                   </div>
                   <div>
-                    <Label>Team</Label>
-                    <p className="mt-1 capitalize">{detail.assignedTeam ?? "—"}</p>
+                    <Label>Tim</Label>
+                    <p className="mt-1">{detail.assignedTeam ? labelTeam(detail.assignedTeam) : "—"}</p>
                   </div>
                   <div>
-                    <Label>Reported</Label>
+                    <Label>Dilaporkan</Label>
                     <p className="mt-1">{format(detail.dateReported, "PPpp")}</p>
                   </div>
                   <div>
-                    <Label>Due date</Label>
+                    <Label>Tenggat waktu</Label>
                     <p className="mt-1">
                       {detail.dueDate ? format(detail.dueDate, "PPpp") : "—"}
                     </p>
@@ -525,12 +526,12 @@ function TicketDetailDialog({
                 <div className="mb-4">
                   <h4 className="font-medium mb-2 flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
-                    Status History
+                    Riwayat status
                   </h4>
                   <ul className="space-y-2 text-sm">
                     {statusHistory.map((s) => (
                       <li key={s.id} className="border-l-2 pl-3">
-                        {s.previousStatus} → {s.newStatus}
+                        {labelStatus(s.previousStatus)} → {labelStatus(s.newStatus)}
                         <span className="text-muted-foreground ml-2">
                           {format(s.changedAt, "PPp")}
                         </span>
@@ -539,9 +540,9 @@ function TicketDetailDialog({
                   </ul>
                 </div>
               )}
-              <h4 className="font-medium mb-2">Activity Log</h4>
+              <h4 className="font-medium mb-2">Log aktivitas</h4>
               {activityLog.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No activity recorded</p>
+                <p className="text-sm text-muted-foreground">Belum ada aktivitas tercatat</p>
               ) : (
                 <ul className="space-y-2 text-sm">
                   {activityLog.map((a) => (
