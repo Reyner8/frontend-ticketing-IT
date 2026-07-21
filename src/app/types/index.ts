@@ -512,3 +512,74 @@ export interface FilterParams {
   };
   slaStatus?: 'compliant' | 'breached' | 'at_risk';
 }
+
+/** Ops logging modules */
+export type RestoreType = 'database' | 'application' | 'both';
+export type RestoreTestResult = 'success' | 'failed' | 'success_with_notes';
+export type VisitorStatus = 'inside' | 'completed';
+export type InspectionType = 'weekly' | 'incidental';
+export type InspectionConclusion = 'safe' | 'findings';
+export type InspectionEscalation = 'ipsrs' | 'director';
+
+export interface OpsUserRef {
+  id: string;
+  name: string;
+  username?: string;
+}
+
+export interface BackupRestoreTest {
+  id: string;
+  testDate: Date;
+  performedBy?: OpsUserRef;
+  applicationSystem: string;
+  restoreType: RestoreType;
+  backupDatetime?: Date;
+  backupSource?: string;
+  testEnvironment: string;
+  result: RestoreTestResult;
+  notes?: string;
+  followUp?: string;
+  createdBy?: OpsUserRef;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ServerRoomVisitor {
+  id: string;
+  entryAt: Date;
+  exitAt?: Date;
+  visitorName: string;
+  unitOrVendor: string;
+  identityDocument: string;
+  purpose: string;
+  escortedBy?: OpsUserRef;
+  notes?: string;
+  status: VisitorStatus;
+  createdBy?: OpsUserRef;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InspectionChecklistItem {
+  ok: boolean;
+  notes?: string | null;
+}
+
+export interface ServerRoomInspection {
+  id: string;
+  inspectionDate: Date;
+  inspector?: OpsUserRef;
+  inspectionType: InspectionType;
+  checklistItems: {
+    ups: InspectionChecklistItem;
+    alarm: InspectionChecklistItem;
+    cable_rack: InspectionChecklistItem;
+  };
+  conclusion: InspectionConclusion;
+  followUp?: string;
+  escalation?: InspectionEscalation;
+  notes?: string;
+  createdBy?: OpsUserRef;
+  createdAt: Date;
+  updatedAt: Date;
+}

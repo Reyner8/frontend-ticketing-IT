@@ -720,3 +720,86 @@ export function preferencesToApi(preferences: Partial<User['preferences']>): Rec
   });
   return result;
 }
+
+function mapOpsUser(data: Record<string, unknown> | null | undefined): import('../../types').OpsUserRef | undefined {
+  if (!data?.id) return undefined;
+  return {
+    id: String(data.id),
+    name: String(data.name ?? ''),
+    username: data.username ? String(data.username) : undefined,
+  };
+}
+
+function unwrapEnumValue(raw: unknown, fallback: string): string {
+  if (typeof raw === 'object' && raw !== null && 'value' in raw) {
+    return String((raw as { value?: string }).value ?? fallback);
+  }
+  return String(raw ?? fallback);
+}
+
+export function mapBackupRestoreTest(data: Record<string, unknown>): import('../../types').BackupRestoreTest {
+  return {
+    id: String(data.id),
+    testDate: parseDate(data.test_date as string),
+    performedBy: mapOpsUser(data.performed_by as Record<string, unknown>),
+    applicationSystem: String(data.application_system ?? ''),
+    restoreType: unwrapEnumValue(data.restore_type, 'database') as import('../../types').RestoreType,
+    backupDatetime: data.backup_datetime ? parseDate(data.backup_datetime as string) : undefined,
+    backupSource: data.backup_source ? String(data.backup_source) : undefined,
+    testEnvironment: String(data.test_environment ?? ''),
+    result: unwrapEnumValue(data.result, 'success') as import('../../types').RestoreTestResult,
+    notes: data.notes ? String(data.notes) : undefined,
+    followUp: data.follow_up ? String(data.follow_up) : undefined,
+    createdBy: mapOpsUser(data.created_by as Record<string, unknown>),
+    createdAt: parseDate(data.created_at as string),
+    updatedAt: parseDate(data.updated_at as string),
+  };
+}
+
+export function mapServerRoomVisitor(data: Record<string, unknown>): import('../../types').ServerRoomVisitor {
+  return {
+    id: String(data.id),
+    entryAt: parseDate(data.entry_at as string),
+    exitAt: data.exit_at ? parseDate(data.exit_at as string) : undefined,
+    visitorName: String(data.visitor_name ?? ''),
+    unitOrVendor: String(data.unit_or_vendor ?? ''),
+    identityDocument: String(data.identity_document ?? ''),
+    purpose: String(data.purpose ?? ''),
+    escortedBy: mapOpsUser(data.escorted_by as Record<string, unknown>),
+    notes: data.notes ? String(data.notes) : undefined,
+    status: unwrapEnumValue(data.status, 'inside') as import('../../types').VisitorStatus,
+    createdBy: mapOpsUser(data.created_by as Record<string, unknown>),
+    createdAt: parseDate(data.created_at as string),
+    updatedAt: parseDate(data.updated_at as string),
+  };
+}
+
+export function mapServerRoomInspection(data: Record<string, unknown>): import('../../types').ServerRoomInspection {
+  const items = (data.checklist_items ?? {}) as Record<string, { ok?: boolean; notes?: string | null }>;
+  const mapItem = (key: string) => ({
+    ok: Boolean(items[key]?.ok),
+    notes: items[key]?.notes ?? null,
+  });
+
+  return {
+    id: String(data.id),
+    inspectionDate: parseDate(data.inspection_date as string),
+    inspector: mapOpsUser(data.inspector as Record<string, unknown>),
+    inspectionType: unwrapEnumValue(data.inspection_type, 'weekly') as import('../../types').InspectionType,
+    checklistItems: {
+      ups: mapItem('ups'),
+      alarm: mapItem('alarm'),
+      cable_rack: mapItem('cable_rack'),
+    },
+    conclusion: unwrapEnumValue(data.conclusion, 'safe') as import('../../types').InspectionConclusion,
+    followUp: data.follow_up ? String(data.follow_up) : undefined,
+    escalation: data.escalation
+      ? (unwrapEnumValue(data.escalation, '') as import('../../types').InspectionEscalation)
+      : undefined,
+    notes: data.notes ? String(data.notes) : undefined,
+    createdBy: mapOpsUser(data.created_by as Record<string, unknown>),
+    createdAt: parseDate(data.created_at as string),
+    updatedAt: parseDate(data.updated_at as string),
+  };
+}
+

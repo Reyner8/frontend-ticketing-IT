@@ -16,6 +16,9 @@ import { CalendarView } from "./CalendarView";
 import { Tickets } from "./Tickets";
 import { ConversionHistoryView } from "./ConversionHistoryView";
 import { MentionsView } from "./MentionsView";
+import { BackupRestoreTests } from "./BackupRestoreTests";
+import { ServerRoomVisitors } from "./ServerRoomVisitors";
+import { ServerRoomInspections } from "./ServerRoomInspections";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -46,6 +49,7 @@ import {
   exportUsersCsv,
 } from "../lib/export-utils";
 import { Download } from "lucide-react";
+import { labelPriority } from "../lib/ui-labels";
 
 export default function DashboardLayout() {
   const [activeView, setActiveView] = useState("/");
@@ -73,6 +77,12 @@ export default function DashboardLayout() {
         return <PublicFormLanding />;
       case "/calendar":
         return <CalendarView />;
+      case "/backup-restore-tests":
+        return <BackupRestoreTests />;
+      case "/server-room-visitors":
+        return <ServerRoomVisitors />;
+      case "/server-room-inspections":
+        return <ServerRoomInspections />;
       case "/settings":
         return <Settings />;
       case "/users":
@@ -97,9 +107,9 @@ export default function DashboardLayout() {
           <Dialog open={!!quickActionDialog} onOpenChange={() => closeQuickAction()}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Create New Ticket</DialogTitle>
+                <DialogTitle>Buat tiket baru</DialogTitle>
                 <DialogDescription>
-                  Quickly create a new ticket or report an issue
+                  Buat tiket baru atau laporkan masalah dengan cepat
                 </DialogDescription>
               </DialogHeader>
               <QuickNewTicketForm onClose={closeQuickAction} />
@@ -112,9 +122,9 @@ export default function DashboardLayout() {
           <Dialog open={!!quickActionDialog} onOpenChange={() => closeQuickAction()}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Log Downtime Event</DialogTitle>
+                <DialogTitle>Catat peristiwa downtime</DialogTitle>
                 <DialogDescription>
-                  Record a planned or unplanned downtime
+                  Catat downtime terencana atau tidak terencana
                 </DialogDescription>
               </DialogHeader>
               <QuickDowntimeForm onClose={closeQuickAction} />
@@ -127,9 +137,9 @@ export default function DashboardLayout() {
           <Dialog open={!!quickActionDialog} onOpenChange={() => closeQuickAction()}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Quick Assign</DialogTitle>
+                <DialogTitle>Tugas cepat</DialogTitle>
                 <DialogDescription>
-                  Assign tickets to team members
+                  Tugaskan tiket ke anggota tim
                 </DialogDescription>
               </DialogHeader>
               <QuickAssignForm onClose={closeQuickAction} />
@@ -142,9 +152,9 @@ export default function DashboardLayout() {
           <Dialog open={!!quickActionDialog} onOpenChange={() => closeQuickAction()}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Export Reports</DialogTitle>
+                <DialogTitle>Ekspor laporan</DialogTitle>
                 <DialogDescription>
-                  Export system reports and analytics
+                  Ekspor laporan dan analitik sistem
                 </DialogDescription>
               </DialogHeader>
               <QuickExportForm onClose={closeQuickAction} />
@@ -203,10 +213,10 @@ function QuickNewTicketForm({ onClose }: { onClose: () => void }) {
         category: formData.category,
         priority: formData.priority,
       });
-      toast.success('Ticket created successfully');
+      toast.success('Tiket berhasil dibuat');
       onClose();
     } catch {
-      toast.error('Failed to create ticket');
+      toast.error('Gagal membuat tiket');
     } finally {
       setSubmitting(false);
     }
@@ -215,23 +225,23 @@ function QuickNewTicketForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="title">Title</Label>
+        <Label htmlFor="title">Judul</Label>
         <Input
           id="title"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          placeholder="Brief description of the issue"
+          placeholder="Deskripsi singkat masalah"
           required
         />
       </div>
       
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">Deskripsi</Label>
         <Textarea
           id="description"
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Detailed description..."
+          placeholder="Deskripsi lengkap..."
           rows={3}
           required
         />
@@ -239,33 +249,33 @@ function QuickNewTicketForm({ onClose }: { onClose: () => void }) {
       
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="priority">Priority</Label>
+          <Label htmlFor="priority">Prioritas</Label>
           <Select value={formData.priority} onValueChange={(value: TicketPriority) => setFormData({ ...formData, priority: value })}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Prioritas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="low">{labelPriority("low")}</SelectItem>
+              <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
+              <SelectItem value="high">{labelPriority("high")}</SelectItem>
+              <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         
         <div>
-          <Label htmlFor="category">Category</Label>
+          <Label htmlFor="category">Kategori</Label>
           <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value as any })}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Kategori" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="system_error">System Error</SelectItem>
-              <SelectItem value="software_bug">Software Bug</SelectItem>
-              <SelectItem value="feature_request">Feature Request</SelectItem>
-              <SelectItem value="network_issue">Network Issue</SelectItem>
-              <SelectItem value="hardware_problem">Hardware Problem</SelectItem>
-              <SelectItem value="performance_issue">Performance Issue</SelectItem>
+              <SelectItem value="system_error">Error sistem</SelectItem>
+              <SelectItem value="software_bug">Bug perangkat lunak</SelectItem>
+              <SelectItem value="feature_request">Feature Requests</SelectItem>
+              <SelectItem value="network_issue">Masalah jaringan</SelectItem>
+              <SelectItem value="hardware_problem">Masalah hardware</SelectItem>
+              <SelectItem value="performance_issue">Masalah performa</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -273,10 +283,10 @@ function QuickNewTicketForm({ onClose }: { onClose: () => void }) {
       
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
+          Batal
         </Button>
         <Button type="submit" disabled={submitting}>
-          {submitting ? 'Creating...' : 'Create Ticket'}
+          {submitting ? 'Membuat...' : 'Buat tiket'}
         </Button>
       </div>
     </form>
@@ -306,13 +316,13 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
         setLocations(locationResult.locations);
         setComponents(componentResult.components);
       })
-      .catch(() => toast.error("Failed to load downtime master data"));
+      .catch(() => toast.error("Gagal memuat data master downtime"));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (locationIds.length === 0 || !sourceComponentId) {
-      toast.error("Select at least one location and one directly-down component");
+      toast.error("Pilih minimal satu lokasi dan satu komponen yang down langsung");
       return;
     }
     setSubmitting(true);
@@ -326,10 +336,10 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
         location_ids: locationIds.map(Number),
         source_component_ids: [Number(sourceComponentId)],
       });
-      toast.success('Downtime logged successfully');
+      toast.success('Downtime berhasil dicatat');
       onClose();
     } catch {
-      toast.error('Failed to log downtime');
+      toast.error('Gagal mencatat downtime');
     } finally {
       setSubmitting(false);
     }
@@ -338,41 +348,41 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="title">Event Title</Label>
+        <Label htmlFor="title">Judul peristiwa</Label>
         <Input
           id="title"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          placeholder="Brief title for the downtime event"
+          placeholder="Judul singkat peristiwa downtime"
           required
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="type">Type</Label>
+          <Label htmlFor="type">Tipe</Label>
           <Select value={formData.type} onValueChange={(value: DowntimeType) => setFormData({ ...formData, type: value })}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Tipe" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="planned">Planned Maintenance</SelectItem>
-              <SelectItem value="unplanned">Unplanned Outage</SelectItem>
+              <SelectItem value="planned">Pemeliharaan terencana</SelectItem>
+              <SelectItem value="unplanned">Gangguan tidak terencana</SelectItem>
             </SelectContent>
           </Select>
         </div>
         
         <div>
-          <Label htmlFor="impact">Impact</Label>
+          <Label htmlFor="impact">Dampak</Label>
           <Select value={formData.impact} onValueChange={(value: any) => setFormData({ ...formData, impact: value })}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Dampak" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="low">{labelPriority("low")}</SelectItem>
+              <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
+              <SelectItem value="high">{labelPriority("high")}</SelectItem>
+              <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -382,14 +392,14 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
         locations={locations}
         selectedIds={locationIds}
         onChange={setLocationIds}
-        helperText="Select each affected unit, or select all."
+        helperText="Pilih setiap unit yang terdampak, atau pilih semua."
       />
 
       <div>
-        <Label>Directly-down component *</Label>
+        <Label>Komponen yang down langsung *</Label>
         <Select value={sourceComponentId} onValueChange={setSourceComponentId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select component" />
+            <SelectValue placeholder="Pilih komponen" />
           </SelectTrigger>
           <SelectContent>
             {components.map((component) => (
@@ -402,18 +412,18 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
       </div>
       
       <div>
-        <Label htmlFor="reason">Reason</Label>
+        <Label htmlFor="reason">Alasan</Label>
         <Input
           id="reason"
           value={formData.reason}
           onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-          placeholder="Reason for downtime"
+          placeholder="Alasan downtime"
           required
         />
       </div>
 
       <div>
-        <Label htmlFor="startTime">Start Time</Label>
+        <Label htmlFor="startTime">Waktu mulai</Label>
         <Input
           id="startTime"
           type="datetime-local"
@@ -425,10 +435,10 @@ function QuickDowntimeForm({ onClose }: { onClose: () => void }) {
       
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
+          Batal
         </Button>
         <Button type="submit" disabled={submitting}>
-          {submitting ? 'Logging...' : 'Log Downtime'}
+          {submitting ? 'Mencatat...' : 'Catat downtime'}
         </Button>
       </div>
     </form>
@@ -462,26 +472,26 @@ function QuickAssignForm({ onClose }: { onClose: () => void }) {
     setSubmitting(true);
     try {
       await assignUser("tickets", ticketId, userId);
-      toast.success("Ticket assigned");
+      toast.success("Tiket berhasil ditugaskan");
       onClose();
     } catch {
-      toast.error("Failed to assign ticket");
+      toast.error("Gagal menugaskan tiket");
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading...</p>;
+    return <p className="text-sm text-muted-foreground">Memuat...</p>;
   }
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Ticket</Label>
+        <Label>Tiket</Label>
         <Select value={ticketId} onValueChange={setTicketId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select ticket" />
+            <SelectValue placeholder="Pilih tiket" />
           </SelectTrigger>
           <SelectContent>
             {tickets.map((t) => (
@@ -493,10 +503,10 @@ function QuickAssignForm({ onClose }: { onClose: () => void }) {
         </Select>
       </div>
       <div className="space-y-2">
-        <Label>Assign to</Label>
+        <Label>Tugaskan ke</Label>
         <Select value={userId} onValueChange={setUserId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select IT staff" />
+            <SelectValue placeholder="Pilih staf IT" />
           </SelectTrigger>
           <SelectContent>
             {users.map((u) => (
@@ -508,9 +518,9 @@ function QuickAssignForm({ onClose }: { onClose: () => void }) {
         </Select>
       </div>
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant="outline" onClick={onClose}>Batal</Button>
         <Button onClick={handleAssign} disabled={submitting || !ticketId || !userId}>
-          {submitting ? "Assigning..." : "Assign"}
+          {submitting ? "Menugaskan..." : "Tugaskan"}
         </Button>
       </div>
     </div>
@@ -534,7 +544,7 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export downloaded from server");
+      toast.success("Ekspor berhasil diunduh dari server");
       onClose();
     } catch {
       try {
@@ -554,11 +564,11 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
           const users = await fetchUsers({ per_page: 500 });
           exportUsersCsv(users);
         }
-        toast.success("Export downloaded (client fallback)");
+        toast.success("Ekspor berhasil diunduh (cadangan klien)");
         onClose();
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to export data"
+          err instanceof Error ? err.message : "Gagal mengekspor data"
         );
       }
     } finally {
@@ -569,30 +579,30 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Downloads from the server (CSV, Excel, or printable HTML/PDF).
+        Unduh dari server (CSV, Excel, atau HTML/PDF yang dapat dicetak).
       </p>
       <div className="space-y-2">
-        <Label>Dataset</Label>
+        <Label>Kumpulan data</Label>
         <Select
           value={dataset}
           onValueChange={(v) => setDataset(v as typeof dataset)}
         >
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="Pilih kumpulan data" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="tickets">Tickets</SelectItem>
             <SelectItem value="errors">Error Reports</SelectItem>
             <SelectItem value="features">Feature Requests</SelectItem>
-            <SelectItem value="downtimes">Downtime Records</SelectItem>
-            <SelectItem value="users">Users</SelectItem>
+            <SelectItem value="downtimes">Catatan downtime</SelectItem>
+            <SelectItem value="users">Pengguna</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <div className="space-y-2">
         <Label>Format</Label>
         <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="Pilih format" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="csv">CSV</SelectItem>
             <SelectItem value="excel">Excel</SelectItem>
@@ -602,11 +612,11 @@ function QuickExportForm({ onClose }: { onClose: () => void }) {
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onClose}>
-          Cancel
+          Batal
         </Button>
         <Button onClick={handleExport} disabled={loading}>
           <Download className="mr-2 h-4 w-4" />
-          {loading ? "Preparing..." : "Download"}
+          {loading ? "Menyiapkan..." : "Unduh"}
         </Button>
       </div>
     </div>

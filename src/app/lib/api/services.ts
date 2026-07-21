@@ -36,6 +36,9 @@ import {
   mapSystemConfigItem,
   mapDashboardStatsFromApi,
   mapMention,
+  mapBackupRestoreTest,
+  mapServerRoomVisitor,
+  mapServerRoomInspection,
 } from './mappers';
 import {
   User,
@@ -60,6 +63,9 @@ import {
   SystemConfigItem,
   ActivityLogEntry,
   Mention,
+  BackupRestoreTest,
+  ServerRoomVisitor,
+  ServerRoomInspection,
 } from '../../types';
 
 let usersCache: User[] = [];
@@ -390,7 +396,7 @@ export async function claimResource(
   await apiPost(`/${target}/${id}/claim`);
 }
 
-type AttachmentParent = 'tickets' | 'errors' | 'features' | 'comments';
+type AttachmentParent = 'tickets' | 'errors' | 'features' | 'comments' | 'backup-restore-tests';
 
 export async function fetchAttachments(
   parent: AttachmentParent,
@@ -1088,4 +1094,131 @@ export async function resetPassword(payload: {
   password_confirmation: string;
 }): Promise<void> {
   await apiPost('/reset-password', payload, false);
+}
+
+/* ── Ops logging modules ── */
+
+export async function fetchBackupRestoreTests(
+  params?: Record<string, string | number>
+): Promise<{ records: BackupRestoreTest[]; total: number }> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>(
+    '/backup-restore-tests',
+    { per_page: 50, ...params }
+  );
+  return {
+    records: (data as unknown as Record<string, unknown>[]).map(mapBackupRestoreTest),
+    total: meta?.total ?? 0,
+  };
+}
+
+export async function createBackupRestoreTest(
+  payload: Record<string, unknown>
+): Promise<BackupRestoreTest> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/backup-restore-tests',
+    payload
+  );
+  return mapBackupRestoreTest(response.data);
+}
+
+export async function updateBackupRestoreTest(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<BackupRestoreTest> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/backup-restore-tests/${id}`,
+    payload
+  );
+  return mapBackupRestoreTest(response.data);
+}
+
+export async function deleteBackupRestoreTest(id: string): Promise<void> {
+  await apiDelete(`/backup-restore-tests/${id}`);
+}
+
+export async function fetchServerRoomVisitors(
+  params?: Record<string, string | number>
+): Promise<{ records: ServerRoomVisitor[]; total: number }> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>(
+    '/server-room-visitors',
+    { per_page: 50, ...params }
+  );
+  return {
+    records: (data as unknown as Record<string, unknown>[]).map(mapServerRoomVisitor),
+    total: meta?.total ?? 0,
+  };
+}
+
+export async function createServerRoomVisitor(
+  payload: Record<string, unknown>
+): Promise<ServerRoomVisitor> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/server-room-visitors',
+    payload
+  );
+  return mapServerRoomVisitor(response.data);
+}
+
+export async function updateServerRoomVisitor(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<ServerRoomVisitor> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/server-room-visitors/${id}`,
+    payload
+  );
+  return mapServerRoomVisitor(response.data);
+}
+
+export async function checkoutServerRoomVisitor(
+  id: string,
+  exitAt?: string
+): Promise<ServerRoomVisitor> {
+  const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
+    `/server-room-visitors/${id}/checkout`,
+    exitAt ? { exit_at: exitAt } : {}
+  );
+  return mapServerRoomVisitor(response.data);
+}
+
+export async function deleteServerRoomVisitor(id: string): Promise<void> {
+  await apiDelete(`/server-room-visitors/${id}`);
+}
+
+export async function fetchServerRoomInspections(
+  params?: Record<string, string | number>
+): Promise<{ records: ServerRoomInspection[]; total: number }> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>(
+    '/server-room-inspections',
+    { per_page: 50, ...params }
+  );
+  return {
+    records: (data as unknown as Record<string, unknown>[]).map(mapServerRoomInspection),
+    total: meta?.total ?? 0,
+  };
+}
+
+export async function createServerRoomInspection(
+  payload: Record<string, unknown>
+): Promise<ServerRoomInspection> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/server-room-inspections',
+    payload
+  );
+  return mapServerRoomInspection(response.data);
+}
+
+export async function updateServerRoomInspection(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<ServerRoomInspection> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/server-room-inspections/${id}`,
+    payload
+  );
+  return mapServerRoomInspection(response.data);
+}
+
+export async function deleteServerRoomInspection(id: string): Promise<void> {
+  await apiDelete(`/server-room-inspections/${id}`);
 }

@@ -35,6 +35,9 @@ import {
   Ticket as TicketIcon,
   History,
   AtSign,
+  DatabaseBackup,
+  DoorOpen,
+  ClipboardCheck,
 } from "lucide-react";
 
 interface AppSidebarProps {
@@ -73,13 +76,13 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
   const menuItems: MenuGroup[] = [
     {
       groupId: 'main',
-      groupLabel: 'Main Navigation',
+      groupLabel: 'Navigasi Utama',
       items: [
         {
           id: '/',
           title: 'Dashboard',
           icon: Home,
-          description: 'Overview and analytics',
+          description: 'Ringkasan dan analitik',
         },
         {
           id: '/tickets',
@@ -91,26 +94,48 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           id: '/error-reports',
           title: 'Error Reports',
           icon: Bug,
-          description: 'Track and manage error reports',
+          description: 'Lacak dan kelola laporan error',
         },
         {
           id: '/feature-requests',
           title: 'Feature Requests',
           icon: Lightbulb,
-          description: 'Feature requests and bug fixes',
+          description: 'Permintaan fitur dan perbaikan bug',
         },
         {
           id: '/downtime',
           title: 'Downtime Monitoring',
           icon: Zap,
-          description: 'Monitor system downtimes',
+          description: 'Pantau gangguan sistem',
         },
         {
           id: '/calendar',
           title: 'Calendar View',
           icon: Calendar,
-          description: 'Scheduled maintenance & deadlines',
+          description: 'Jadwal pemeliharaan & tenggat',
         },
+        ...(currentUser?.role !== 'reporter'
+          ? [
+              {
+                id: '/backup-restore-tests',
+                title: 'Backup Restore Tests',
+                icon: DatabaseBackup,
+                description: 'Uji restore setelah backup (RST)',
+              },
+              {
+                id: '/server-room-visitors',
+                title: 'Server Room Visitors',
+                icon: DoorOpen,
+                description: 'Log pengunjung ruang server (VIS)',
+              },
+              {
+                id: '/server-room-inspections',
+                title: 'Server Room Inspections',
+                icon: ClipboardCheck,
+                description: 'Checklist inspeksi berkala (INSP)',
+              },
+            ]
+          : []),
         {
           id: '/public-form',
           title: 'Public Form',
@@ -121,13 +146,13 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
     },
     {
       groupId: 'analytics',
-      groupLabel: 'Analytics & Reports',
+      groupLabel: 'Analitik & Laporan',
       items: [
         {
           id: '/team-performance',
           title: 'Team Performance',
           icon: TrendingUp,
-          description: 'Team metrics and analytics',
+          description: 'Metrik dan kinerja tim',
           subItems: currentUser?.role === 'admin' ? [
             { id: '/team-performance?view=overview', title: 'Overview' },
             { id: '/team-performance?view=sla', title: 'SLA Compliance' },
@@ -140,13 +165,13 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           id: '/conversion-history',
           title: 'Conversion History',
           icon: History,
-          description: 'Ticket conversion audit trail',
+          description: 'Riwayat konversi ticket',
         },
         {
           id: '/mentions',
           title: 'My Mentions',
           icon: AtSign,
-          description: 'Comments mentioning you',
+          description: 'Komentar yang menyebut Anda',
         },
       ],
     },
@@ -156,19 +181,19 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
   if (currentUser?.role === 'admin') {
     menuItems.push({
       groupId: 'admin',
-      groupLabel: 'Administration',
+      groupLabel: 'Administrasi',
       items: [
         {
           id: '/users',
           title: 'User Management',
           icon: Users,
-          description: 'Manage users and permissions',
+          description: 'Kelola pengguna dan izin',
         },
         {
           id: '/settings',
           title: 'System Settings',
           icon: Settings,
-          description: 'Configure system settings',
+          description: 'Konfigurasi sistem',
         },
       ],
     });
@@ -178,7 +203,7 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
       id: '/settings',
       title: 'Settings',
       icon: Settings,
-      description: 'User preferences',
+      description: 'Preferensi pengguna',
     });
   }
 
