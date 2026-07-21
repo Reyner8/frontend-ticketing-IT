@@ -23,9 +23,9 @@ const TYPE_COLORS: Record<CalendarEvent["type"], string> = {
 };
 
 const TYPE_LABELS: Record<CalendarEvent["type"], string> = {
-  planned_downtime: "Planned Downtime",
-  maintenance: "Maintenance",
-  deadline: "Deadline",
+  planned_downtime: "Downtime Terencana",
+  maintenance: "Pemeliharaan",
+  deadline: "Batas Waktu",
 };
 
 export function CalendarView() {
@@ -60,7 +60,7 @@ export function CalendarView() {
         setEvents(all);
         setUpcoming(next);
       } catch {
-        toast.error("Failed to load calendar events");
+        toast.error("Gagal memuat acara kalender");
       } finally {
         setLoading(false);
       }
@@ -79,22 +79,22 @@ export function CalendarView() {
         type: form.type,
         color: form.color,
       });
-      toast.success("Event created");
+      toast.success("Acara berhasil dibuat");
       setCreateOpen(false);
       load();
     } catch {
-      toast.error("Failed to create event");
+      toast.error("Gagal membuat acara");
     }
   };
 
   const handleDelete = async (eventId: string) => {
-    if (!confirm("Delete this event?")) return;
+    if (!confirm("Hapus acara ini?")) return;
     try {
       await deleteCalendarEvent(eventId);
-      toast.success("Event deleted");
+      toast.success("Acara dihapus");
       load();
     } catch {
-      toast.error("Delete failed");
+      toast.error("Gagal menghapus acara");
     }
   };
 
@@ -114,13 +114,13 @@ export function CalendarView() {
         <div>
           <h2 className="text-3xl tracking-tight">Calendar View</h2>
           <p className="text-muted-foreground">
-            Planned maintenance, downtime windows, and deadlines
+            Pemeliharaan terencana, jendela downtime, dan batas waktu
           </p>
         </div>
         {canManage && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            New Event
+            Acara Baru
           </Button>
         )}
       </div>
@@ -152,7 +152,7 @@ export function CalendarView() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Events on {format(selectedDate, "MMM d")}</CardTitle>
+            <CardTitle>Acara pada {format(selectedDate, "MMM d")}</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -161,7 +161,7 @@ export function CalendarView() {
               </div>
             ) : selectedDayEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No events scheduled
+                Tidak ada acara terjadwal
               </p>
             ) : (
               <ScrollArea className="h-[240px]">
@@ -193,7 +193,7 @@ export function CalendarView() {
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {event.allDay
-                          ? "All day"
+                          ? "Sepanjang hari"
                           : `${format(event.start, "HH:mm")} - ${format(event.end, "HH:mm")}`}
                       </div>
                     </div>
@@ -207,12 +207,12 @@ export function CalendarView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Upcoming (Next 14 days)</CardTitle>
+          <CardTitle>Akan Datang (14 Hari ke Depan)</CardTitle>
         </CardHeader>
         <CardContent>
           {upcoming.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nothing scheduled in the next two weeks
+              Tidak ada jadwal dalam dua minggu ke depan
             </p>
           ) : (
             <div className="space-y-2">
@@ -256,38 +256,38 @@ export function CalendarView() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Calendar Event</DialogTitle>
+            <DialogTitle>Acara Kalender Baru</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label>Title</Label>
+              <Label>Judul</Label>
               <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label>Start</Label>
+                <Label>Mulai</Label>
                 <Input type="datetime-local" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
               </div>
               <div className="space-y-1">
-                <Label>End</Label>
+                <Label>Selesai</Label>
                 <Input type="datetime-local" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Type</Label>
+              <Label>Tipe</Label>
               <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as CalendarEvent["type"] })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="planned_downtime">Planned Downtime</SelectItem>
-                  <SelectItem value="deadline">Deadline</SelectItem>
+                  <SelectItem value="maintenance">Pemeliharaan</SelectItem>
+                  <SelectItem value="planned_downtime">Downtime Terencana</SelectItem>
+                  <SelectItem value="deadline">Batas Waktu</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate}>Create</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Batal</Button>
+            <Button onClick={handleCreate}>Buat</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

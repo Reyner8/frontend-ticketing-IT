@@ -25,25 +25,25 @@ export function ConversionHistoryView() {
           <History className="h-8 w-8" />
           Conversion History
         </h2>
-        <p className="text-muted-foreground">Tickets converted to errors or feature requests</p>
+        <p className="text-muted-foreground">Tiket yang dikonversi ke error atau permintaan fitur</p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>{entries.length} conversions</CardTitle>
+          <CardTitle>{entries.length} konversi</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">Memuat...</p>
           ) : entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No conversion history yet.</p>
+            <p className="text-sm text-muted-foreground">Belum ada riwayat konversi.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Source Ticket</TableHead>
+                  <TableHead>Tiket Sumber</TableHead>
                   <TableHead>Target</TableHead>
-                  <TableHead>Converted By</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Dikonversi Oleh</TableHead>
+                  <TableHead>Tanggal</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

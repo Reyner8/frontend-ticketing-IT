@@ -32,7 +32,7 @@ export function Settings() {
     try {
       await updatePreferences({ darkMode: newDarkMode });
     } catch {
-      toast.error('Failed to save dark mode preference');
+      toast.error('Gagal menyimpan preferensi mode gelap');
     }
   };
 
@@ -47,7 +47,7 @@ export function Settings() {
       const updated = await updatePreferences({ [key]: value } as Partial<UserPreferences>);
       dispatch({ type: 'SET_USER', payload: updated });
     } catch {
-      toast.error('Failed to save preferences');
+      toast.error('Gagal menyimpan preferensi');
     } finally {
       setSaving(false);
     }
@@ -63,32 +63,32 @@ export function Settings() {
       <div>
         <h2 className="text-3xl tracking-tight">Settings</h2>
         <p className="text-muted-foreground">
-          Manage your account settings and preferences
+          Kelola pengaturan akun dan preferensi Anda
         </p>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className={`grid w-full ${canManageConfig ? "grid-cols-4" : "grid-cols-3"}`}>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="profile">Profil</TabsTrigger>
+          <TabsTrigger value="preferences">Preferensi</TabsTrigger>
+          <TabsTrigger value="notifications">Notifikasi</TabsTrigger>
           {canManageConfig && (
-            <TabsTrigger value="system">System Config</TabsTrigger>
+            <TabsTrigger value="system">Konfigurasi Sistem</TabsTrigger>
           )}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>Informasi Profil</CardTitle>
               <CardDescription>
-                Your profile is managed by the system administrator
+                Profil Anda dikelola oleh administrator sistem
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">Nama Lengkap</Label>
                   <Input
                     id="name"
                     value={profileData.name}
@@ -110,7 +110,7 @@ export function Settings() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Role</Label>
+                  <Label>Peran</Label>
                   <div className="mt-2">
                     <Badge variant="outline" className="capitalize">
                       {currentUser.role.replace('_', ' ')}
@@ -119,7 +119,7 @@ export function Settings() {
                 </div>
                 {currentUser.team && (
                   <div>
-                    <Label>Team</Label>
+                    <Label>Tim</Label>
                     <div className="mt-2">
                       <Badge variant="outline" className="capitalize">
                         {currentUser.team}
@@ -135,17 +135,17 @@ export function Settings() {
         <TabsContent value="preferences" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Appearance</CardTitle>
+              <CardTitle>Tampilan</CardTitle>
               <CardDescription>
-                Customize the appearance of the application
+                Sesuaikan tampilan aplikasi
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Dark Mode</Label>
+                  <Label>Mode Gelap</Label>
                   <p className="text-sm text-muted-foreground">
-                    Enable dark mode for better viewing in low light
+                    Aktifkan mode gelap untuk kenyamanan di kondisi cahaya redup
                   </p>
                 </div>
                 <Switch
@@ -160,17 +160,17 @@ export function Settings() {
         <TabsContent value="notifications" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
+              <CardTitle>Preferensi Notifikasi</CardTitle>
               <CardDescription>
-                Configure how you receive notifications {saving && '(saving...)'}
+                Atur cara Anda menerima notifikasi {saving && '(menyimpan...)'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Email Notifications</Label>
+                  <Label>Notifikasi Email</Label>
                   <p className="text-sm text-muted-foreground">
-                    Receive notifications via email
+                    Terima notifikasi melalui email
                   </p>
                 </div>
                 <Switch
@@ -181,9 +181,9 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>SLA Alerts</Label>
+                  <Label>Peringatan SLA</Label>
                   <p className="text-sm text-muted-foreground">
-                    Get notified when SLA deadlines are approaching
+                    Dapatkan pemberitahuan saat batas waktu SLA mendekat
                   </p>
                 </div>
                 <Switch
@@ -194,9 +194,9 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Downtime Alerts</Label>
+                  <Label>Peringatan Downtime</Label>
                   <p className="text-sm text-muted-foreground">
-                    Get notified about system downtime events
+                    Dapatkan pemberitahuan tentang kejadian downtime sistem
                   </p>
                 </div>
                 <Switch
@@ -206,7 +206,7 @@ export function Settings() {
               </div>
 
               <div>
-                <Label htmlFor="digestFrequency">Digest Frequency</Label>
+                <Label htmlFor="digestFrequency">Frekuensi Ringkasan</Label>
                 <Select 
                   value={currentUser.preferences.digestFrequency}
                   onValueChange={(value) => handleUpdatePreferences('digestFrequency', value)}
@@ -215,10 +215,10 @@ export function Settings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="immediate">Immediate</SelectItem>
-                    <SelectItem value="hourly">Hourly</SelectItem>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="immediate">Langsung</SelectItem>
+                    <SelectItem value="hourly">Per Jam</SelectItem>
+                    <SelectItem value="daily">Harian</SelectItem>
+                    <SelectItem value="weekly">Mingguan</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -249,7 +249,7 @@ function SystemConfigPanel() {
     try {
       setConfigs(await fetchSystemConfigs());
     } catch {
-      toast.error("Failed to load system configuration");
+      toast.error("Gagal memuat konfigurasi sistem");
     } finally {
       setLoading(false);
     }
@@ -272,9 +272,9 @@ function SystemConfigPanel() {
       setNewValue("");
       setNewDescription("");
       await load();
-      toast.success("Configuration created");
+      toast.success("Konfigurasi berhasil dibuat");
     } catch {
-      toast.error("Failed to create configuration");
+      toast.error("Gagal membuat konfigurasi");
     } finally {
       setSaving(false);
     }
@@ -284,9 +284,9 @@ function SystemConfigPanel() {
     try {
       await updateSystemConfig(item.id, { config_value: value });
       await load();
-      toast.success("Configuration updated");
+      toast.success("Konfigurasi diperbarui");
     } catch {
-      toast.error("Failed to update configuration");
+      toast.error("Gagal memperbarui konfigurasi");
     }
   };
 
@@ -294,51 +294,51 @@ function SystemConfigPanel() {
     try {
       await deleteSystemConfig(id);
       await load();
-      toast.success("Configuration deleted");
+      toast.success("Konfigurasi dihapus");
     } catch {
-      toast.error("Failed to delete configuration");
+      toast.error("Gagal menghapus konfigurasi");
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>System Configuration</CardTitle>
+        <CardTitle>Konfigurasi Sistem</CardTitle>
         <CardDescription>
-          Manage application-wide settings stored in the backend
+          Kelola pengaturan aplikasi yang disimpan di backend
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <Label>Key</Label>
+            <Label>Kunci</Label>
             <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="sla.critical_hours" />
           </div>
           <div>
-            <Label>Value</Label>
+            <Label>Nilai</Label>
             <Input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="4" />
           </div>
           <div>
-            <Label>Description</Label>
-            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Optional" />
+            <Label>Deskripsi</Label>
+            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Opsional" />
           </div>
         </div>
         <Button onClick={handleCreate} disabled={saving || !newKey.trim() || !newValue.trim()}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Configuration
+          Tambah Konfigurasi
         </Button>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">Memuat...</p>
         ) : configs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No configuration entries yet</p>
+          <p className="text-sm text-muted-foreground">Belum ada entri konfigurasi</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Key</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead>Description</TableHead>
+                <TableHead>Kunci</TableHead>
+                <TableHead>Nilai</TableHead>
+                <TableHead>Deskripsi</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>

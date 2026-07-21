@@ -36,14 +36,14 @@ import type { User, UserRole, TeamType } from "../types";
 
 const ROLES: { value: UserRole; label: string }[] = [
   { value: "admin", label: "Admin" },
-  { value: "team_lead", label: "Team Lead" },
-  { value: "it_staff", label: "IT Staff" },
+  { value: "team_lead", label: "Ketua Tim" },
+  { value: "it_staff", label: "Staf IT" },
   { value: "reporter", label: "Reporter" },
 ];
 
 const TEAMS: { value: TeamType; label: string }[] = [
   { value: "programmer", label: "Programmer" },
-  { value: "network", label: "Network" },
+  { value: "network", label: "Jaringan" },
   { value: "hardware", label: "Hardware" },
 ];
 
@@ -67,7 +67,7 @@ export function UserManagement() {
       setUsers(data);
       setCachedUsers(data);
     } catch {
-      toast.error("Failed to load users");
+      toast.error("Gagal memuat pengguna");
     } finally {
       setLoading(false);
     }
@@ -97,9 +97,9 @@ export function UserManagement() {
     try {
       const updated = await toggleUserActive(user.id);
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      toast.success(`User ${updated.isActive ? "activated" : "deactivated"}`);
+      toast.success(`Pengguna ${updated.isActive ? "diaktifkan" : "dinonaktifkan"}`);
     } catch {
-      toast.error("Failed to toggle user status");
+      toast.error("Gagal mengubah status pengguna");
     }
   };
 
@@ -108,9 +108,9 @@ export function UserManagement() {
     try {
       await deleteUser(deletingUser.id);
       setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
-      toast.success("User deleted");
+      toast.success("Pengguna dihapus");
     } catch {
-      toast.error("Failed to delete user");
+      toast.error("Gagal menghapus pengguna");
     } finally {
       setDeletingUser(null);
     }
@@ -120,7 +120,7 @@ export function UserManagement() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <p className="text-muted-foreground">
-          Only administrators can access user management.
+          Hanya administrator yang dapat mengakses manajemen pengguna.
         </p>
       </div>
     );
@@ -132,7 +132,7 @@ export function UserManagement() {
         <div>
           <h2 className="text-3xl tracking-tight">User Management</h2>
           <p className="text-muted-foreground">
-            Manage user accounts, roles, and team assignments
+            Kelola akun pengguna, peran, dan penugasan tim
           </p>
         </div>
         <Button
@@ -141,15 +141,15 @@ export function UserManagement() {
             setShowDialog(true);
           }}
         >
-          <Plus className="mr-2 h-4 w-4" /> New User
+          <Plus className="mr-2 h-4 w-4" /> Pengguna Baru
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle>Filter</CardTitle>
           <CardDescription>
-            Filter users by role, team, or search term
+            Saring pengguna berdasarkan peran, tim, atau kata kunci
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -157,7 +157,7 @@ export function UserManagement() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name or email"
+                placeholder="Cari berdasarkan nama atau email"
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -171,7 +171,7 @@ export function UserManagement() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="all">Semua Peran</SelectItem>
                 {ROLES.map((r) => (
                   <SelectItem key={r.value} value={r.value}>
                     {r.label}
@@ -187,7 +187,7 @@ export function UserManagement() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Teams</SelectItem>
+                <SelectItem value="all">Semua Tim</SelectItem>
                 {TEAMS.map((t) => (
                   <SelectItem key={t.value} value={t.value}>
                     {t.label}
@@ -201,7 +201,7 @@ export function UserManagement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Users ({filtered.length})</CardTitle>
+          <CardTitle>Pengguna ({filtered.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -212,11 +212,11 @@ export function UserManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Team</TableHead>
+                  <TableHead>Pengguna</TableHead>
+                  <TableHead>Peran</TableHead>
+                  <TableHead>Tim</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -262,7 +262,7 @@ export function UserManagement() {
                           disabled={user.id === currentUser?.id}
                         />
                         <span className="text-xs text-muted-foreground">
-                          {user.isActive ? "Active" : "Inactive"}
+                          {user.isActive ? "Aktif" : "Nonaktif"}
                         </span>
                       </div>
                     </TableCell>
@@ -294,7 +294,7 @@ export function UserManagement() {
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       <UserCog className="mx-auto h-8 w-8 mb-2 opacity-40" />
-                      No users match the current filters
+                      Tidak ada pengguna yang sesuai filter
                     </TableCell>
                   </TableRow>
                 )}
@@ -320,15 +320,15 @@ export function UserManagement() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus pengguna?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove {deletingUser?.name} from the system.
-              This action cannot be undone.
+              Tindakan ini akan menghapus {deletingUser?.name} dari sistem secara permanen.
+              Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Hapus</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -399,10 +399,10 @@ function UserFormDialog({
       if (!payload.password) delete payload.password;
       if (isEditing && user) {
         await updateUser(user.id, payload);
-        toast.success("User updated");
+        toast.success("Pengguna diperbarui");
       } else {
         await createUser(payload);
-        toast.success("User created");
+        toast.success("Pengguna dibuat");
       }
       onSaved();
       onOpenChange(false);
@@ -414,8 +414,8 @@ function UserFormDialog({
         err instanceof ApiError
           ? err.message
           : isEditing
-            ? "Failed to update user"
-            : "Failed to create user"
+            ? "Gagal memperbarui pengguna"
+            : "Gagal membuat pengguna"
       );
     } finally {
       setSubmitting(false);
@@ -426,18 +426,18 @@ function UserFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit User" : "Create User"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Pengguna" : "Buat Pengguna"}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the user's information and role."
-              : "Add a new user account with role and team assignment."}
+              ? "Perbarui informasi dan peran pengguna."
+              : "Tambahkan akun pengguna baru beserta peran dan penugasan tim."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="name">Nama Lengkap</Label>
               <Input
                 id="name"
                 value={form.name}
@@ -478,14 +478,14 @@ function UserFormDialog({
 
           <div>
             <Label htmlFor="password">
-              {isEditing ? "New Password (optional)" : "Password"}
+              {isEditing ? "Kata Sandi Baru (opsional)" : "Kata Sandi"}
             </Label>
             <Input
               id="password"
               type="password"
               value={form.password ?? ""}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder={isEditing ? "Leave blank to keep current" : ""}
+              placeholder={isEditing ? "Kosongkan untuk mempertahankan yang sekarang" : ""}
               minLength={8}
               required={!isEditing}
             />
@@ -496,7 +496,7 @@ function UserFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Role</Label>
+              <Label>Peran</Label>
               <Select
                 value={form.role}
                 onValueChange={(v) => setForm({ ...form, role: v })}
@@ -514,7 +514,7 @@ function UserFormDialog({
               </Select>
             </div>
             <div>
-              <Label>Team {form.role === "it_staff" && <span className="text-red-500">*</span>}</Label>
+              <Label>Tim {form.role === "it_staff" && <span className="text-red-500">*</span>}</Label>
               <Select
                 value={form.team ?? "none"}
                 onValueChange={(v) =>
@@ -526,7 +526,7 @@ function UserFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">— None —</SelectItem>
+                  <SelectItem value="none">— Tidak ada —</SelectItem>
                   {TEAMS.map((t) => (
                     <SelectItem key={t.value} value={t.value}>
                       {t.label}
@@ -542,9 +542,9 @@ function UserFormDialog({
 
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
-              <Label>Active</Label>
+              <Label>Aktif</Label>
               <p className="text-xs text-muted-foreground">
-                Inactive users cannot log in
+                Pengguna nonaktif tidak dapat masuk
               </p>
             </div>
             <Switch
@@ -555,10 +555,10 @@ function UserFormDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Batal
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Saving..." : isEditing ? "Save Changes" : "Create User"}
+              {submitting ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Buat Pengguna"}
             </Button>
           </DialogFooter>
         </form>

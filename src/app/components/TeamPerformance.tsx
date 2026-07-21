@@ -18,6 +18,7 @@ import {
 } from "../lib/api/services";
 import { exportTeamWorkloadCsv } from "../lib/export-utils";
 import { TeamType, TeamWorkload, User } from "../types";
+import { labelTeam } from "../lib/ui-labels";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { 
   Users, 
@@ -132,7 +133,7 @@ export function TeamPerformance() {
   const getTopPerformer = () => {
     if (accessibleTeams.length === 0) return 'N/A';
     const sortedTeams = [...accessibleTeams].sort((a, b) => b.slaCompliance - a.slaCompliance);
-    return sortedTeams[0]?.team || 'N/A';
+    return sortedTeams[0]?.team ? labelTeam(sortedTeams[0].team) : 'N/A';
   };
 
   if (currentUser?.role === 'reporter' || currentUser?.role === 'it_staff') {
@@ -140,9 +141,9 @@ export function TeamPerformance() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="text-center py-12">
           <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium">Access Restricted</h3>
+          <h3 className="text-lg font-medium">Akses dibatasi</h3>
           <p className="text-muted-foreground">
-            You don't have permission to view team performance data.
+            Anda tidak memiliki izin untuk melihat data performa tim.
           </p>
         </div>
       </div>
@@ -155,7 +156,7 @@ export function TeamPerformance() {
         <div>
           <h2 className="text-3xl tracking-tight">Team Performance</h2>
           <p className="text-muted-foreground">
-            Monitor team metrics and performance analytics
+            Pantau metrik tim dan analitik performa
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -163,37 +164,37 @@ export function TeamPerformance() {
             try {
               const data = await fetchTeamWorkloadCompare(new Date().toISOString().slice(0, 10));
               setTeamWorkload(data);
-              toast.success("Loaded team comparison snapshot");
+              toast.success("Snapshot perbandingan tim dimuat");
             } catch {
-              toast.error("Compare failed");
+              toast.error("Gagal membandingkan");
             }
           }}>
-            Compare Teams
+            Bandingkan tim
           </Button>
           <Button variant="outline" onClick={async () => {
             try {
               const data = await generateTeamWorkload();
               setTeamWorkload(data);
-              toast.success("Workload snapshot generated");
+              toast.success("Snapshot beban kerja dibuat");
             } catch {
-              toast.error("Generate failed");
+              toast.error("Gagal membuat snapshot");
             }
           }}>
-            Generate Snapshot
+            Buat snapshot
           </Button>
           <Button
             variant="outline"
             onClick={() => {
               if (accessibleTeams.length === 0) {
-                toast.error("No workload data to export");
+                toast.error("Tidak ada data beban kerja untuk diekspor");
                 return;
               }
               exportTeamWorkloadCsv(accessibleTeams);
-              toast.success("Exported team workload CSV");
+              toast.success("CSV beban kerja tim diekspor");
             }}
           >
             <Download className="mr-2 h-4 w-4" />
-            Export
+            Ekspor
           </Button>
         </div>
       </div>
@@ -202,16 +203,16 @@ export function TeamPerformance() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium">Filter by Team:</span>
+              <span className="text-sm font-medium">Filter menurut tim:</span>
               <Select value={selectedTeam} onValueChange={(value: TeamType | "all") => setSelectedTeam(value)}>
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Teams</SelectItem>
-                  <SelectItem value="programmer">Programmer Team</SelectItem>
-                  <SelectItem value="network">Network Team</SelectItem>
-                  <SelectItem value="hardware">Hardware Team</SelectItem>
+                  <SelectItem value="all">Semua tim</SelectItem>
+                  <SelectItem value="programmer">Tim {labelTeam("programmer")}</SelectItem>
+                  <SelectItem value="network">Tim {labelTeam("network")}</SelectItem>
+                  <SelectItem value="hardware">Tim {labelTeam("hardware")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -222,18 +223,18 @@ export function TeamPerformance() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
+            <CardTitle className="text-sm font-medium">Total tim</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{accessibleTeams.length}</div>
-            <p className="text-xs text-muted-foreground">Active teams</p>
+            <p className="text-xs text-muted-foreground">Tim aktif</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg SLA Compliance</CardTitle>
+            <CardTitle className="text-sm font-medium">Rata-rata kepatuhan SLA</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -242,13 +243,13 @@ export function TeamPerformance() {
                 ? Math.round(accessibleTeams.reduce((sum, t) => sum + t.slaCompliance, 0) / accessibleTeams.length)
                 : 0}%
             </div>
-            <p className="text-xs text-muted-foreground">Across all teams</p>
+            <p className="text-xs text-muted-foreground">Di semua tim</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+            <CardTitle className="text-sm font-medium">Rata-rata waktu respons</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -257,20 +258,20 @@ export function TeamPerformance() {
                 ? (accessibleTeams.reduce((sum, t) => sum + t.averageResponseTime, 0) / accessibleTeams.length).toFixed(1)
                 : 0}h
             </div>
-            <p className="text-xs text-muted-foreground">Team average</p>
+            <p className="text-xs text-muted-foreground">Rata-rata tim</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Performer</CardTitle>
+            <CardTitle className="text-sm font-medium">Performa terbaik</CardTitle>
             <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {getTopPerformer()}
             </div>
-            <p className="text-xs text-muted-foreground">Highest SLA compliance</p>
+            <p className="text-xs text-muted-foreground">Kepatuhan SLA tertinggi</p>
           </CardContent>
         </Card>
       </div>
@@ -278,7 +279,7 @@ export function TeamPerformance() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="teams">Team Details</TabsTrigger>
+          <TabsTrigger value="teams">Detail tim</TabsTrigger>
           <TabsTrigger value="individual">Individual</TabsTrigger>
         </TabsList>
 
@@ -286,8 +287,8 @@ export function TeamPerformance() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Team SLA Compliance</CardTitle>
-                <CardDescription>Compliance percentage by team</CardDescription>
+                <CardTitle>Kepatuhan SLA tim</CardTitle>
+                <CardDescription>Persentase kepatuhan per tim</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -296,7 +297,7 @@ export function TeamPerformance() {
                     <XAxis dataKey="team" />
                     <YAxis domain={[0, 100]} />
                     <Tooltip />
-                    <Bar dataKey="slaCompliance" fill="#4ECDC4" name="SLA Compliance %" />
+                    <Bar dataKey="slaCompliance" fill="#4ECDC4" name="Kepatuhan SLA %" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -304,8 +305,8 @@ export function TeamPerformance() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Team Workload</CardTitle>
-                <CardDescription>Current workload percentage by team</CardDescription>
+                <CardTitle>Beban kerja tim</CardTitle>
+                <CardDescription>Persentase beban kerja saat ini per tim</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -332,8 +333,8 @@ export function TeamPerformance() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Response Time Analysis</CardTitle>
-                <CardDescription>Average response and resolution times</CardDescription>
+                <CardTitle>Analisis waktu respons</CardTitle>
+                <CardDescription>Rata-rata waktu respons dan penyelesaian</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -342,8 +343,8 @@ export function TeamPerformance() {
                     <XAxis dataKey="team" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="responseTime" fill="#FF6B6B" name="Response Time (h)" />
-                    <Bar dataKey="resolutionTime" fill="#4ECDC4" name="Resolution Time (h)" />
+                    <Bar dataKey="responseTime" fill="#FF6B6B" name="Waktu respons (j)" />
+                    <Bar dataKey="resolutionTime" fill="#4ECDC4" name="Waktu penyelesaian (j)" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -351,8 +352,8 @@ export function TeamPerformance() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Team Performance Radar</CardTitle>
-                <CardDescription>Multi-dimensional performance view</CardDescription>
+                <CardTitle>Radar performa tim</CardTitle>
+                <CardDescription>Tampilan performa multidimensi</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -360,8 +361,8 @@ export function TeamPerformance() {
                     <PolarGrid />
                     <PolarAngleAxis dataKey="team" />
                     <PolarRadiusAxis domain={[0, 100]} />
-                    <Radar name="SLA Compliance" dataKey="slaCompliance" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                    <Radar name="Efficiency" dataKey="efficiency" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
+                    <Radar name="Kepatuhan SLA" dataKey="slaCompliance" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                    <Radar name="Efisiensi" dataKey="efficiency" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
                     <Tooltip />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -373,27 +374,27 @@ export function TeamPerformance() {
         <TabsContent value="teams" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Team Performance Details</CardTitle>
-              <CardDescription>Detailed metrics for each team</CardDescription>
+              <CardTitle>Detail performa tim</CardTitle>
+              <CardDescription>Metrik detail untuk setiap tim</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Team</TableHead>
-                    <TableHead>Total Tickets</TableHead>
-                    <TableHead>Open</TableHead>
-                    <TableHead>Resolved</TableHead>
-                    <TableHead>Overdue</TableHead>
-                    <TableHead>SLA Compliance</TableHead>
-                    <TableHead>Avg Response</TableHead>
-                    <TableHead>Workload</TableHead>
+                    <TableHead>Tim</TableHead>
+                    <TableHead>Total tiket</TableHead>
+                    <TableHead>Terbuka</TableHead>
+                    <TableHead>Selesai</TableHead>
+                    <TableHead>Terlambat</TableHead>
+                    <TableHead>Kepatuhan SLA</TableHead>
+                    <TableHead>Rata-rata respons</TableHead>
+                    <TableHead>Beban kerja</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {accessibleTeams.map((team) => (
                     <TableRow key={team.team}>
-                      <TableCell className="font-medium capitalize">{team.team}</TableCell>
+                      <TableCell className="font-medium">{labelTeam(team.team)}</TableCell>
                       <TableCell>{team.totalTickets}</TableCell>
                       <TableCell>{team.openTickets}</TableCell>
                       <TableCell>
@@ -434,25 +435,25 @@ export function TeamPerformance() {
           {currentUser?.role === 'team_lead' ? (
             <Card>
               <CardHeader>
-                <CardTitle>Individual Performance</CardTitle>
-                <CardDescription>Performance metrics for team members</CardDescription>
+                <CardTitle>Performa individu</CardTitle>
+                <CardDescription>Metrik performa anggota tim</CardDescription>
               </CardHeader>
               <CardContent>
                 {performanceData.individualPerformance.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-8 text-center">
-                    No team members found. Ensure users are loaded and assigned to your team.
+                    Anggota tim tidak ditemukan. Pastikan pengguna dimuat dan ditugaskan ke tim Anda.
                   </p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Team Member</TableHead>
-                        <TableHead>Total Tickets</TableHead>
-                        <TableHead>Resolved</TableHead>
-                        <TableHead>Overdue</TableHead>
-                        <TableHead>Efficiency</TableHead>
-                        <TableHead>SLA Compliance</TableHead>
-                        <TableHead>Avg Resolution</TableHead>
+                        <TableHead>Anggota tim</TableHead>
+                        <TableHead>Total tiket</TableHead>
+                        <TableHead>Selesai</TableHead>
+                        <TableHead>Terlambat</TableHead>
+                        <TableHead>Efisiensi</TableHead>
+                        <TableHead>Kepatuhan SLA</TableHead>
+                        <TableHead>Rata-rata penyelesaian</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -502,7 +503,7 @@ export function TeamPerformance() {
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium">Individual Performance</h3>
                 <p className="text-muted-foreground">
-                  Individual performance metrics are only available to team leads for their team members.
+                  Metrik performa individu hanya tersedia untuk team lead anggota timnya.
                 </p>
               </CardContent>
             </Card>

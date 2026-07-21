@@ -52,17 +52,17 @@ export function MentionsView({ onNavigate }: MentionsViewProps) {
           <AtSign className="h-8 w-8" />
           My Mentions
         </h2>
-        <p className="text-muted-foreground">Comments where you were mentioned</p>
+        <p className="text-muted-foreground">Komentar yang menyebut Anda</p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>{mentions.length} mentions</CardTitle>
+          <CardTitle>{mentions.length} mention</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">Memuat...</p>
           ) : mentions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No mentions yet.</p>
+            <p className="text-sm text-muted-foreground">Belum ada mention.</p>
           ) : (
             mentions.map((m) => {
               const route = resolveMentionRoute(m);
@@ -75,7 +75,7 @@ export function MentionsView({ onNavigate }: MentionsViewProps) {
                   <p>{m.content ?? "—"}</p>
                   {route && (
                     <Button variant="outline" size="sm" onClick={() => openMention(m)}>
-                      Open {route.type.replace(/_/g, " ")}
+                      Buka {route.type.replace(/_/g, " ")}
                     </Button>
                   )}
                 </div>
