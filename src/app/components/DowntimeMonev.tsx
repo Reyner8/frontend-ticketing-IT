@@ -31,6 +31,7 @@ import {
   DowntimeRecord,
   DowntimeType,
 } from "../types";
+import { labelStatus, labelPriority } from "../lib/ui-labels";
 import { TableSkeleton, NoDowntimeRecords } from "./LoadingStates";
 import { DowntimeTable } from "./downtime/DowntimeTable";
 import { DowntimeCalendar } from "./downtime/DowntimeCalendar";
@@ -60,7 +61,7 @@ function firstError(err: unknown): string {
     const first = err.errors ? Object.values(err.errors)[0]?.[0] : undefined;
     return first || err.message;
   }
-  return err instanceof Error ? err.message : "Request failed";
+  return err instanceof Error ? err.message : "Permintaan gagal";
 }
 
 function toLocalInput(date: Date): string {
@@ -175,13 +176,13 @@ export function DowntimeMonev() {
             Downtime Monitoring & Evaluation
           </h2>
           <p className="text-muted-foreground">
-            Track component downtimes, dependency impact, and location-aware reporting
+            Lacak downtime komponen, dampak dependensi, dan pelaporan berbasis lokasi
           </p>
         </div>
         {canManage && (
           <Button onClick={() => setShowNewDowntimeDialog(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Log Downtime
+            Catat downtime
           </Button>
         )}
       </div>
@@ -189,99 +190,99 @@ export function DowntimeMonev() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Incidents (period)</CardTitle>
+            <CardTitle className="text-sm font-medium">Insiden (periode)</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summaryStats?.incidentCount ?? 0}</div>
-            <p className="text-xs text-muted-foreground">Current month by default</p>
+            <p className="text-xs text-muted-foreground">Bulan berjalan secara default</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Downtime</CardTitle>
+            <CardTitle className="text-sm font-medium">Total downtime</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatDuration(summaryStats?.totalDowntimeMinutes ?? 0)}
             </div>
-            <p className="text-xs text-muted-foreground">Selected analytics period</p>
+            <p className="text-xs text-muted-foreground">Periode analitik terpilih</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Incidents</CardTitle>
+            <CardTitle className="text-sm font-medium">Insiden aktif</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
               {summaryStats?.ongoingCount ?? downtimes.filter((d) => d.status === "ongoing").length}
             </div>
-            <p className="text-xs text-muted-foreground">Currently ongoing</p>
+            <p className="text-xs text-muted-foreground">Sedang berlangsung</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Planned vs Unplanned</CardTitle>
+            <CardTitle className="text-sm font-medium">Terencana vs tidak terencana</CardTitle>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {summaryStats?.plannedCount ?? 0} / {summaryStats?.unplannedCount ?? 0}
             </div>
-            <p className="text-xs text-muted-foreground">Incident counts</p>
+            <p className="text-xs text-muted-foreground">Jumlah insiden</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg per Incident</CardTitle>
+            <CardTitle className="text-sm font-medium">Rata-rata per insiden</CardTitle>
             <Server className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatDuration(summaryStats?.averageDowntimeMinutes ?? 0)}
             </div>
-            <p className="text-xs text-muted-foreground">Average duration</p>
+            <p className="text-xs text-muted-foreground">Durasi rata-rata</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estimated Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">Estimasi biaya</CardTitle>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               ${(summaryStats?.totalEstimatedCost ?? 0).toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Filtered period</p>
+            <p className="text-xs text-muted-foreground">Periode terfilter</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`grid w-full ${canManage ? "grid-cols-5" : "grid-cols-4"}`}>
-          <TabsTrigger value="list">Downtime List</TabsTrigger>
-          <TabsTrigger value="calendar">Calendar View</TabsTrigger>
+          <TabsTrigger value="list">Daftar downtime</TabsTrigger>
+          <TabsTrigger value="calendar">Tampilan kalender</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-          {canManage && <TabsTrigger value="master">Master Data</TabsTrigger>}
+          <TabsTrigger value="reports">Laporan</TabsTrigger>
+          {canManage && <TabsTrigger value="master">Data master</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Filter & Search</CardTitle>
+              <CardTitle className="text-lg">Filter & pencarian</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-2">
-                  <Label htmlFor="search">Search</Label>
+                  <Label htmlFor="search">Cari</Label>
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="search"
-                      placeholder="Search events, locations, components..."
+                      placeholder="Cari insiden, lokasi, komponen..."
                       value={searchTerm}
                       onChange={(e) => {
                         setSearchTerm(e.target.value);
@@ -292,7 +293,7 @@ export function DowntimeMonev() {
                   </div>
                 </div>
                 <div>
-                  <Label>Type</Label>
+                  <Label>Tipe</Label>
                   <Select
                     value={typeFilter}
                     onValueChange={(value: DowntimeType | "all") => {
@@ -304,9 +305,9 @@ export function DowntimeMonev() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="planned">Planned</SelectItem>
-                      <SelectItem value="unplanned">Unplanned</SelectItem>
+                      <SelectItem value="all">Semua tipe</SelectItem>
+                      <SelectItem value="planned">{labelStatus("planned")}</SelectItem>
+                      <SelectItem value="unplanned">{labelStatus("unplanned")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -323,9 +324,9 @@ export function DowntimeMonev() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="ongoing">Ongoing</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
+                      <SelectItem value="all">Semua status</SelectItem>
+                      <SelectItem value="ongoing">{labelStatus("ongoing")}</SelectItem>
+                      <SelectItem value="resolved">{labelStatus("resolved")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -354,7 +355,7 @@ export function DowntimeMonev() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
+                Halaman {currentPage} dari {totalPages}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -363,7 +364,7 @@ export function DowntimeMonev() {
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                 >
-                  Previous
+                  Sebelumnya
                 </Button>
                 <Button
                   variant="outline"
@@ -371,7 +372,7 @@ export function DowntimeMonev() {
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  Berikutnya
                 </Button>
               </div>
             </div>
@@ -515,11 +516,11 @@ function DowntimeDetailDialog({
 
   const saveEdit = async () => {
     if (locationIds.length === 0) {
-      toast.error("Select at least one location");
+      toast.error("Pilih minimal satu lokasi");
       return;
     }
     if (sourceIds.length === 0) {
-      toast.error("Select at least one directly-down component");
+      toast.error("Pilih minimal satu komponen yang down");
       return;
     }
     setBusy(true);
@@ -533,7 +534,7 @@ function DowntimeDetailDialog({
         source_component_ids: sourceIds.map(Number),
         affected_component_ids: affectedIds.map(Number),
       });
-      toast.success("Downtime updated");
+      toast.success("Downtime diperbarui");
       setEditing(false);
       onUpdated?.();
       onOpenChange(false);
@@ -546,7 +547,7 @@ function DowntimeDetailDialog({
 
   const resolve = async () => {
     if (!rootCause.trim() || !preventiveMeasures.trim()) {
-      toast.error("Root cause and preventive measures are required");
+      toast.error("Root cause dan tindakan pencegahan wajib diisi");
       return;
     }
     setBusy(true);
@@ -558,7 +559,7 @@ function DowntimeDetailDialog({
         affected_users: affectedUsers ? Number(affectedUsers) : undefined,
         estimated_cost: estimatedCost ? Number(estimatedCost) : undefined,
       });
-      toast.success("Downtime resolved");
+      toast.success("Downtime diselesaikan");
       onOpenChange(false);
       onUpdated?.();
     } catch (err) {
@@ -575,9 +576,9 @@ function DowntimeDetailDialog({
           <DialogTitle className="flex flex-wrap items-center gap-2 pr-8">
             <Zap className="h-5 w-5" />
             <span>{downtime.id}</span>
-            <Badge className={getStatusColor(downtime.status)}>{downtime.status}</Badge>
-            <Badge className={getTypeColor(downtime.type)}>{downtime.type}</Badge>
-            <Badge className={getImpactColor(downtime.impact)}>{downtime.impact}</Badge>
+            <Badge className={getStatusColor(downtime.status)}>{labelStatus(downtime.status)}</Badge>
+            <Badge className={getTypeColor(downtime.type)}>{labelStatus(downtime.type)}</Badge>
+            <Badge className={getImpactColor(downtime.impact)}>{labelPriority(downtime.impact)}</Badge>
           </DialogTitle>
           <DialogDescription>{downtime.title}</DialogDescription>
         </DialogHeader>
@@ -585,11 +586,11 @@ function DowntimeDetailDialog({
         {canManage && downtime.status === "ongoing" && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4 bg-slate-50/50 dark:bg-slate-900/20 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Actions
+              Tindakan
             </span>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => setEditing((v) => !v)}>
-                {editing ? "Cancel edit" : "Edit"}
+                {editing ? "Batal ubah" : "Ubah"}
               </Button>
               <Button
                 size="sm"
@@ -598,7 +599,7 @@ function DowntimeDetailDialog({
                   setEndTime(toLocalInput(new Date()));
                 }}
               >
-                Resolve
+                Selesaikan
               </Button>
             </div>
           </div>
@@ -606,17 +607,17 @@ function DowntimeDetailDialog({
 
         {editing && (
           <div className="space-y-3 mb-4 border rounded-md p-3">
-            <h4 className="font-medium text-sm">Edit Incident</h4>
+            <h4 className="font-medium text-sm">Ubah insiden</h4>
             <div className="space-y-1">
-              <Label>Title</Label>
+              <Label>Judul</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Reason</Label>
+              <Label>Alasan</Label>
               <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
             </div>
             <div className="space-y-1">
-              <Label>Start time</Label>
+              <Label>Waktu mulai</Label>
               <Input
                 type="datetime-local"
                 value={startTime}
@@ -629,27 +630,27 @@ function DowntimeDetailDialog({
               onChange={setLocationIds}
             />
             <ComponentMultiSelect
-              label="Directly down components"
+              label="Komponen down langsung"
               components={components}
               selectedIds={sourceIds}
               onChange={setSourceIds}
               excludeIds={affectedIds}
             />
             <ComponentMultiSelect
-              label="Affected components"
+              label="Komponen terdampak"
               components={components}
               selectedIds={affectedIds}
               onChange={setAffectedIds}
               excludeIds={sourceIds}
               suggestedIds={suggestedIds}
-              helperText="Suggestions from master dependencies are preselected and editable."
+              helperText="Saran dari dependensi master sudah dipilih dan dapat diubah."
             />
             <div className="flex gap-2">
               <Button onClick={saveEdit} disabled={busy}>
-                {busy ? "Saving..." : "Save changes"}
+                {busy ? "Menyimpan..." : "Simpan perubahan"}
               </Button>
               <Button variant="outline" onClick={() => setEditing(false)}>
-                Cancel
+                Batal
               </Button>
             </div>
           </div>
@@ -657,9 +658,9 @@ function DowntimeDetailDialog({
 
         {resolving && downtime.status === "ongoing" && (
           <div className="space-y-3 mb-4 border rounded-md p-3">
-            <h4 className="font-medium text-sm">Resolve Incident</h4>
+            <h4 className="font-medium text-sm">Selesaikan insiden</h4>
             <div className="space-y-1">
-              <Label>Actual end time</Label>
+              <Label>Waktu selesai aktual</Label>
               <Input
                 type="datetime-local"
                 value={endTime}
@@ -671,7 +672,7 @@ function DowntimeDetailDialog({
               <Textarea value={rootCause} onChange={(e) => setRootCause(e.target.value)} rows={2} />
             </div>
             <div className="space-y-1">
-              <Label>Preventive measures *</Label>
+              <Label>Tindakan pencegahan *</Label>
               <Textarea
                 value={preventiveMeasures}
                 onChange={(e) => setPreventiveMeasures(e.target.value)}
@@ -680,7 +681,7 @@ function DowntimeDetailDialog({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Affected users</Label>
+                <Label>Pengguna terdampak</Label>
                 <Input
                   type="number"
                   min={0}
@@ -689,7 +690,7 @@ function DowntimeDetailDialog({
                 />
               </div>
               <div className="space-y-1">
-                <Label>Estimated cost</Label>
+                <Label>Estimasi biaya</Label>
                 <Input
                   type="number"
                   min={0}
@@ -700,10 +701,10 @@ function DowntimeDetailDialog({
             </div>
             <div className="flex gap-2">
               <Button onClick={resolve} disabled={busy}>
-                {busy ? "Resolving..." : "Confirm Resolve"}
+                {busy ? "Menyelesaikan..." : "Konfirmasi selesaikan"}
               </Button>
               <Button variant="outline" onClick={() => setResolving(false)}>
-                Cancel
+                Batal
               </Button>
             </div>
           </div>
@@ -713,41 +714,41 @@ function DowntimeDetailDialog({
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h4 className="font-medium mb-2">Incident Details</h4>
+                <h4 className="font-medium mb-2">Detail insiden</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Type:</span>
-                    <Badge className={getTypeColor(downtime.type)}>{downtime.type}</Badge>
+                    <span className="text-muted-foreground">Tipe:</span>
+                    <Badge className={getTypeColor(downtime.type)}>{labelStatus(downtime.type)}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Impact:</span>
-                    <Badge className={getImpactColor(downtime.impact)}>{downtime.impact}</Badge>
+                    <span className="text-muted-foreground">Dampak:</span>
+                    <Badge className={getImpactColor(downtime.impact)}>{labelPriority(downtime.impact)}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Locations:</span>
+                    <span className="text-muted-foreground">Lokasi:</span>
                     <span className="max-w-[65%] text-right">
-                      {downtime.locations.map((location) => location.name).join(", ") || "Unspecified"}
+                      {downtime.locations.map((location) => location.name).join(", ") || "Tidak ditentukan"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Duration:</span>
+                    <span className="text-muted-foreground">Durasi:</span>
                     <span>{elapsed != null ? formatDuration(elapsed) : "—"}</span>
                   </div>
                 </div>
               </div>
               <div>
-                <h4 className="font-medium mb-2">Timeline</h4>
+                <h4 className="font-medium mb-2">Linimasa</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground">Started:</span>
+                    <span className="text-muted-foreground">Mulai:</span>
                     <span>{formatDate(downtime.startTime)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground">Ended:</span>
-                    <span>{downtime.endTime ? formatDate(downtime.endTime) : "Still ongoing"}</span>
+                    <span className="text-muted-foreground">Selesai:</span>
+                    <span>{downtime.endTime ? formatDate(downtime.endTime) : "Masih berlangsung"}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground">Reported by:</span>
+                    <span className="text-muted-foreground">Dilaporkan oleh:</span>
                     <span>{getUserName(downtime.reportedBy)}</span>
                   </div>
                 </div>
@@ -755,7 +756,7 @@ function DowntimeDetailDialog({
             </div>
 
             <div>
-              <h4 className="font-medium mb-2">Description & Reason</h4>
+              <h4 className="font-medium mb-2">Deskripsi & alasan</h4>
               <div className="p-3 bg-muted rounded-lg text-sm">{downtime.reason}</div>
               {downtime.description && (
                 <div className="p-3 bg-muted rounded-lg text-sm mt-2">{downtime.description}</div>
@@ -763,10 +764,10 @@ function DowntimeDetailDialog({
             </div>
 
             <div>
-              <h4 className="font-medium mb-2">Directly Down</h4>
+              <h4 className="font-medium mb-2">Down langsung</h4>
               <div className="flex flex-wrap gap-2">
                 {downtime.sourceComponents.length === 0 ? (
-                  <span className="text-sm text-muted-foreground">None recorded</span>
+                  <span className="text-sm text-muted-foreground">Tidak tercatat</span>
                 ) : (
                   downtime.sourceComponents.map((component) => (
                     <Badge key={component.id}>{component.name}</Badge>
@@ -776,10 +777,10 @@ function DowntimeDetailDialog({
             </div>
 
             <div>
-              <h4 className="font-medium mb-2">Affected Components</h4>
+              <h4 className="font-medium mb-2">Komponen terdampak</h4>
               <div className="flex flex-wrap gap-2">
                 {downtime.affectedComponents.length === 0 ? (
-                  <span className="text-sm text-muted-foreground">None recorded</span>
+                  <span className="text-sm text-muted-foreground">Tidak tercatat</span>
                 ) : (
                   downtime.affectedComponents.map((component) => (
                     <Badge key={component.id} variant="outline">
@@ -792,16 +793,16 @@ function DowntimeDetailDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h4 className="font-medium mb-2">Impact Analysis</h4>
+                <h4 className="font-medium mb-2">Analisis dampak</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Affected Users:</span>
+                    <span className="text-muted-foreground">Pengguna terdampak:</span>
                     <span className="font-medium">
                       {downtime.affectedUsers?.toLocaleString() ?? "—"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Estimated Cost:</span>
+                    <span className="text-muted-foreground">Estimasi biaya:</span>
                     <span className="font-medium">
                       {downtime.estimatedCost != null
                         ? `$${downtime.estimatedCost.toLocaleString()}`
@@ -811,14 +812,14 @@ function DowntimeDetailDialog({
                 </div>
               </div>
               <div>
-                <h4 className="font-medium mb-2">Resolution</h4>
+                <h4 className="font-medium mb-2">Penyelesaian</h4>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Root Cause:</span>
+                    <span className="text-muted-foreground">Root cause:</span>
                     <p className="mt-1">{downtime.rootCause || "—"}</p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Preventive Measures:</span>
+                    <span className="text-muted-foreground">Tindakan pencegahan:</span>
                     <p className="mt-1">{downtime.preventiveMeasures || "—"}</p>
                   </div>
                 </div>
@@ -903,7 +904,7 @@ function NewDowntimeDialog({
       setComponents((prev) => [...prev, created]);
       setSourceIds((prev) => [...prev, created.id]);
       setQuickName("");
-      toast.success("Component created and selected as source");
+      toast.success("Komponen dibuat dan dipilih sebagai sumber");
     } catch (err) {
       toast.error(firstError(err));
     }
@@ -912,11 +913,11 @@ function NewDowntimeDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (locationIds.length === 0) {
-      toast.error("Select at least one location");
+      toast.error("Pilih minimal satu lokasi");
       return;
     }
     if (sourceIds.length === 0) {
-      toast.error("Select at least one directly-down component");
+      toast.error("Pilih minimal satu komponen yang down");
       return;
     }
     setSubmitting(true);
@@ -933,7 +934,7 @@ function NewDowntimeDialog({
         source_component_ids: sourceIds.map(Number),
         affected_component_ids: affectedIds.map(Number),
       });
-      toast.success("Downtime logged");
+      toast.success("Downtime dicatat");
       onCreated?.();
       onOpenChange(false);
       setFormData({
@@ -960,16 +961,16 @@ function NewDowntimeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Log Downtime Event</DialogTitle>
+          <DialogTitle>Catat peristiwa downtime</DialogTitle>
           <DialogDescription>
-            Record location, directly-down components, and editable affected impact.
+            Catat lokasi, komponen down langsung, dan dampak terdampak yang dapat diubah.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <h4 className="font-medium text-sm text-muted-foreground">Basic Information</h4>
+          <h4 className="font-medium text-sm text-muted-foreground">Informasi dasar</h4>
           <div>
-            <Label htmlFor="title">Event Title *</Label>
+            <Label htmlFor="title">Judul insiden *</Label>
             <Input
               id="title"
               value={formData.title}
@@ -980,7 +981,7 @@ function NewDowntimeDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Type</Label>
+              <Label>Tipe</Label>
               <Select
                 value={formData.type}
                 onValueChange={(value: DowntimeType) => setFormData({ ...formData, type: value })}
@@ -989,13 +990,13 @@ function NewDowntimeDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="planned">Planned Maintenance</SelectItem>
-                  <SelectItem value="unplanned">Unplanned Outage</SelectItem>
+                  <SelectItem value="planned">Pemeliharaan terencana</SelectItem>
+                  <SelectItem value="unplanned">Gangguan tidak terencana</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Impact Level</Label>
+              <Label>Tingkat dampak</Label>
               <Select
                 value={formData.impact}
                 onValueChange={(value: "low" | "medium" | "high" | "critical") =>
@@ -1006,17 +1007,17 @@ function NewDowntimeDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
+                  <SelectItem value="low">{labelPriority("low")}</SelectItem>
+                  <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
+                  <SelectItem value="high">{labelPriority("high")}</SelectItem>
+                  <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div>
-            <Label>Reason *</Label>
+            <Label>Alasan *</Label>
             <Input
               value={formData.reason}
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
@@ -1025,11 +1026,11 @@ function NewDowntimeDialog({
           </div>
 
           <Separator />
-          <h4 className="font-medium text-sm text-muted-foreground">Timing & Location</h4>
+          <h4 className="font-medium text-sm text-muted-foreground">Waktu & lokasi</h4>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Actual start time *</Label>
+              <Label>Waktu mulai aktual *</Label>
               <Input
                 type="datetime-local"
                 value={formData.startTime}
@@ -1038,7 +1039,7 @@ function NewDowntimeDialog({
               />
             </div>
             <div>
-              <Label>End time (optional)</Label>
+              <Label>Waktu selesai (opsional)</Label>
               <Input
                 type="datetime-local"
                 value={formData.endTime}
@@ -1051,14 +1052,14 @@ function NewDowntimeDialog({
             locations={locations}
             selectedIds={locationIds}
             onChange={setLocationIds}
-            helperText="Select each affected unit, or use Select all locations."
+            helperText="Pilih setiap unit terdampak, atau gunakan Pilih semua lokasi."
           />
 
           <Separator />
-          <h4 className="font-medium text-sm text-muted-foreground">Impacted Components</h4>
+          <h4 className="font-medium text-sm text-muted-foreground">Komponen terdampak</h4>
 
           <ComponentMultiSelect
-            label="Directly down components *"
+            label="Komponen down langsung *"
             components={components}
             selectedIds={sourceIds}
             onChange={setSourceIds}
@@ -1066,11 +1067,11 @@ function NewDowntimeDialog({
           />
 
           <div className="rounded-md border p-3 space-y-2">
-            <Label>Quick-add missing component</Label>
+            <Label>Tambah cepat komponen yang belum ada</Label>
             <div className="grid grid-cols-3 gap-2">
               <Input
                 className="col-span-1"
-                placeholder="Name"
+                placeholder="Nama"
                 value={quickName}
                 onChange={(e) => setQuickName(e.target.value)}
               />
@@ -1082,35 +1083,35 @@ function NewDowntimeDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="application">Application</SelectItem>
-                  <SelectItem value="network">Network</SelectItem>
-                  <SelectItem value="utility">Utility</SelectItem>
-                  <SelectItem value="infrastructure">Infrastructure</SelectItem>
-                  <SelectItem value="equipment">Equipment</SelectItem>
-                  <SelectItem value="operational_service">Operational Service</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="application">Aplikasi</SelectItem>
+                  <SelectItem value="network">Jaringan</SelectItem>
+                  <SelectItem value="utility">Utilitas</SelectItem>
+                  <SelectItem value="infrastructure">Infrastruktur</SelectItem>
+                  <SelectItem value="equipment">Peralatan</SelectItem>
+                  <SelectItem value="operational_service">Layanan operasional</SelectItem>
+                  <SelectItem value="other">Lainnya</SelectItem>
                 </SelectContent>
               </Select>
               <Button type="button" variant="outline" onClick={createMissingComponent}>
-                Create & Select
+                Buat & pilih
               </Button>
             </div>
           </div>
 
           <ComponentMultiSelect
-            label="Affected components"
+            label="Komponen terdampak"
             components={components}
             selectedIds={affectedIds}
             onChange={setAffectedIds}
             excludeIds={sourceIds}
             suggestedIds={suggestedIds}
-            helperText="Dependency suggestions are preselected and can be edited before saving."
+            helperText="Saran dependensi sudah dipilih dan dapat diubah sebelum menyimpan."
           />
 
           <Separator />
 
           <div>
-            <Label>Additional Details</Label>
+            <Label>Detail tambahan</Label>
             <Textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1120,10 +1121,10 @@ function NewDowntimeDialog({
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Batal
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Logging..." : "Log Downtime Event"}
+              {submitting ? "Mencatat..." : "Catat peristiwa downtime"}
             </Button>
           </div>
         </form>

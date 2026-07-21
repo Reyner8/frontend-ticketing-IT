@@ -31,13 +31,13 @@ import { ComponentMultiSelect } from "./ComponentMultiSelect";
 import { Plus, MoreHorizontal, Pencil, Link2, Power, PowerOff, Trash2 } from "lucide-react";
 
 const CATEGORIES: Array<{ value: DowntimeComponentCategory; label: string }> = [
-  { value: "application", label: "Application" },
-  { value: "network", label: "Network" },
-  { value: "utility", label: "Utility / Electricity" },
-  { value: "infrastructure", label: "Infrastructure" },
-  { value: "equipment", label: "Equipment" },
-  { value: "operational_service", label: "Operational Service" },
-  { value: "other", label: "Other" },
+  { value: "application", label: "Aplikasi" },
+  { value: "network", label: "Jaringan" },
+  { value: "utility", label: "Utilitas / Listrik" },
+  { value: "infrastructure", label: "Infrastruktur" },
+  { value: "equipment", label: "Peralatan" },
+  { value: "operational_service", label: "Layanan operasional" },
+  { value: "other", label: "Lainnya" },
 ];
 
 function firstError(err: unknown): string {
@@ -45,7 +45,7 @@ function firstError(err: unknown): string {
     const first = err.errors ? Object.values(err.errors)[0]?.[0] : undefined;
     return first || err.message;
   }
-  return err instanceof Error ? err.message : "Request failed";
+  return err instanceof Error ? err.message : "Permintaan gagal";
 }
 
 export function DowntimeMasterPanel() {
@@ -109,7 +109,7 @@ export function DowntimeMasterPanel() {
 
   const saveLocation = async () => {
     if (!locationForm.name.trim()) {
-      toast.error("Location name is required");
+      toast.error("Nama lokasi wajib diisi");
       return;
     }
     setBusy(true);
@@ -120,14 +120,14 @@ export function DowntimeMasterPanel() {
           code: locationForm.code.trim() || undefined,
           description: locationForm.description || null,
         });
-        toast.success("Location updated");
+        toast.success("Lokasi diperbarui");
       } else {
         await createDowntimeLocation({
           name: locationForm.name.trim(),
           code: locationForm.code.trim() || undefined,
           description: locationForm.description || undefined,
         });
-        toast.success("Location created");
+        toast.success("Lokasi dibuat");
       }
       setLocationDialogOpen(false);
       await load();
@@ -157,7 +157,7 @@ export function DowntimeMasterPanel() {
 
   const saveComponent = async () => {
     if (!componentForm.name.trim()) {
-      toast.error("Component name is required");
+      toast.error("Nama komponen wajib diisi");
       return;
     }
     setBusy(true);
@@ -169,7 +169,7 @@ export function DowntimeMasterPanel() {
           category: componentForm.category,
           description: componentForm.description || null,
         });
-        toast.success("Component updated");
+        toast.success("Komponen diperbarui");
       } else {
         await createDowntimeComponent({
           name: componentForm.name.trim(),
@@ -177,7 +177,7 @@ export function DowntimeMasterPanel() {
           category: componentForm.category,
           description: componentForm.description || undefined,
         });
-        toast.success("Component created");
+        toast.success("Komponen dibuat");
       }
       setComponentDialogOpen(false);
       await load();
@@ -202,7 +202,7 @@ export function DowntimeMasterPanel() {
         dependencySource.id,
         dependencyIds.map((id) => Number(id))
       );
-      toast.success("Dependencies updated");
+      toast.success("Dependensi diperbarui");
       setDependencyDialogOpen(false);
       await load();
     } catch (err) {
@@ -216,24 +216,24 @@ export function DowntimeMasterPanel() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Master Data</CardTitle>
+          <CardTitle>Data master</CardTitle>
           <CardDescription>
-            Manage locations, components, and default dependency mapping used by downtime events.
+            Kelola lokasi, komponen, dan pemetaan dependensi default untuk insiden downtime.
           </CardDescription>
         </CardHeader>
       </Card>
 
       <Tabs defaultValue="components">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="components">Components</TabsTrigger>
-          <TabsTrigger value="locations">Locations</TabsTrigger>
+          <TabsTrigger value="components">Komponen</TabsTrigger>
+          <TabsTrigger value="locations">Lokasi</TabsTrigger>
         </TabsList>
 
         <TabsContent value="components" className="space-y-4">
           <div className="flex justify-end">
             <Button onClick={openCreateComponent}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Component
+              Tambah komponen
             </Button>
           </div>
           <Card>
@@ -241,21 +241,21 @@ export function DowntimeMasterPanel() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Default Affected</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Kategori</TableHead>
+                    <TableHead>Terdampak default</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right">Tindakan</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5}>Loading...</TableCell>
+                      <TableCell colSpan={5}>Memuat...</TableCell>
                     </TableRow>
                   ) : components.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5}>No components yet.</TableCell>
+                      <TableCell colSpan={5}>Belum ada komponen.</TableCell>
                     </TableRow>
                   ) : (
                     components.map((component) => (
@@ -272,7 +272,7 @@ export function DowntimeMasterPanel() {
                         <TableCell>
                           <div className="flex flex-wrap gap-1 max-w-xs">
                             {component.defaultAffectedComponents.length === 0 ? (
-                              <span className="text-xs text-muted-foreground">None</span>
+                              <span className="text-xs text-muted-foreground">Tidak ada</span>
                             ) : (
                               component.defaultAffectedComponents.slice(0, 4).map((c) => (
                                 <Badge key={c.id} variant="outline">
@@ -282,7 +282,7 @@ export function DowntimeMasterPanel() {
                             )}
                             {component.defaultAffectedComponents.length > 4 && (
                               <Badge variant="outline">
-                                +{component.defaultAffectedComponents.length - 4} more
+                                +{component.defaultAffectedComponents.length - 4} lainnya
                               </Badge>
                             )}
                           </div>
@@ -295,7 +295,7 @@ export function DowntimeMasterPanel() {
                                 : "text-gray-600 bg-gray-100"
                             }
                           >
-                            {component.isActive ? "Active" : "Inactive"}
+                            {component.isActive ? "Aktif" : "Nonaktif"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -303,24 +303,24 @@ export function DowntimeMasterPanel() {
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
+                                <span className="sr-only">Buka menu</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openEditComponent(component)}>
                                 <Pencil className="mr-2 h-4 w-4" />
-                                Edit
+                                Ubah
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openDependencies(component)}>
                                 <Link2 className="mr-2 h-4 w-4" />
-                                Dependencies
+                                Dependensi
                               </DropdownMenuItem>
                               {component.isActive ? (
                                 <DropdownMenuItem
                                   onClick={async () => {
                                     try {
                                       await deactivateDowntimeComponent(component.id);
-                                      toast.success("Component deactivated");
+                                      toast.success("Komponen dinonaktifkan");
                                       await load();
                                     } catch (err) {
                                       toast.error(firstError(err));
@@ -328,14 +328,14 @@ export function DowntimeMasterPanel() {
                                   }}
                                 >
                                   <PowerOff className="mr-2 h-4 w-4" />
-                                  Deactivate
+                                  Nonaktifkan
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem
                                   onClick={async () => {
                                     try {
                                       await updateDowntimeComponent(component.id, { is_active: true });
-                                      toast.success("Component reactivated");
+                                      toast.success("Komponen diaktifkan kembali");
                                       await load();
                                     } catch (err) {
                                       toast.error(firstError(err));
@@ -343,17 +343,17 @@ export function DowntimeMasterPanel() {
                                   }}
                                 >
                                   <Power className="mr-2 h-4 w-4" />
-                                  Activate
+                                  Aktifkan kembali
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-red-600 focus:text-red-600"
                                 onClick={async () => {
-                                  if (!confirm(`Delete component "${component.name}"?`)) return;
+                                  if (!confirm(`Hapus komponen "${component.name}"?`)) return;
                                   try {
                                     await deleteDowntimeComponent(component.id);
-                                    toast.success("Component deleted");
+                                    toast.success("Komponen dihapus");
                                     await load();
                                   } catch (err) {
                                     toast.error(firstError(err));
@@ -361,7 +361,7 @@ export function DowntimeMasterPanel() {
                                 }}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                                Hapus
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -379,7 +379,7 @@ export function DowntimeMasterPanel() {
           <div className="flex justify-end">
             <Button onClick={openCreateLocation}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Location
+              Tambah lokasi
             </Button>
           </div>
           <Card>
@@ -387,20 +387,20 @@ export function DowntimeMasterPanel() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Code</TableHead>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Kode</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right">Tindakan</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={4}>Loading...</TableCell>
+                      <TableCell colSpan={4}>Memuat...</TableCell>
                     </TableRow>
                   ) : locations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4}>No locations yet.</TableCell>
+                      <TableCell colSpan={4}>Belum ada lokasi.</TableCell>
                     </TableRow>
                   ) : (
                     locations.map((location) => (
@@ -420,7 +420,7 @@ export function DowntimeMasterPanel() {
                                 : "text-gray-600 bg-gray-100"
                             }
                           >
-                            {location.isActive ? "Active" : "Inactive"}
+                            {location.isActive ? "Aktif" : "Nonaktif"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -428,20 +428,20 @@ export function DowntimeMasterPanel() {
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm">
                                 <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
+                                <span className="sr-only">Buka menu</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => openEditLocation(location)}>
                                 <Pencil className="mr-2 h-4 w-4" />
-                                Edit
+                                Ubah
                               </DropdownMenuItem>
                               {location.isActive ? (
                                 <DropdownMenuItem
                                   onClick={async () => {
                                     try {
                                       await deactivateDowntimeLocation(location.id);
-                                      toast.success("Location deactivated");
+                                      toast.success("Lokasi dinonaktifkan");
                                       await load();
                                     } catch (err) {
                                       toast.error(firstError(err));
@@ -449,14 +449,14 @@ export function DowntimeMasterPanel() {
                                   }}
                                 >
                                   <PowerOff className="mr-2 h-4 w-4" />
-                                  Deactivate
+                                  Nonaktifkan
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem
                                   onClick={async () => {
                                     try {
                                       await updateDowntimeLocation(location.id, { is_active: true });
-                                      toast.success("Location reactivated");
+                                      toast.success("Lokasi diaktifkan kembali");
                                       await load();
                                     } catch (err) {
                                       toast.error(firstError(err));
@@ -464,17 +464,17 @@ export function DowntimeMasterPanel() {
                                   }}
                                 >
                                   <Power className="mr-2 h-4 w-4" />
-                                  Activate
+                                  Aktifkan kembali
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-red-600 focus:text-red-600"
                                 onClick={async () => {
-                                  if (!confirm(`Delete location "${location.name}"?`)) return;
+                                  if (!confirm(`Hapus lokasi "${location.name}"?`)) return;
                                   try {
                                     await deleteDowntimeLocation(location.id);
-                                    toast.success("Location deleted");
+                                    toast.success("Lokasi dihapus");
                                     await load();
                                   } catch (err) {
                                     toast.error(firstError(err));
@@ -482,7 +482,7 @@ export function DowntimeMasterPanel() {
                                 }}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                                Hapus
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -500,33 +500,33 @@ export function DowntimeMasterPanel() {
       <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingLocation ? "Edit Location" : "Add Location"}</DialogTitle>
-            <DialogDescription>Locations keep reporting consistent across events.</DialogDescription>
+            <DialogTitle>{editingLocation ? "Ubah lokasi" : "Tambah lokasi"}</DialogTitle>
+            <DialogDescription>Lokasi menjaga konsistensi pelaporan antar insiden.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Name</Label>
+              <Label>Nama</Label>
               <Input
                 value={locationForm.name}
                 onChange={(e) => setLocationForm({ ...locationForm, name: e.target.value })}
               />
             </div>
             <div>
-              <Label>Code (optional)</Label>
+              <Label>Kode (opsional)</Label>
               <Input
                 value={locationForm.code}
                 onChange={(e) => setLocationForm({ ...locationForm, code: e.target.value })}
               />
             </div>
             <div>
-              <Label>Description</Label>
+              <Label>Deskripsi</Label>
               <Textarea
                 value={locationForm.description}
                 onChange={(e) => setLocationForm({ ...locationForm, description: e.target.value })}
               />
             </div>
             <Button onClick={saveLocation} disabled={busy}>
-              {busy ? "Saving..." : "Save Location"}
+              {busy ? "Menyimpan..." : "Simpan lokasi"}
             </Button>
           </div>
         </DialogContent>
@@ -535,28 +535,28 @@ export function DowntimeMasterPanel() {
       <Dialog open={componentDialogOpen} onOpenChange={setComponentDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingComponent ? "Edit Component" : "Add Component"}</DialogTitle>
+            <DialogTitle>{editingComponent ? "Ubah komponen" : "Tambah komponen"}</DialogTitle>
             <DialogDescription>
-              Components can be applications, network, electricity, infrastructure, and more.
+              Komponen dapat berupa aplikasi, jaringan, listrik, infrastruktur, dan lainnya.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Name</Label>
+              <Label>Nama</Label>
               <Input
                 value={componentForm.name}
                 onChange={(e) => setComponentForm({ ...componentForm, name: e.target.value })}
               />
             </div>
             <div>
-              <Label>Code (optional)</Label>
+              <Label>Kode (opsional)</Label>
               <Input
                 value={componentForm.code}
                 onChange={(e) => setComponentForm({ ...componentForm, code: e.target.value })}
               />
             </div>
             <div>
-              <Label>Category</Label>
+              <Label>Kategori</Label>
               <Select
                 value={componentForm.category}
                 onValueChange={(value: DowntimeComponentCategory) =>
@@ -576,14 +576,14 @@ export function DowntimeMasterPanel() {
               </Select>
             </div>
             <div>
-              <Label>Description</Label>
+              <Label>Deskripsi</Label>
               <Textarea
                 value={componentForm.description}
                 onChange={(e) => setComponentForm({ ...componentForm, description: e.target.value })}
               />
             </div>
             <Button onClick={saveComponent} disabled={busy}>
-              {busy ? "Saving..." : "Save Component"}
+              {busy ? "Menyimpan..." : "Simpan komponen"}
             </Button>
           </div>
         </DialogContent>
@@ -593,21 +593,21 @@ export function DowntimeMasterPanel() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              Dependencies for {dependencySource?.name ?? "Component"}
+              Dependensi untuk {dependencySource?.name ?? "Komponen"}
             </DialogTitle>
             <DialogDescription>
-              When this component is directly down, these defaults will be suggested as affected.
+              Saat komponen ini down langsung, default berikut akan disarankan sebagai terdampak.
             </DialogDescription>
           </DialogHeader>
           <ComponentMultiSelect
-            label="Default affected components"
+            label="Komponen terdampak default"
             components={activeComponents}
             selectedIds={dependencyIds}
             onChange={setDependencyIds}
             excludeIds={dependencySource ? [dependencySource.id] : []}
           />
           <Button onClick={saveDependencies} disabled={busy}>
-            {busy ? "Saving..." : "Save Dependencies"}
+            {busy ? "Menyimpan..." : "Simpan dependensi"}
           </Button>
         </DialogContent>
       </Dialog>

@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { DowntimeRecord } from "../../types";
 import { getStatusColor, getTypeColor, getImpactColor, formatDuration, formatDate } from "../../lib/downtime-utils";
+import { labelStatus, labelPriority } from "../../lib/ui-labels";
 import { Clock, MoreHorizontal, Eye } from "lucide-react";
 
 interface DowntimeTableProps {
@@ -21,17 +22,17 @@ export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTab
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Incident ID</TableHead>
-          <TableHead>Title</TableHead>
-          <TableHead>Location</TableHead>
-          <TableHead>Type</TableHead>
+          <TableHead>ID insiden</TableHead>
+          <TableHead>Judul</TableHead>
+          <TableHead>Lokasi</TableHead>
+          <TableHead>Tipe</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Impact</TableHead>
-          <TableHead>Start</TableHead>
-          <TableHead>Duration</TableHead>
-          <TableHead>Directly Down</TableHead>
-          <TableHead>Affected</TableHead>
-          <TableHead>Actions</TableHead>
+          <TableHead>Dampak</TableHead>
+          <TableHead>Mulai</TableHead>
+          <TableHead>Durasi</TableHead>
+          <TableHead>Down langsung</TableHead>
+          <TableHead>Terdampak</TableHead>
+          <TableHead>Tindakan</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -72,18 +73,18 @@ export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTab
                 </div>
               </TableCell>
               <TableCell>
-                <Badge className={getTypeColor(downtime.type)}>{downtime.type}</Badge>
+                <Badge className={getTypeColor(downtime.type)}>{labelStatus(downtime.type)}</Badge>
               </TableCell>
               <TableCell>
-                <Badge className={getStatusColor(downtime.status)}>{downtime.status}</Badge>
+                <Badge className={getStatusColor(downtime.status)}>{labelStatus(downtime.status)}</Badge>
               </TableCell>
               <TableCell>
-                <Badge className={getImpactColor(downtime.impact)}>{downtime.impact}</Badge>
+                <Badge className={getImpactColor(downtime.impact)}>{labelPriority(downtime.impact)}</Badge>
               </TableCell>
               <TableCell>
                 <div className="text-sm">{formatDate(downtime.startTime)}</div>
                 <div className="text-xs text-muted-foreground">
-                  {downtime.endTime ? `End: ${formatDate(downtime.endTime)}` : "Still ongoing"}
+                  {downtime.endTime ? `Selesai: ${formatDate(downtime.endTime)}` : "Masih berlangsung"}
                 </div>
               </TableCell>
               <TableCell>
@@ -109,17 +110,17 @@ export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTab
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
                       <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
+                      <span className="sr-only">Buka menu</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onViewDetails(downtime)}>
                       <Eye className="mr-2 h-4 w-4" />
-                      View Details
+                      Lihat detail
                     </DropdownMenuItem>
                     {canEdit && downtime.status === "ongoing" && (
                       <DropdownMenuItem onClick={() => onViewDetails(downtime)}>
-                        Resolve / Edit
+                        Selesaikan / ubah
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
