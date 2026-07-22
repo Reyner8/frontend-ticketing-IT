@@ -24,7 +24,7 @@ function firstError(err: unknown): string {
     const first = err.errors ? Object.values(err.errors)[0]?.[0] : undefined;
     return first || err.message;
   }
-  return err instanceof Error ? err.message : "Permintaan gagal";
+  return err instanceof Error ? err.message : "Request failed";
 }
 
 function monthStart(): string {
@@ -111,7 +111,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
       a.download = filename || `downtimes-export.${format === "excel" ? "xls" : format === "pdf" ? "html" : "csv"}`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Ekspor diunduh");
+      toast.success("Export downloaded");
     } catch (err) {
       toast.error(firstError(err));
     } finally {
@@ -143,28 +143,28 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>{mode === "reports" ? "Laporan downtime" : "Filter analitik"}</CardTitle>
+          <CardTitle>{mode === "reports" ? "Downtime report" : "Analytics filter"}</CardTitle>
           <CardDescription>
             Difilter menurut periode terpilih. Uptime dilaporkan per komponen/kategori, bukan persentase global.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-5">
           <div>
-            <Label>Dari</Label>
+            <Label>From</Label>
             <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div>
-            <Label>Sampai</Label>
+            <Label>To</Label>
             <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div>
-            <Label>Lokasi</Label>
+            <Label>Location</Label>
             <Select value={locationId} onValueChange={setLocationId}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua lokasi</SelectItem>
+                <SelectItem value="all">All locations</SelectItem>
                 {locations.map((location) => (
                   <SelectItem key={location.id} value={location.id}>
                     {location.name}
@@ -174,13 +174,13 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
             </Select>
           </div>
           <div>
-            <Label>Komponen</Label>
+            <Label>Component</Label>
             <Select value={componentId} onValueChange={setComponentId}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua komponen</SelectItem>
+                <SelectItem value="all">All components</SelectItem>
                 {components.map((component) => (
                   <SelectItem key={component.id} value={component.id}>
                     {component.name}
@@ -190,30 +190,30 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
             </Select>
           </div>
           <div>
-            <Label>Kategori</Label>
+            <Label>Category</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua kategori</SelectItem>
-                <SelectItem value="application">Aplikasi</SelectItem>
-                <SelectItem value="network">Jaringan</SelectItem>
-                <SelectItem value="utility">Utilitas</SelectItem>
-                <SelectItem value="infrastructure">Infrastruktur</SelectItem>
-                <SelectItem value="equipment">Peralatan</SelectItem>
-                <SelectItem value="operational_service">Layanan operasional</SelectItem>
-                <SelectItem value="other">Lainnya</SelectItem>
+                <SelectItem value="all">All categories</SelectItem>
+                <SelectItem value="application">Application</SelectItem>
+                <SelectItem value="network">Network</SelectItem>
+                <SelectItem value="utility">Utility</SelectItem>
+                <SelectItem value="infrastructure">Infrastructure</SelectItem>
+                <SelectItem value="equipment">Equipment</SelectItem>
+                <SelectItem value="operational_service">Operational service</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="md:col-span-5 flex flex-wrap items-center justify-between gap-2 pt-1">
             <Button onClick={loadAnalytics} disabled={loading}>
-              {loading ? "Memuat..." : "Terapkan filter"}
+              {loading ? "Loading..." : "Apply filter"}
             </Button>
             {mode === "reports" && (
               <div className="flex flex-wrap gap-2">
-                <span className="w-full text-xs text-muted-foreground md:hidden">Ekspor sebagai:</span>
+                <span className="w-full text-xs text-muted-foreground md:hidden">Export as:</span>
                 <Button variant="outline" size="sm" onClick={() => exportData("csv")} disabled={exporting}>
                   <Download className="mr-2 h-4 w-4" />
                   CSV
@@ -235,12 +235,12 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Insiden</CardTitle>
+            <CardTitle className="text-sm">Incidents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary?.incidentCount ?? 0}</div>
             <p className="text-xs text-muted-foreground">
-              {summary?.plannedCount ?? 0} terencana / {summary?.unplannedCount ?? 0} tidak terencana
+              {summary?.plannedCount ?? 0} planned / {summary?.unplannedCount ?? 0} unplanned
             </p>
           </CardContent>
         </Card>
@@ -253,29 +253,29 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
               {formatDuration(summary?.totalDowntimeMinutes ?? 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Rata-rata {formatDuration(summary?.averageDowntimeMinutes ?? 0)} / insiden
+              Average {formatDuration(summary?.averageDowntimeMinutes ?? 0)} / incident
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Pengguna terdampak</CardTitle>
+            <CardTitle className="text-sm">Affected users</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary?.totalAffectedUsers ?? 0}</div>
-            <p className="text-xs text-muted-foreground">Di seluruh insiden terfilter</p>
+            <p className="text-xs text-muted-foreground">Across all filtered incidents</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Estimasi biaya</CardTitle>
+            <CardTitle className="text-sm">Estimated cost</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               ${(summary?.totalEstimatedCost ?? 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {summary?.ongoingCount ?? 0} masih berlangsung
+              {summary?.ongoingCount ?? 0} still ongoing
             </p>
           </CardContent>
         </Card>
@@ -293,15 +293,15 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Uptime komponen (sumber langsung)</CardTitle>
+            <CardTitle className="text-base">Component uptime (direct source)</CardTitle>
             <CardDescription>Ketersediaan per komponen untuk periode terpilih</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Komponen</TableHead>
-                  <TableHead>Insiden</TableHead>
+                  <TableHead>Component</TableHead>
+                  <TableHead>Incidents</TableHead>
                   <TableHead>Downtime</TableHead>
                   <TableHead>Uptime</TableHead>
                 </TableRow>
@@ -324,7 +324,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
                 ))}
                 {(analytics?.componentUptime ?? []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4}>Tidak ada downtime komponen sumber pada periode ini.</TableCell>
+                    <TableCell colSpan={4}>No source component downtime in this period.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -334,7 +334,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Uptime kategori</CardTitle>
+            <CardTitle className="text-base">Category uptime</CardTitle>
             <CardDescription>Dikelompokkan menurut kategori sumber langsung</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -342,7 +342,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
               <TableHeader>
                 <TableRow>
                   <TableHead>Category</TableHead>
-                  <TableHead>Insiden</TableHead>
+                  <TableHead>Incidents</TableHead>
                   <TableHead>Downtime</TableHead>
                   <TableHead>Uptime</TableHead>
                 </TableRow>
@@ -364,7 +364,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
                 ))}
                 {(analytics?.categoryUptime ?? []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4}>Tidak ada data kategori pada periode ini.</TableCell>
+                    <TableCell colSpan={4}>No category data in this period.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -375,14 +375,14 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Frekuensi lokasi</CardTitle>
+          <CardTitle className="text-base">Location frequency</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Location</TableHead>
-                <TableHead>Insiden</TableHead>
+                <TableHead>Incidents</TableHead>
                 <TableHead>Total downtime</TableHead>
               </TableRow>
             </TableHeader>
@@ -396,7 +396,7 @@ export function DowntimeAnalyticsPanel({ mode = "analytics" }: DowntimeAnalytics
               ))}
               {(analytics?.locationFrequency ?? []).length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3}>Tidak ada data lokasi pada periode ini.</TableCell>
+                  <TableCell colSpan={3}>No location data in this period.</TableCell>
                 </TableRow>
               )}
             </TableBody>

@@ -30,21 +30,21 @@ export function DowntimeCalendar({
       <Card className="md:col-span-2">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Kalender downtime</span>
+            <span>Downtime calendar</span>
             <div className="flex items-center gap-2">
               <Button
                 variant={calendarView === 'month' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onCalendarViewChange('month')}
               >
-                Bulan
+                Month
               </Button>
               <Button
                 variant={calendarView === 'week' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onCalendarViewChange('week')}
               >
-                Minggu
+                Week
               </Button>
             </div>
           </CardTitle>
@@ -69,7 +69,7 @@ export function DowntimeCalendar({
       <Card>
         <CardHeader>
           <CardTitle>
-            Insiden pada {format(selectedDate, 'MMM dd, yyyy')}
+            Incidents on {format(selectedDate, 'MMM dd, yyyy')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -98,7 +98,7 @@ export function DowntimeCalendar({
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Tidak ada insiden pada tanggal ini</p>
+                <p>No incidents on this date</p>
               </div>
             )}
           </ScrollArea>

@@ -16,7 +16,7 @@ export function LocationMultiSelect({
   locations,
   selectedIds,
   onChange,
-  label = "Lokasi *",
+  label = "Location *",
   helperText = "Pilih satu atau lebih lokasi terdampak.",
 }: LocationMultiSelectProps) {
   const activeLocations = locations.filter((location) => location.isActive);
@@ -50,7 +50,7 @@ export function LocationMultiSelect({
             checked={allSelected ? true : partlySelected ? "indeterminate" : false}
             onCheckedChange={toggleAll}
           />
-          <span className="text-sm font-medium">Pilih semua lokasi</span>
+          <span className="text-sm font-medium">Select all locations</span>
           <span className="ml-auto text-xs text-muted-foreground">
             {selectedActiveCount}/{activeLocations.length}
           </span>
@@ -78,7 +78,7 @@ export function LocationMultiSelect({
               </label>
             ))}
             {activeLocations.length === 0 && (
-              <p className="p-2 text-sm text-muted-foreground">Tidak ada lokasi aktif tersedia.</p>
+              <p className="p-2 text-sm text-muted-foreground">No active locations available.</p>
             )}
           </div>
         </ScrollArea>

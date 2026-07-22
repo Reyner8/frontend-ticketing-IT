@@ -30,7 +30,7 @@ export function ClaimActions({
     if (assignedToId === state.currentUser.id) {
       return (
         <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700">
-          Anda yang menangani
+          You're handling this
         </span>
       );
     }
@@ -41,10 +41,10 @@ export function ClaimActions({
     setSubmitting(true);
     try {
       await claimResource(target, resourceId);
-      toast.success("Tiket berhasil diambil");
+      toast.success("Ticket claimed successfully");
       onCompleted?.();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Gagal mengambil tiket");
+      toast.error(err instanceof ApiError ? err.message : "Failed to claim ticket");
     } finally {
       setSubmitting(false);
     }
@@ -53,7 +53,7 @@ export function ClaimActions({
   return (
     <Button variant="default" size="sm" onClick={handleClaim} disabled={submitting}>
       <HandMetal className="mr-2 h-4 w-4" />
-      {submitting ? "Mengambil..." : "Ambil Tiket"}
+      {submitting ? "Claiming..." : "Claim Ticket"}
     </Button>
   );
 }

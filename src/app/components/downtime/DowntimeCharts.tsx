@@ -56,7 +56,7 @@ export function DowntimeCharts({
                     stackId="1"
                     stroke="#4ECDC4"
                     fill="#4ECDC4"
-                    name="Terencana"
+                    name="Planned"
                   />
                   <Area
                     type="monotone"
@@ -64,7 +64,7 @@ export function DowntimeCharts({
                     stackId="2"
                     stroke="#FF6B6B"
                     fill="#FF6B6B"
-                    name="Tidak terencana"
+                    name="Unplanned"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -88,7 +88,7 @@ export function DowntimeCharts({
                     dataKey="incidents"
                     stroke="#8884d8"
                     strokeWidth={2}
-                    name="Insiden"
+                    name="Incidents"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -104,7 +104,7 @@ export function DowntimeCharts({
         </CardHeader>
         <CardContent>
           {impactData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-16 text-center">Tidak ada data dampak</p>
+            <p className="text-sm text-muted-foreground py-16 text-center">No impact data</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -136,7 +136,7 @@ export function DowntimeCharts({
         </CardHeader>
         <CardContent>
           {systemsData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-16 text-center">Tidak ada data komponen</p>
+            <p className="text-sm text-muted-foreground py-16 text-center">No component data</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={systemsData} layout="horizontal">
@@ -144,7 +144,7 @@ export function DowntimeCharts({
                 <XAxis type="number" />
                 <YAxis dataKey="name" type="category" width={100} />
                 <Tooltip />
-                <Bar dataKey="incidents" fill="#8884d8" name="Insiden" />
+                <Bar dataKey="incidents" fill="#8884d8" name="Incidents" />
               </BarChart>
             </ResponsiveContainer>
           )}

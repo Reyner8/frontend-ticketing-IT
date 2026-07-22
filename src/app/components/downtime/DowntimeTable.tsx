@@ -22,17 +22,17 @@ export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTab
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>ID insiden</TableHead>
-          <TableHead>Judul</TableHead>
-          <TableHead>Lokasi</TableHead>
-          <TableHead>Tipe</TableHead>
+          <TableHead>Incident ID</TableHead>
+          <TableHead>Title</TableHead>
+          <TableHead>Location</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Dampak</TableHead>
-          <TableHead>Mulai</TableHead>
-          <TableHead>Durasi</TableHead>
-          <TableHead>Down langsung</TableHead>
-          <TableHead>Terdampak</TableHead>
-          <TableHead>Tindakan</TableHead>
+          <TableHead>Impact</TableHead>
+          <TableHead>Start</TableHead>
+          <TableHead>Duration</TableHead>
+          <TableHead>Direct source</TableHead>
+          <TableHead>Affected</TableHead>
+          <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -84,7 +84,7 @@ export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTab
               <TableCell>
                 <div className="text-sm">{formatDate(downtime.startTime)}</div>
                 <div className="text-xs text-muted-foreground">
-                  {downtime.endTime ? `Selesai: ${formatDate(downtime.endTime)}` : "Masih berlangsung"}
+                  {downtime.endTime ? `Completed: ${formatDate(downtime.endTime)}` : "Still ongoing"}
                 </div>
               </TableCell>
               <TableCell>
@@ -110,17 +110,17 @@ export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTab
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
                       <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Buka menu</span>
+                      <span className="sr-only">Open menu</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onViewDetails(downtime)}>
                       <Eye className="mr-2 h-4 w-4" />
-                      Lihat detail
+                      View details
                     </DropdownMenuItem>
                     {canEdit && downtime.status === "ongoing" && (
                       <DropdownMenuItem onClick={() => onViewDetails(downtime)}>
-                        Selesaikan / ubah
+                        Resolve / edit
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>

@@ -23,9 +23,9 @@ const TYPE_COLORS: Record<CalendarEvent["type"], string> = {
 };
 
 const TYPE_LABELS: Record<CalendarEvent["type"], string> = {
-  planned_downtime: "Downtime Terencana",
-  maintenance: "Pemeliharaan",
-  deadline: "Batas Waktu",
+  planned_downtime: "Planned Downtime",
+  maintenance: "Maintenance",
+  deadline: "Deadline",
 };
 
 export function CalendarView() {
@@ -60,7 +60,7 @@ export function CalendarView() {
         setEvents(all);
         setUpcoming(next);
       } catch {
-        toast.error("Gagal memuat acara kalender");
+        toast.error("Failed to load calendar events");
       } finally {
         setLoading(false);
       }
@@ -79,22 +79,22 @@ export function CalendarView() {
         type: form.type,
         color: form.color,
       });
-      toast.success("Acara berhasil dibuat");
+      toast.success("Event created successfully");
       setCreateOpen(false);
       load();
     } catch {
-      toast.error("Gagal membuat acara");
+      toast.error("Failed to create event");
     }
   };
 
   const handleDelete = async (eventId: string) => {
-    if (!confirm("Hapus acara ini?")) return;
+    if (!confirm("Delete this event?")) return;
     try {
       await deleteCalendarEvent(eventId);
-      toast.success("Acara dihapus");
+      toast.success("Event deleted");
       load();
     } catch {
-      toast.error("Gagal menghapus acara");
+      toast.error("Failed to delete event");
     }
   };
 
@@ -120,7 +120,7 @@ export function CalendarView() {
         {canManage && (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Acara Baru
+            New Event
           </Button>
         )}
       </div>
@@ -152,7 +152,7 @@ export function CalendarView() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Acara pada {format(selectedDate, "MMM d")}</CardTitle>
+            <CardTitle>Events on {format(selectedDate, "MMM d")}</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -161,7 +161,7 @@ export function CalendarView() {
               </div>
             ) : selectedDayEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Tidak ada acara terjadwal
+                No events scheduled
               </p>
             ) : (
               <ScrollArea className="h-[240px]">
@@ -193,7 +193,7 @@ export function CalendarView() {
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {event.allDay
-                          ? "Sepanjang hari"
+                          ? "All day"
                           : `${format(event.start, "HH:mm")} - ${format(event.end, "HH:mm")}`}
                       </div>
                     </div>
@@ -207,12 +207,12 @@ export function CalendarView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Akan Datang (14 Hari ke Depan)</CardTitle>
+          <CardTitle>Upcoming (Next 14 Days)</CardTitle>
         </CardHeader>
         <CardContent>
           {upcoming.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Tidak ada jadwal dalam dua minggu ke depan
+              No events in the next two weeks
             </p>
           ) : (
             <div className="space-y-2">
@@ -256,38 +256,38 @@ export function CalendarView() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Acara Kalender Baru</DialogTitle>
+            <DialogTitle>New Calendar Event</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label>Judul</Label>
+              <Label>Title</Label>
               <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label>Mulai</Label>
+                <Label>Start</Label>
                 <Input type="datetime-local" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
               </div>
               <div className="space-y-1">
-                <Label>Selesai</Label>
+                <Label>End</Label>
                 <Input type="datetime-local" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Tipe</Label>
+              <Label>Type</Label>
               <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as CalendarEvent["type"] })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="maintenance">Pemeliharaan</SelectItem>
-                  <SelectItem value="planned_downtime">Downtime Terencana</SelectItem>
-                  <SelectItem value="deadline">Batas Waktu</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="planned_downtime">Planned Downtime</SelectItem>
+                  <SelectItem value="deadline">Deadline</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Batal</Button>
-            <Button onClick={handleCreate}>Buat</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

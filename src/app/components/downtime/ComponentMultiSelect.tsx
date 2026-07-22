@@ -54,14 +54,14 @@ export function ComponentMultiSelect({
       <Label>{label}</Label>
       {helperText && <p className="text-xs text-muted-foreground">{helperText}</p>}
       <Input
-        placeholder="Cari komponen..."
+        placeholder="Search components..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
       <ScrollArea className="h-40 rounded-md border p-2">
         <div className="space-y-2">
           {options.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Komponen tidak ditemukan.</p>
+            <p className="text-sm text-muted-foreground">No components found.</p>
           ) : (
             options.map((component) => {
               const checked = selectedIds.includes(component.id);
@@ -77,7 +77,7 @@ export function ComponentMultiSelect({
                       <span className="text-sm font-medium truncate">{component.name}</span>
                       {suggested && (
                         <Badge variant="outline" className="text-[10px]">
-                          Disarankan
+                          Suggested
                         </Badge>
                       )}
                     </div>
