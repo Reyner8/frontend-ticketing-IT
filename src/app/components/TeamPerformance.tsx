@@ -1,515 +1,475 @@
-import { useState, useMemo, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Progress } from "./ui/progress";
-import { useApp } from "../lib/store";
+import { useEffect, useMemo, useState } from "react";
+import { format, startOfMonth, startOfWeek } from "date-fns";
 import { toast } from "sonner";
 import {
-  fetchTeamWorkloadLatest,
-  fetchTickets,
-  fetchUsers,
-  fetchTeamWorkloadCompare,
-  generateTeamWorkload,
-} from "../lib/api/services";
-import { exportTeamWorkloadCsv } from "../lib/export-utils";
-import { TeamType, TeamWorkload, User } from "../types";
-import { labelTeam } from "../lib/ui-labels";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { 
-  Users, 
-  Target, 
-  Clock, 
-  Award, 
-  CheckCircle,
-  AlertTriangle,
-  Download 
+  Award,
+  Bug,
+  Download,
+  LayoutGrid,
+  Sparkles,
+  Ticket,
+  Users,
 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Badge } from "./ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import { useApp } from "../lib/store";
+import {
+  downloadServerExport,
+  fetchStaffPerformance,
+} from "../lib/api/services";
+import type {
+  StaffPerformanceReport,
+  StaffPerformanceSection,
+  TeamType,
+} from "../types";
+import { labelTeam } from "../lib/ui-labels";
+import { RESOURCE_COLORS } from "../lib/performance-colors";
+import {
+  EMPTY_METRICS,
+  MetricSummaryCard,
+  ResourceCompletionDonut,
+  StaffBarChart,
+  TeamCompletionDonut,
+} from "./performance/StaffPerformanceCharts";
+import { QualityIndicatorPanel } from "./performance/QualityIndicatorPanel";
 
-export function TeamPerformance() {
+type TabId = "overview" | "tickets" | "errors" | "features" | "staff" | "quality";
+
+const TAB_TO_SECTION: Record<TabId, StaffPerformanceSection> = {
+  overview: "all",
+  tickets: "tickets",
+  errors: "errors",
+  features: "features",
+  staff: "all",
+  quality: "all",
+};
+
+const SECTION_META = {
+  tickets: { label: "Tickets", icon: Ticket, color: RESOURCE_COLORS.tickets },
+  errors: { label: "Error Reports", icon: Bug, color: RESOURCE_COLORS.errors },
+  features: { label: "Feature Requests", icon: Sparkles, color: RESOURCE_COLORS.features },
+} as const;
+
+type DatePreset = "today" | "week" | "month";
+
+export function TeamPerformance({
+  initialTab = "overview",
+}: {
+  initialTab?: string;
+}) {
   const { state } = useApp();
-  const [selectedTeam, setSelectedTeam] = useState<TeamType | "all">("all");
-  const [teamWorkload, setTeamWorkload] = useState<TeamWorkload[]>([]);
-  const [tickets, setTickets] = useState<Awaited<ReturnType<typeof fetchTickets>>['tickets']>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  
   const currentUser = state.currentUser;
+  const role = currentUser?.role;
+  const isStaff = role === "it_staff";
+  const canManage = role === "admin" || role === "team_lead";
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [workload, ticketsResult, userList] = await Promise.all([
-          fetchTeamWorkloadLatest(),
-          fetchTickets({ per_page: 100 }),
-          fetchUsers().catch(() => [] as User[]),
-        ]);
-        setTeamWorkload(workload);
-        setTickets(ticketsResult.tickets);
-        setUsers(userList);
-      } catch {
-        setTeamWorkload([]);
-        setTickets([]);
-        setUsers([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
-  
-  const accessibleTeams = useMemo(() => {
-    if (currentUser?.role === 'admin') {
-      return [...teamWorkload];
-    } else if (currentUser?.role === 'team_lead' && currentUser.team) {
-      return teamWorkload.filter(t => t.team === currentUser.team);
+  const normalizeTab = (value: string): TabId => {
+    if (
+      value === "tickets" ||
+      value === "errors" ||
+      value === "features" ||
+      value === "staff" ||
+      value === "quality"
+    ) {
+      return value;
     }
-    return [];
-  }, [currentUser, teamWorkload]);
-
-  const performanceData = useMemo(() => {
-    const teamData = selectedTeam === "all" ? accessibleTeams : accessibleTeams.filter(t => t.team === selectedTeam);
-    
-    const teamComparison = teamData.map(team => ({
-      team: team.team,
-      slaCompliance: team.slaCompliance,
-      responseTime: team.averageResponseTime,
-      resolutionTime: team.averageResolutionTime,
-      workload: team.workloadPercentage,
-      efficiency: team.totalTickets > 0
-        ? Math.round((team.resolvedTickets / team.totalTickets) * 100)
-        : 0,
-    }));
-
-    const individualPerformance = currentUser?.team 
-      ? users.filter(u => u.team === currentUser.team && u.role === 'it_staff').map(user => {
-          const userTickets = tickets.filter(t => t.assignedToId === user.id);
-          const resolvedTickets = userTickets.filter(t => ['resolved', 'closed'].includes(t.status));
-          const overdueTickets = userTickets.filter(t => t.slaBreached);
-          const resolvedWithDates = resolvedTickets.filter((t) => t.resolvedDate && t.dateReported);
-          const avgResponseTime = resolvedWithDates.length > 0
-            ? Math.round(
-                (resolvedWithDates.reduce((sum, t) => {
-                  const ms = t.resolvedDate!.getTime() - t.dateReported.getTime();
-                  return sum + ms / (1000 * 60 * 60);
-                }, 0) / resolvedWithDates.length) * 10
-              ) / 10
-            : 0;
-          
-          return {
-            id: user.id,
-            name: user.name,
-            totalTickets: userTickets.length,
-            resolvedTickets: resolvedTickets.length,
-            overdueTickets: overdueTickets.length,
-            efficiency: userTickets.length > 0 ? Math.round((resolvedTickets.length / userTickets.length) * 100) : 0,
-            avgResponseTime,
-            slaCompliance: userTickets.length > 0 ? Math.round(((userTickets.length - overdueTickets.length) / userTickets.length) * 100) : 100
-          };
-        })
-      : [];
-
-    return {
-      teamComparison,
-      individualPerformance,
-    };
-  }, [selectedTeam, accessibleTeams, currentUser, tickets, users]);
-
-  const chartColors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  const getTopPerformer = () => {
-    if (accessibleTeams.length === 0) return 'N/A';
-    const sortedTeams = [...accessibleTeams].sort((a, b) => b.slaCompliance - a.slaCompliance);
-    return sortedTeams[0]?.team ? labelTeam(sortedTeams[0].team) : 'N/A';
+    // legacy views
+    if (value === "reports" || value === "teams" || value === "individual") {
+      return value === "individual" ? "staff" : "overview";
+    }
+    return "overview";
   };
 
-  if (currentUser?.role === 'reporter' || currentUser?.role === 'it_staff') {
+  const [activeTab, setActiveTab] = useState<TabId>(normalizeTab(initialTab));
+  const [from, setFrom] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
+  const [to, setTo] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [preset, setPreset] = useState<DatePreset>("month");
+  const [team, setTeam] = useState<TeamType | "all">("all");
+  const [report, setReport] = useState<StaffPerformanceReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    setActiveTab(normalizeTab(initialTab));
+  }, [initialTab]);
+
+  const load = async (section: StaffPerformanceSection = TAB_TO_SECTION[activeTab]) => {
+    if (!canManage && !isStaff) {
+      setReport(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const params: {
+        from: string;
+        to: string;
+        team?: string;
+        section: StaffPerformanceSection;
+      } = { from, to, section };
+      if (canManage && team !== "all") params.team = team;
+      const data = await fetchStaffPerformance(params);
+      setReport(data);
+    } catch {
+      setReport(null);
+      toast.error("Failed to load performance report");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load(TAB_TO_SECTION[activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload via Apply button / tab change handled
+  }, [activeTab, currentUser?.id]);
+
+  const handleTabChange = (value: string) => {
+    const tab = normalizeTab(value);
+    setActiveTab(tab);
+  };
+
+  const applyPreset = (value: DatePreset) => {
+    setPreset(value);
+    const now = new Date();
+    const start =
+      value === "today"
+        ? now
+        : value === "week"
+          ? startOfWeek(now, { weekStartsOn: 1 })
+          : startOfMonth(now);
+    setFrom(format(start, "yyyy-MM-dd"));
+    setTo(format(now, "yyyy-MM-dd"));
+  };
+
+  const subtitle = useMemo(() => {
+    if (isStaff) return "Performa Anda: Tickets, Error Reports, dan Feature Requests.";
+    return "Laporan sederhana per staf dan per bagian (Tickets / Errors / Features).";
+  }, [isStaff]);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params: Record<string, string> = {
+        from,
+        to,
+        section: TAB_TO_SECTION[activeTab],
+      };
+      if (canManage && team !== "all") params.team = team;
+      await downloadServerExport("staff-performance", "csv", params);
+      toast.success("CSV download started");
+    } catch {
+      toast.error("Failed to download report");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (!canManage && !isStaff) {
     return (
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="text-center py-12">
-          <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium">Akses dibatasi</h3>
-          <p className="text-muted-foreground">
-            Anda tidak memiliki izin untuk melihat data performa tim.
-          </p>
-        </div>
+      <div className="flex-1 p-6">
+        <h2 className="text-2xl font-semibold">Team Performance</h2>
+        <p className="text-muted-foreground mt-2">Akses dibatasi untuk admin, team lead, dan staf IT.</p>
       </div>
     );
   }
 
+  const summary = report?.summary;
+  const sectionMetrics = (key: "tickets" | "errors" | "features") =>
+    summary?.[key] ?? EMPTY_METRICS;
+  const multiStaff = (report?.byUser.length ?? 0) > 1;
+
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-6 p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-3xl tracking-tight">Team Performance</h2>
-          <p className="text-muted-foreground">
-            Pantau metrik tim dan analitik performa
-          </p>
+          <h2 className="text-2xl font-semibold tracking-tight">Team Performance</h2>
+          <p className="text-muted-foreground">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={async () => {
-            try {
-              const data = await fetchTeamWorkloadCompare(new Date().toISOString().slice(0, 10));
-              setTeamWorkload(data);
-              toast.success("Snapshot perbandingan tim dimuat");
-            } catch {
-              toast.error("Gagal membandingkan");
-            }
-          }}>
-            Bandingkan tim
-          </Button>
-          <Button variant="outline" onClick={async () => {
-            try {
-              const data = await generateTeamWorkload();
-              setTeamWorkload(data);
-              toast.success("Snapshot beban kerja dibuat");
-            } catch {
-              toast.error("Gagal membuat snapshot");
-            }
-          }}>
-            Buat snapshot
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (accessibleTeams.length === 0) {
-                toast.error("Tidak ada data beban kerja untuk diekspor");
-                return;
-              }
-              exportTeamWorkloadCsv(accessibleTeams);
-              toast.success("CSV beban kerja tim diekspor");
-            }}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Ekspor
-          </Button>
-        </div>
+        <Button variant="outline" onClick={handleExport} disabled={exporting || loading}>
+          <Download className="mr-2 h-4 w-4" />
+          Download CSV
+        </Button>
       </div>
 
-      {currentUser?.role === 'admin' && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium">Filter menurut tim:</span>
-              <Select value={selectedTeam} onValueChange={(value: TeamType | "all") => setSelectedTeam(value)}>
-                <SelectTrigger className="w-48">
+      <Card>
+        <CardContent className="flex flex-col gap-3 pt-4 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="flex gap-1">
+            {(["today", "week", "month"] as const).map((p) => (
+              <Button
+                key={p}
+                type="button"
+                size="sm"
+                variant={preset === p ? "default" : "outline"}
+                onClick={() => applyPreset(p)}
+              >
+                {p === "today" ? "Today" : p === "week" ? "This week" : "This month"}
+              </Button>
+            ))}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="from">From</Label>
+            <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="to">To</Label>
+            <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+          {canManage && (
+            <div className="space-y-1 min-w-[180px]">
+              <Label>Team</Label>
+              <Select
+                value={team}
+                onValueChange={(v) => setTeam(v as TeamType | "all")}
+              >
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua tim</SelectItem>
-                  <SelectItem value="programmer">Tim {labelTeam("programmer")}</SelectItem>
-                  <SelectItem value="network">Tim {labelTeam("network")}</SelectItem>
-                  <SelectItem value="hardware">Tim {labelTeam("hardware")}</SelectItem>
+                  <SelectItem value="all">All teams</SelectItem>
+                  <SelectItem value="programmer">Software Engineer</SelectItem>
+                  <SelectItem value="network">Network Engineer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+          <Button onClick={() => load(TAB_TO_SECTION[activeTab])} disabled={loading}>
+            Apply
+          </Button>
+          {report && (
+            <Badge variant="secondary" className="h-9 px-3">
+              {report.period.from} → {report.period.to}
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total tim</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{accessibleTeams.length}</div>
-            <p className="text-xs text-muted-foreground">Tim aktif</p>
-          </CardContent>
-        </Card>
+      {loading || !report ? (
+        <div className="flex justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      ) : (
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+            <TabsTrigger value="overview" className="gap-1.5">
+              <LayoutGrid className="h-3.5 w-3.5" /> Overview
+            </TabsTrigger>
+            <TabsTrigger value="tickets" className="gap-1.5">
+              <Ticket className="h-3.5 w-3.5" /> Tickets
+            </TabsTrigger>
+            <TabsTrigger value="errors" className="gap-1.5">
+              <Bug className="h-3.5 w-3.5" /> Error Reports
+            </TabsTrigger>
+            <TabsTrigger value="features" className="gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Feature Requests
+            </TabsTrigger>
+            <TabsTrigger value="staff" className="gap-1.5">
+              <Users className="h-3.5 w-3.5" /> By Staff
+            </TabsTrigger>
+            <TabsTrigger value="quality" className="gap-1.5">
+              <Award className="h-3.5 w-3.5" /> Quality Indicator
+            </TabsTrigger>
+          </TabsList>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rata-rata kepatuhan SLA</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {accessibleTeams.length > 0 
-                ? Math.round(accessibleTeams.reduce((sum, t) => sum + t.slaCompliance, 0) / accessibleTeams.length)
-                : 0}%
+          <TabsContent value="overview" className="mt-4 space-y-4">
+            <div className="grid gap-4 lg:grid-cols-3">
+              <MetricSummaryCard title="Tickets" icon={Ticket} accent={RESOURCE_COLORS.tickets} metrics={sectionMetrics("tickets")} />
+              <MetricSummaryCard title="Error Reports" icon={Bug} accent={RESOURCE_COLORS.errors} metrics={sectionMetrics("errors")} />
+              <MetricSummaryCard title="Feature Requests" icon={Sparkles} accent={RESOURCE_COLORS.features} metrics={sectionMetrics("features")} />
             </div>
-            <p className="text-xs text-muted-foreground">Di semua tim</p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rata-rata waktu respons</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {accessibleTeams.length > 0 
-                ? (accessibleTeams.reduce((sum, t) => sum + t.averageResponseTime, 0) / accessibleTeams.length).toFixed(1)
-                : 0}h
+            <div className={multiStaff ? "grid gap-4 lg:grid-cols-2" : "grid gap-4"}>
+              {multiStaff && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Completed items per staff</CardTitle>
+                    <CardDescription>
+                      Perbandingan Tickets, Error Reports, dan Feature Requests yang diselesaikan.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <StaffBarChart report={report} />
+                  </CardContent>
+                </Card>
+              )}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Completed work distribution</CardTitle>
+                  <CardDescription>Proporsi item selesai antar bagian.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-center py-4">
+                  <ResourceCompletionDonut report={report} />
+                </CardContent>
+              </Card>
             </div>
-            <p className="text-xs text-muted-foreground">Rata-rata tim</p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Performa terbaik</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {getTopPerformer()}
-            </div>
-            <p className="text-xs text-muted-foreground">Kepatuhan SLA tertinggi</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="teams">Detail tim</TabsTrigger>
-          <TabsTrigger value="individual">Individual</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Kepatuhan SLA tim</CardTitle>
-                <CardDescription>Persentase kepatuhan per tim</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={performanceData.teamComparison}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="team" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Bar dataKey="slaCompliance" fill="#4ECDC4" name="Kepatuhan SLA %" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Beban kerja tim</CardTitle>
-                <CardDescription>Persentase beban kerja saat ini per tim</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={performanceData.teamComparison}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ team, workload }) => `${team}: ${workload}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="workload"
-                    >
-                      {performanceData.teamComparison.map((_entry, index) => (
-                        <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Analisis waktu respons</CardTitle>
-                <CardDescription>Rata-rata waktu respons dan penyelesaian</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={performanceData.teamComparison}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="team" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="responseTime" fill="#FF6B6B" name="Waktu respons (j)" />
-                    <Bar dataKey="resolutionTime" fill="#4ECDC4" name="Waktu penyelesaian (j)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Radar performa tim</CardTitle>
-                <CardDescription>Tampilan performa multidimensi</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RadarChart data={performanceData.teamComparison}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="team" />
-                    <PolarRadiusAxis domain={[0, 100]} />
-                    <Radar name="Kepatuhan SLA" dataKey="slaCompliance" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                    <Radar name="Efisiensi" dataKey="efficiency" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
-                    <Tooltip />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="teams" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Detail performa tim</CardTitle>
-              <CardDescription>Metrik detail untuk setiap tim</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tim</TableHead>
-                    <TableHead>Total tiket</TableHead>
-                    <TableHead>Terbuka</TableHead>
-                    <TableHead>Selesai</TableHead>
-                    <TableHead>Terlambat</TableHead>
-                    <TableHead>Kepatuhan SLA</TableHead>
-                    <TableHead>Rata-rata respons</TableHead>
-                    <TableHead>Beban kerja</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {accessibleTeams.map((team) => (
-                    <TableRow key={team.team}>
-                      <TableCell className="font-medium">{labelTeam(team.team)}</TableCell>
-                      <TableCell>{team.totalTickets}</TableCell>
-                      <TableCell>{team.openTickets}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          {team.resolvedTickets}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-red-600" />
-                          {team.overdueTickets}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={team.slaCompliance} className="w-16 h-2" />
-                          <span className="text-sm font-medium">{team.slaCompliance}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{team.averageResponseTime}h</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={team.workloadPercentage > 80 ? "destructive" : team.workloadPercentage > 60 ? "secondary" : "default"}
-                        >
-                          {team.workloadPercentage}%
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="individual" className="space-y-4">
-          {currentUser?.role === 'team_lead' ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Performa individu</CardTitle>
-                <CardDescription>Metrik performa anggota tim</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {performanceData.individualPerformance.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    Anggota tim tidak ditemukan. Pastikan pengguna dimuat dan ditugaskan ke tim Anda.
-                  </p>
-                ) : (
+            {canManage && report.byTeam.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Team summary</CardTitle>
+                  <CardDescription>Perbandingan penyelesaian antar tim.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6 lg:grid-cols-[176px_1fr] lg:items-center">
+                  <div className="flex justify-center">
+                    <TeamCompletionDonut report={report} />
+                  </div>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Anggota tim</TableHead>
-                        <TableHead>Total tiket</TableHead>
-                        <TableHead>Selesai</TableHead>
-                        <TableHead>Terlambat</TableHead>
-                        <TableHead>Efisiensi</TableHead>
-                        <TableHead>Kepatuhan SLA</TableHead>
-                        <TableHead>Rata-rata penyelesaian</TableHead>
+                        <TableHead>Team</TableHead>
+                        <TableHead>Tickets completed</TableHead>
+                        <TableHead>Errors completed</TableHead>
+                        <TableHead>Features completed</TableHead>
+                        <TableHead>Overdue (total)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {performanceData.individualPerformance.map((member) => (
-                        <TableRow key={member.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback className="text-xs">
-                                  {member.name.split(' ').map(n => n[0]).join('')}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="font-medium">{member.name}</span>
-                            </div>
+                      {report.byTeam.map((t) => (
+                        <TableRow key={t.team ?? "none"}>
+                          <TableCell className="font-medium">{t.teamLabel}</TableCell>
+                          <TableCell>{t.tickets?.completed ?? 0}</TableCell>
+                          <TableCell>{t.errors?.completed ?? 0}</TableCell>
+                          <TableCell>{t.features?.completed ?? 0}</TableCell>
+                          <TableCell className="text-red-600 font-medium">
+                            {(t.tickets?.overdue ?? 0) +
+                              (t.errors?.overdue ?? 0) +
+                              (t.features?.overdue ?? 0)}
                           </TableCell>
-                          <TableCell>{member.totalTickets}</TableCell>
-                          <TableCell>{member.resolvedTickets}</TableCell>
-                          <TableCell>
-                            <Badge variant={member.overdueTickets > 0 ? "destructive" : "default"}>
-                              {member.overdueTickets}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Progress value={member.efficiency} className="w-16 h-2" />
-                              <span className="text-sm font-medium">{member.efficiency}%</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={member.slaCompliance >= 95 ? "default" : member.slaCompliance >= 85 ? "secondary" : "destructive"}
-                            >
-                              {member.slaCompliance}%
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{member.avgResponseTime}h</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {(["tickets", "errors", "features"] as const).map((section) => {
+            const meta = SECTION_META[section];
+            return (
+              <TabsContent key={section} value={section} className="mt-4 space-y-4">
+                {multiStaff ? (
+                  <div className="grid gap-4 lg:grid-cols-[320px_1fr] lg:items-start">
+                    <MetricSummaryCard title={meta.label} icon={meta.icon} accent={meta.color} metrics={sectionMetrics(section)} />
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">By staff</CardTitle>
+                        <CardDescription>
+                          Selesai, terbuka, dan yang melewati due date
+                          {section === "features" ? " (berdasarkan due date Feature Request)." : "."}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <StaffBarChart report={report} resource={section} />
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : (
+                  <div className="max-w-md">
+                    <MetricSummaryCard title={meta.label} icon={meta.icon} accent={meta.color} metrics={sectionMetrics(section)} size={112} />
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          ) : (
+              </TabsContent>
+            );
+          })}
+
+          <TabsContent value="staff" className="mt-4">
             <Card>
-              <CardContent className="p-8 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium">Individual Performance</h3>
-                <p className="text-muted-foreground">
-                  Metrik performa individu hanya tersedia untuk team lead anggota timnya.
-                </p>
+              <CardHeader>
+                <CardTitle className="text-base">Staff detail</CardTitle>
+                <CardDescription>
+                  {isStaff
+                    ? "Ringkasan performa Anda di ketiga bagian."
+                    : "Semua staf aktif (IT staff / team lead) dalam filter yang dipilih."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Team</TableHead>
+                      <TableHead
+                        colSpan={3}
+                        className="text-center"
+                        style={{ backgroundColor: `${RESOURCE_COLORS.tickets}0d` }}
+                      >
+                        Tickets
+                      </TableHead>
+                      <TableHead
+                        colSpan={3}
+                        className="text-center"
+                        style={{ backgroundColor: `${RESOURCE_COLORS.errors}0d` }}
+                      >
+                        Errors
+                      </TableHead>
+                      <TableHead
+                        colSpan={3}
+                        className="text-center"
+                        style={{ backgroundColor: `${RESOURCE_COLORS.features}0d` }}
+                      >
+                        Features
+                      </TableHead>
+                    </TableRow>
+                    <TableRow>
+                      <TableHead />
+                      <TableHead />
+                      {["S", "T", "D", "S", "T", "D", "S", "T", "D"].map((h, i) => (
+                        <TableHead key={`${h}-${i}`} className="text-xs text-muted-foreground">
+                          {h === "S" ? "Completed" : h === "T" ? "Open" : "Overdue"}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report.byUser.map((u) => {
+                      const overdueTotal =
+                        (u.tickets?.overdue ?? 0) + (u.errors?.overdue ?? 0) + (u.features?.overdue ?? 0);
+                      return (
+                        <TableRow key={u.userId} className={overdueTotal > 0 ? "bg-red-50/60" : undefined}>
+                          <TableCell className="font-medium">{u.name}</TableCell>
+                          <TableCell>{u.teamLabel ?? (u.team ? labelTeam(u.team) : "—")}</TableCell>
+                          <TableCell className="text-green-600 font-medium">{u.tickets?.completed ?? 0}</TableCell>
+                          <TableCell>{u.tickets?.open ?? 0}</TableCell>
+                          <TableCell className="text-red-600 font-medium">{u.tickets?.overdue ?? 0}</TableCell>
+                          <TableCell className="text-green-600 font-medium">{u.errors?.completed ?? 0}</TableCell>
+                          <TableCell>{u.errors?.open ?? 0}</TableCell>
+                          <TableCell className="text-red-600 font-medium">{u.errors?.overdue ?? 0}</TableCell>
+                          <TableCell className="text-green-600 font-medium">{u.features?.completed ?? 0}</TableCell>
+                          <TableCell>{u.features?.open ?? 0}</TableCell>
+                          <TableCell className="text-red-600 font-medium">{u.features?.overdue ?? 0}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+
+          <TabsContent value="quality" className="mt-4">
+            <QualityIndicatorPanel canManage={canManage} />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }

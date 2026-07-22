@@ -76,43 +76,43 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
   const menuItems: MenuGroup[] = [
     {
       groupId: 'main',
-      groupLabel: 'Navigasi Utama',
+      groupLabel: 'Main Navigation',
       items: [
         {
           id: '/',
           title: 'Dashboard',
           icon: Home,
-          description: 'Ringkasan dan analitik',
+          description: 'Summary and analytics',
         },
         {
           id: '/tickets',
           title: 'Tickets',
           icon: TicketIcon,
-          description: 'Antrian laporan masuk — tinjau & convert',
+          description: 'Incoming report queue — review & convert',
         },
         {
           id: '/error-reports',
           title: 'Error Reports',
           icon: Bug,
-          description: 'Lacak dan kelola laporan error',
+          description: 'Track and manage error reports',
         },
         {
           id: '/feature-requests',
           title: 'Feature Requests',
           icon: Lightbulb,
-          description: 'Permintaan fitur dan perbaikan bug',
+          description: 'Feature requests and bug fixes',
         },
         {
           id: '/downtime',
           title: 'Downtime Monitoring',
           icon: Zap,
-          description: 'Pantau gangguan sistem',
+          description: 'Monitor system disruptions',
         },
         {
           id: '/calendar',
           title: 'Calendar View',
           icon: Calendar,
-          description: 'Jadwal pemeliharaan & tenggat',
+          description: 'Maintenance schedule & deadlines',
         },
         ...(currentUser?.role !== 'reporter'
           ? [
@@ -120,19 +120,19 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
                 id: '/backup-restore-tests',
                 title: 'Backup Restore Tests',
                 icon: DatabaseBackup,
-                description: 'Uji restore setelah backup (RST)',
+                description: 'Test restore after backup (RST)',
               },
               {
                 id: '/server-room-visitors',
                 title: 'Server Room Visitors',
                 icon: DoorOpen,
-                description: 'Log pengunjung ruang server (VIS)',
+                description: 'Server room visitor log (VIS)',
               },
               {
                 id: '/server-room-inspections',
                 title: 'Server Room Inspections',
                 icon: ClipboardCheck,
-                description: 'Checklist inspeksi berkala (INSP)',
+                description: 'Periodic inspection checklist (INSP)',
               },
             ]
           : []),
@@ -140,38 +140,39 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
           id: '/public-form',
           title: 'Public Form',
           icon: ExternalLink,
-          description: 'Bagikan form laporan sederhana tanpa login',
+          description: 'Share a simple report form without login',
         },
       ],
     },
     {
       groupId: 'analytics',
-      groupLabel: 'Analitik & Laporan',
+      groupLabel: 'Analytics & Reports',
       items: [
         {
           id: '/team-performance',
           title: 'Team Performance',
           icon: TrendingUp,
-          description: 'Metrik dan kinerja tim',
-          subItems: currentUser?.role === 'admin' ? [
+          description: 'Team metrics and performance',
+          subItems: currentUser?.role === 'admin' || currentUser?.role === 'team_lead' || currentUser?.role === 'it_staff' ? [
             { id: '/team-performance?view=overview', title: 'Overview' },
-            { id: '/team-performance?view=sla', title: 'SLA Compliance' },
-            { id: '/team-performance?view=workload', title: 'Team Workload' },
-            { id: '/team-performance?view=trends', title: 'Performance Trends' },
-            { id: '/team-performance?view=compare', title: 'Team Compare' },
+            { id: '/team-performance?view=tickets', title: 'Tickets' },
+            { id: '/team-performance?view=errors', title: 'Error Reports' },
+            { id: '/team-performance?view=features', title: 'Feature Requests' },
+            { id: '/team-performance?view=staff', title: 'By Staff' },
+            { id: '/team-performance?view=quality', title: 'Quality Indicator' },
           ] : undefined,
         },
         {
           id: '/conversion-history',
           title: 'Conversion History',
           icon: History,
-          description: 'Riwayat konversi ticket',
+          description: 'Ticket conversion history',
         },
         {
           id: '/mentions',
           title: 'My Mentions',
           icon: AtSign,
-          description: 'Komentar yang menyebut Anda',
+          description: 'Comments that mention you',
         },
       ],
     },
@@ -181,19 +182,19 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
   if (currentUser?.role === 'admin') {
     menuItems.push({
       groupId: 'admin',
-      groupLabel: 'Administrasi',
+      groupLabel: 'Administration',
       items: [
         {
           id: '/users',
           title: 'User Management',
           icon: Users,
-          description: 'Kelola pengguna dan izin',
+          description: 'Manage users and permissions',
         },
         {
           id: '/settings',
           title: 'System Settings',
           icon: Settings,
-          description: 'Konfigurasi sistem',
+          description: 'System configuration',
         },
       ],
     });
@@ -203,7 +204,7 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
       id: '/settings',
       title: 'Settings',
       icon: Settings,
-      description: 'Preferensi pengguna',
+      description: 'User preferences',
     });
   }
 
