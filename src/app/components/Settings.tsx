@@ -14,6 +14,7 @@ import type { UserPreferences, SystemConfigItem } from "../types";
 import { User, Trash2, Plus } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Textarea } from "./ui/textarea";
+import { ApplicationsMasterPanel } from "./ApplicationsMasterPanel";
 
 export function Settings() {
   const { state, dispatch } = useApp();
@@ -32,7 +33,7 @@ export function Settings() {
     try {
       await updatePreferences({ darkMode: newDarkMode });
     } catch {
-      toast.error('Gagal menyimpan preferensi mode gelap');
+      toast.error('Failed to save dark mode preference');
     }
   };
 
@@ -47,7 +48,7 @@ export function Settings() {
       const updated = await updatePreferences({ [key]: value } as Partial<UserPreferences>);
       dispatch({ type: 'SET_USER', payload: updated });
     } catch {
-      toast.error('Gagal menyimpan preferensi');
+      toast.error('Failed to save preferences');
     } finally {
       setSaving(false);
     }
@@ -68,19 +69,22 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className={`grid w-full ${canManageConfig ? "grid-cols-4" : "grid-cols-3"}`}>
-          <TabsTrigger value="profile">Profil</TabsTrigger>
-          <TabsTrigger value="preferences">Preferensi</TabsTrigger>
-          <TabsTrigger value="notifications">Notifikasi</TabsTrigger>
+        <TabsList className={`grid w-full ${canManageConfig ? "grid-cols-5" : "grid-cols-3"}`}>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
           {canManageConfig && (
-            <TabsTrigger value="system">Konfigurasi Sistem</TabsTrigger>
+            <>
+              <TabsTrigger value="applications">Applications</TabsTrigger>
+              <TabsTrigger value="system">System Configuration</TabsTrigger>
+            </>
           )}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Informasi Profil</CardTitle>
+              <CardTitle>Profile Information</CardTitle>
               <CardDescription>
                 Profil Anda dikelola oleh administrator sistem
               </CardDescription>
@@ -88,7 +92,7 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name">Nama Lengkap</Label>
+                  <Label htmlFor="name">Full Name</Label>
                   <Input
                     id="name"
                     value={profileData.name}
@@ -110,7 +114,7 @@ export function Settings() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Peran</Label>
+                  <Label>Role</Label>
                   <div className="mt-2">
                     <Badge variant="outline" className="capitalize">
                       {currentUser.role.replace('_', ' ')}
@@ -119,7 +123,7 @@ export function Settings() {
                 </div>
                 {currentUser.team && (
                   <div>
-                    <Label>Tim</Label>
+                    <Label>Team</Label>
                     <div className="mt-2">
                       <Badge variant="outline" className="capitalize">
                         {currentUser.team}
@@ -135,7 +139,7 @@ export function Settings() {
         <TabsContent value="preferences" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Tampilan</CardTitle>
+              <CardTitle>Appearance</CardTitle>
               <CardDescription>
                 Sesuaikan tampilan aplikasi
               </CardDescription>
@@ -143,7 +147,7 @@ export function Settings() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Mode Gelap</Label>
+                  <Label>Dark Mode</Label>
                   <p className="text-sm text-muted-foreground">
                     Aktifkan mode gelap untuk kenyamanan di kondisi cahaya redup
                   </p>
@@ -160,15 +164,15 @@ export function Settings() {
         <TabsContent value="notifications" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Preferensi Notifikasi</CardTitle>
+              <CardTitle>Notification Preferences</CardTitle>
               <CardDescription>
-                Atur cara Anda menerima notifikasi {saving && '(menyimpan...)'}
+                Atur cara Anda menerima notifikasi {saving && '(saving...)'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Notifikasi Email</Label>
+                  <Label>Email Notifications</Label>
                   <p className="text-sm text-muted-foreground">
                     Terima notifikasi melalui email
                   </p>
@@ -181,7 +185,7 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Peringatan SLA</Label>
+                  <Label>SLA Alerts</Label>
                   <p className="text-sm text-muted-foreground">
                     Dapatkan pemberitahuan saat batas waktu SLA mendekat
                   </p>
@@ -194,7 +198,7 @@ export function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Peringatan Downtime</Label>
+                  <Label>Downtime Alerts</Label>
                   <p className="text-sm text-muted-foreground">
                     Dapatkan pemberitahuan tentang kejadian downtime sistem
                   </p>
@@ -206,7 +210,7 @@ export function Settings() {
               </div>
 
               <div>
-                <Label htmlFor="digestFrequency">Frekuensi Ringkasan</Label>
+                <Label htmlFor="digestFrequency">Digest Frequency</Label>
                 <Select 
                   value={currentUser.preferences.digestFrequency}
                   onValueChange={(value) => handleUpdatePreferences('digestFrequency', value)}
@@ -215,10 +219,10 @@ export function Settings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="immediate">Langsung</SelectItem>
-                    <SelectItem value="hourly">Per Jam</SelectItem>
-                    <SelectItem value="daily">Harian</SelectItem>
-                    <SelectItem value="weekly">Mingguan</SelectItem>
+                    <SelectItem value="immediate">Immediate</SelectItem>
+                    <SelectItem value="hourly">Hourly</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -227,9 +231,14 @@ export function Settings() {
         </TabsContent>
 
         {canManageConfig && (
-          <TabsContent value="system" className="space-y-4">
-            <SystemConfigPanel />
-          </TabsContent>
+          <>
+            <TabsContent value="applications" className="space-y-4">
+              <ApplicationsMasterPanel />
+            </TabsContent>
+            <TabsContent value="system" className="space-y-4">
+              <SystemConfigPanel />
+            </TabsContent>
+          </>
         )}
       </Tabs>
     </div>
@@ -249,7 +258,7 @@ function SystemConfigPanel() {
     try {
       setConfigs(await fetchSystemConfigs());
     } catch {
-      toast.error("Gagal memuat konfigurasi sistem");
+      toast.error("Failed to load system configuration");
     } finally {
       setLoading(false);
     }
@@ -272,9 +281,9 @@ function SystemConfigPanel() {
       setNewValue("");
       setNewDescription("");
       await load();
-      toast.success("Konfigurasi berhasil dibuat");
+      toast.success("Configuration created successfully");
     } catch {
-      toast.error("Gagal membuat konfigurasi");
+      toast.error("Failed to create configuration");
     } finally {
       setSaving(false);
     }
@@ -284,9 +293,9 @@ function SystemConfigPanel() {
     try {
       await updateSystemConfig(item.id, { config_value: value });
       await load();
-      toast.success("Konfigurasi diperbarui");
+      toast.success("Configuration updated");
     } catch {
-      toast.error("Gagal memperbarui konfigurasi");
+      toast.error("Failed to update configuration");
     }
   };
 
@@ -294,16 +303,16 @@ function SystemConfigPanel() {
     try {
       await deleteSystemConfig(id);
       await load();
-      toast.success("Konfigurasi dihapus");
+      toast.success("Configuration deleted");
     } catch {
-      toast.error("Gagal menghapus konfigurasi");
+      toast.error("Failed to delete configuration");
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Konfigurasi Sistem</CardTitle>
+        <CardTitle>System Configuration</CardTitle>
         <CardDescription>
           Kelola pengaturan aplikasi yang disimpan di backend
         </CardDescription>
@@ -311,34 +320,34 @@ function SystemConfigPanel() {
       <CardContent className="space-y-6">
         <div className="grid gap-3 md:grid-cols-3">
           <div>
-            <Label>Kunci</Label>
+            <Label>Key</Label>
             <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="sla.critical_hours" />
           </div>
           <div>
-            <Label>Nilai</Label>
+            <Label>Value</Label>
             <Input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="4" />
           </div>
           <div>
-            <Label>Deskripsi</Label>
-            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Opsional" />
+            <Label>Description</Label>
+            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Optional" />
           </div>
         </div>
         <Button onClick={handleCreate} disabled={saving || !newKey.trim() || !newValue.trim()}>
           <Plus className="mr-2 h-4 w-4" />
-          Tambah Konfigurasi
+          Add Configuration
         </Button>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Memuat...</p>
+          <p className="text-sm text-muted-foreground">Loading...</p>
         ) : configs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Belum ada entri konfigurasi</p>
+          <p className="text-sm text-muted-foreground">No configuration entries yet</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Kunci</TableHead>
-                <TableHead>Nilai</TableHead>
-                <TableHead>Deskripsi</TableHead>
+                <TableHead>Key</TableHead>
+                <TableHead>Value</TableHead>
+                <TableHead>Description</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
