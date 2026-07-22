@@ -23,8 +23,8 @@ import {
 import type { ServerRoomVisitor, User, VisitorStatus } from "../types";
 
 const STATUS_LABEL: Record<VisitorStatus, string> = {
-  inside: "Di dalam",
-  completed: "Selesai",
+  inside: "Inside",
+  completed: "Completed",
 };
 
 function toDateTimeInput(d?: Date) {
@@ -35,7 +35,6 @@ const emptyForm = {
   entry_at: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
   visitor_name: "",
   unit_or_vendor: "",
-  identity_document: "",
   purpose: "",
   escorted_by: "",
   notes: "",
@@ -55,6 +54,10 @@ export function ServerRoomVisitors() {
   const [editing, setEditing] = useState<ServerRoomVisitor | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutTarget, setCheckoutTarget] = useState<ServerRoomVisitor | null>(null);
+  const [exitAt, setExitAt] = useState("");
+  const [checkingOut, setCheckingOut] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -65,7 +68,7 @@ export function ServerRoomVisitors() {
       const { records: data } = await fetchServerRoomVisitors(params);
       setRecords(data);
     } catch {
-      toast.error("Gagal memuat log pengunjung");
+      toast.error("Failed to load visitor log");
       setRecords([]);
     } finally {
       setLoading(false);
@@ -119,7 +122,6 @@ export function ServerRoomVisitors() {
       entry_at: toDateTimeInput(row.entryAt),
       visitor_name: row.visitorName,
       unit_or_vendor: row.unitOrVendor,
-      identity_document: row.identityDocument,
       purpose: row.purpose,
       escorted_by: row.escortedBy?.id ?? "",
       notes: row.notes ?? "",
@@ -130,14 +132,8 @@ export function ServerRoomVisitors() {
   const toApiDateTime = (v: string) => (v ? v.replace("T", " ") + ":00" : null);
 
   const handleSave = async () => {
-    if (
-      !form.entry_at ||
-      !form.visitor_name ||
-      !form.unit_or_vendor ||
-      !form.identity_document ||
-      !form.purpose
-    ) {
-      toast.error("Lengkapi field wajib");
+    if (!form.entry_at || !form.visitor_name || !form.unit_or_vendor || !form.purpose) {
+      toast.error("Please fill in the required fields");
       return;
     }
     setSaving(true);
@@ -145,7 +141,6 @@ export function ServerRoomVisitors() {
       entry_at: toApiDateTime(form.entry_at),
       visitor_name: form.visitor_name,
       unit_or_vendor: form.unit_or_vendor,
-      identity_document: form.identity_document,
       purpose: form.purpose,
       notes: form.notes || null,
     };
@@ -154,41 +149,64 @@ export function ServerRoomVisitors() {
     try {
       if (editing) {
         const updated = await updateServerRoomVisitor(editing.id, payload);
-        toast.success("Log pengunjung diperbarui");
+        toast.success("Visitor log updated");
         setSelected(updated);
       } else {
         await createServerRoomVisitor(payload);
-        toast.success("Pengunjung dicatat");
+        toast.success("Visitor recorded");
       }
       setFormOpen(false);
       load();
     } catch {
-      toast.error("Gagal menyimpan");
+      toast.error("Failed to save");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCheckout = async (row: ServerRoomVisitor) => {
+  const openCheckout = (row: ServerRoomVisitor) => {
+    setCheckoutTarget(row);
+    setExitAt(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    setCheckoutOpen(true);
+  };
+
+  const handleCheckout = async () => {
+    if (!checkoutTarget || !exitAt) {
+      toast.error("Exit time is required");
+      return;
+    }
+    const exitDate = new Date(exitAt);
+    if (exitDate < checkoutTarget.entryAt) {
+      toast.error("Exit time must be after entry time");
+      return;
+    }
+    setCheckingOut(true);
     try {
-      const updated = await checkoutServerRoomVisitor(row.id);
-      toast.success("Checkout berhasil");
+      const updated = await checkoutServerRoomVisitor(
+        checkoutTarget.id,
+        toApiDateTime(exitAt)!
+      );
+      toast.success("Checkout successful");
       setSelected(updated);
+      setCheckoutOpen(false);
+      setCheckoutTarget(null);
       load();
     } catch {
-      toast.error("Checkout gagal");
+      toast.error("Checkout failed");
+    } finally {
+      setCheckingOut(false);
     }
   };
 
   const handleDelete = async (row: ServerRoomVisitor) => {
-    if (!confirm(`Hapus ${row.id}?`)) return;
+    if (!confirm(`Delete ${row.id}?`)) return;
     try {
       await deleteServerRoomVisitor(row.id);
-      toast.success("Dihapus");
+      toast.success("Deleted");
       if (selected?.id === row.id) setSelected(null);
       load();
     } catch {
-      toast.error("Gagal menghapus");
+      toast.error("Failed to delete");
     }
   };
 
@@ -207,7 +225,7 @@ export function ServerRoomVisitors() {
         {canManage && (
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            Catat Pengunjung
+            Record Visitor
           </Button>
         )}
       </div>
@@ -215,7 +233,7 @@ export function ServerRoomVisitors() {
       <Card>
         <CardContent className="p-4 flex flex-wrap gap-3">
           <Input
-            placeholder="Cari nama / unit / tujuan…"
+            placeholder="Search name / unit / purpose…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load()}
@@ -226,35 +244,36 @@ export function ServerRoomVisitors() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua status</SelectItem>
-              <SelectItem value="inside">Di dalam</SelectItem>
-              <SelectItem value="completed">Selesai</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="inside">Inside</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={load}>
-            Terapkan
+            Apply
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>{filtered.length} kunjungan</CardTitle>
+          <CardTitle>{filtered.length} visits</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Memuat…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Belum ada data.</p>
+            <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Masuk</TableHead>
-                  <TableHead>Nama</TableHead>
+                  <TableHead>Entry</TableHead>
+                  <TableHead>Exit</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Unit/Vendor</TableHead>
-                  <TableHead>Didampingi</TableHead>
+                  <TableHead>Escorted By</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -267,6 +286,9 @@ export function ServerRoomVisitors() {
                   >
                     <TableCell className="font-mono text-sm">{row.id}</TableCell>
                     <TableCell>{format(row.entryAt, "dd MMM yyyy HH:mm")}</TableCell>
+                    <TableCell>
+                      {row.exitAt ? format(row.exitAt, "dd MMM yyyy HH:mm") : "—"}
+                    </TableCell>
                     <TableCell>{row.visitorName}</TableCell>
                     <TableCell>{row.unitOrVendor}</TableCell>
                     <TableCell>{row.escortedBy?.name ?? "—"}</TableCell>
@@ -297,11 +319,11 @@ export function ServerRoomVisitors() {
               </DialogHeader>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Masuk</p>
+                  <p className="text-muted-foreground">Entry</p>
                   <p>{format(selected.entryAt, "dd MMM yyyy HH:mm")}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Keluar</p>
+                  <p className="text-muted-foreground">Exit</p>
                   <p>
                     {selected.exitAt
                       ? format(selected.exitAt, "dd MMM yyyy HH:mm")
@@ -309,7 +331,7 @@ export function ServerRoomVisitors() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Nama</p>
+                  <p className="text-muted-foreground">Name</p>
                   <p>{selected.visitorName}</p>
                 </div>
                 <div>
@@ -317,20 +339,16 @@ export function ServerRoomVisitors() {
                   <p>{selected.unitOrVendor}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Identitas</p>
-                  <p>{selected.identityDocument}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Didampingi</p>
+                  <p className="text-muted-foreground">Escorted By</p>
                   <p>{selected.escortedBy?.name ?? "—"}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-muted-foreground">Tujuan</p>
+                  <p className="text-muted-foreground">Purpose</p>
                   <p>{selected.purpose}</p>
                 </div>
                 {selected.notes && (
                   <div className="col-span-2">
-                    <p className="text-muted-foreground">Catatan</p>
+                    <p className="text-muted-foreground">Notes</p>
                     <p className="whitespace-pre-wrap">{selected.notes}</p>
                   </div>
                 )}
@@ -338,7 +356,7 @@ export function ServerRoomVisitors() {
               {canManage && (
                 <DialogFooter className="gap-2 flex-wrap">
                   {selected.status === "inside" && (
-                    <Button onClick={() => handleCheckout(selected)}>
+                    <Button onClick={() => openCheckout(selected)}>
                       <LogOut className="mr-2 h-4 w-4" />
                       Checkout
                     </Button>
@@ -348,7 +366,7 @@ export function ServerRoomVisitors() {
                   </Button>
                   <Button variant="destructive" onClick={() => handleDelete(selected)}>
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Hapus
+                    Delete
                   </Button>
                 </DialogFooter>
               )}
@@ -360,11 +378,11 @@ export function ServerRoomVisitors() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Pengunjung" : "Catat Pengunjung"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Visitor" : "Record Visitor"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
             <div>
-              <Label>Waktu masuk *</Label>
+              <Label>Entry time *</Label>
               <Input
                 type="datetime-local"
                 value={form.entry_at}
@@ -372,7 +390,7 @@ export function ServerRoomVisitors() {
               />
             </div>
             <div>
-              <Label>Nama pengunjung *</Label>
+              <Label>Visitor name *</Label>
               <Input
                 value={form.visitor_name}
                 onChange={(e) => setForm({ ...form, visitor_name: e.target.value })}
@@ -386,22 +404,14 @@ export function ServerRoomVisitors() {
               />
             </div>
             <div>
-              <Label>Identitas *</Label>
-              <Input
-                value={form.identity_document}
-                onChange={(e) => setForm({ ...form, identity_document: e.target.value })}
-                placeholder="KTP / ID Vendor / …"
-              />
-            </div>
-            <div>
-              <Label>Tujuan *</Label>
+              <Label>Purpose *</Label>
               <Input
                 value={form.purpose}
                 onChange={(e) => setForm({ ...form, purpose: e.target.value })}
               />
             </div>
             <div>
-              <Label>Didampingi oleh (IT)</Label>
+              <Label>Escorted by (IT)</Label>
               <Select
                 value={form.escorted_by || state.currentUser?.id || "self"}
                 onValueChange={(v) => setForm({ ...form, escorted_by: v })}
@@ -411,7 +421,7 @@ export function ServerRoomVisitors() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={state.currentUser?.id ?? "self"}>
-                    {state.currentUser?.name ?? "Saya"}
+                    {state.currentUser?.name ?? "Me"}
                   </SelectItem>
                   {users
                     .filter((u) => u.id !== state.currentUser?.id)
@@ -424,7 +434,7 @@ export function ServerRoomVisitors() {
               </Select>
             </div>
             <div>
-              <Label>Catatan</Label>
+              <Label>Notes</Label>
               <Textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -434,10 +444,48 @@ export function ServerRoomVisitors() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>
-              Batal
+              Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan"}
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={checkoutOpen}
+        onOpenChange={(open) => {
+          setCheckoutOpen(open);
+          if (!open) setCheckoutTarget(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Checkout Visitor</DialogTitle>
+          </DialogHeader>
+          {checkoutTarget && (
+            <div className="grid gap-3">
+              <p className="text-sm text-muted-foreground">
+                {checkoutTarget.visitorName} ({checkoutTarget.id}) — entered{" "}
+                {format(checkoutTarget.entryAt, "dd MMM yyyy HH:mm")}
+              </p>
+              <div>
+                <Label>Exit time *</Label>
+                <Input
+                  type="datetime-local"
+                  value={exitAt}
+                  onChange={(e) => setExitAt(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCheckoutOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCheckout} disabled={checkingOut}>
+              {checkingOut ? "Processing…" : "Complete"}
             </Button>
           </DialogFooter>
         </DialogContent>
