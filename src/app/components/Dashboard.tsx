@@ -1,870 +1,186 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { format, startOfMonth } from "date-fns";
+import { Activity, Bug, Sparkles, Ticket } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Progress } from "./ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { ScrollArea } from "./ui/scroll-area";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { useApp } from '../lib/store';
-import { fetchDashboardData, fetchUsers, fetchGlobalActivityLogs } from '../lib/api/services';
-import { Ticket, DowntimeRecord, DashboardStats, TeamWorkload, ActivityLogEntry, User } from '../types';
-import { labelStatus, labelPriority, labelTeam } from '../lib/ui-labels';
-import { AlertTriangle, CheckCircle, Clock, TrendingUp, Users, Target, Star, Activity } from "lucide-react";
+import { Button } from "./ui/button";
+import { useApp } from "../lib/store";
+import {
+  fetchStaffPerformance,
+  fetchDowntimeRecords,
+} from "../lib/api/services";
+import type { StaffPerformanceReport, DowntimeRecord } from "../types";
+import { RESOURCE_COLORS } from "../lib/performance-colors";
+import {
+  EMPTY_METRICS,
+  MetricSummaryCard,
+  ResourceCompletionDonut,
+  StaffBarChart,
+} from "./performance/StaffPerformanceCharts";
 
-export function Dashboard() {
+export function Dashboard({
+  onNavigate,
+}: {
+  onNavigate?: (path: string) => void;
+}) {
   const { state } = useApp();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [downtimes, setDowntimes] = useState<DowntimeRecord[]>([]);
-  const [teamWorkload, setTeamWorkload] = useState<TeamWorkload[]>([]);
-  const [globalActivity, setGlobalActivity] = useState<ActivityLogEntry[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  
   const currentUser = state.currentUser;
+  const role = currentUser?.role;
+  const canPerf = role === "admin" || role === "team_lead" || role === "it_staff";
+
+  const [report, setReport] = useState<StaffPerformanceReport | null>(null);
+  const [downtimes, setDowntimes] = useState<DowntimeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const data = await fetchDashboardData();
-        setStats(data.stats);
-        setTickets(data.tickets);
-        setDowntimes(data.downtimes);
-        setTeamWorkload(data.teamWorkload);
-        fetchGlobalActivityLogs({ per_page: 20 })
-          .then(setGlobalActivity)
-          .catch(() => setGlobalActivity([]));
-        if (currentUser?.role === 'admin' || currentUser?.role === 'team_lead') {
-          fetchUsers().then(setUsers).catch(() => setUsers([]));
-        }
+        const from = format(startOfMonth(new Date()), "yyyy-MM-dd");
+        const to = format(new Date(), "yyyy-MM-dd");
+        const [perf, dt] = await Promise.all([
+          canPerf
+            ? fetchStaffPerformance({ from, to, section: "all" })
+            : Promise.resolve(null),
+          fetchDowntimeRecords({ per_page: 20 }).catch(() => ({ records: [] as DowntimeRecord[] })),
+        ]);
+        setReport(perf);
+        setDowntimes((dt.records ?? []).filter((d) => d.status === "ongoing"));
       } catch {
-        setStats({
-          totalTickets: 0, openTickets: 0, resolvedToday: 0, overdueTickets: 0,
-          averageResolutionTime: 0, slaCompliance: 0, downtimeHours: 0,
-          activeDowntimes: 0, criticalTickets: 0, userSatisfactionScore: 0,
-        });
+        setReport(null);
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [currentUser?.role]);
-  
-  if (loading || !stats) {
+  }, [canPerf, currentUser?.id]);
+
+  if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex flex-1 items-center justify-center p-8">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
 
-  const getUserSpecificData = () => {
-    if (!currentUser) return { tickets: [] as Ticket[], downtimes: [] as DowntimeRecord[] };
-    
-    switch (currentUser.role) {
-      case 'admin':
-        return { tickets, downtimes };
-      case 'team_lead':
-        return { 
-          tickets: tickets.filter(t => t.assignedTeam === currentUser.team),
-          downtimes 
-        };
-      case 'it_staff':
-        return { 
-          tickets: tickets.filter(t => t.assignedToId === currentUser.id),
-          downtimes: downtimes.filter(d => d.reportedBy === currentUser.id) 
-        };
-      case 'reporter':
-        return { 
-          tickets: tickets.filter(t => t.reporterId === currentUser.id),
-          downtimes: [] 
-        };
-      default:
-        return { tickets: [], downtimes: [] };
-    }
-  };
+  const go = (path: string) => onNavigate?.(path);
 
-  const userSpecificData = getUserSpecificData();
-  const recentTickets = userSpecificData.tickets.slice(0, 5);
+  const greeting =
+    role === "it_staff"
+      ? "Performa Anda bulan ini"
+      : role === "reporter"
+        ? "Ringkasan pelaporan"
+        : "Ringkasan performa staf";
 
-  const recentActivity =
-    globalActivity.length > 0
-      ? globalActivity.map((entry) => ({
-          type: entry.action as string,
-          message: entry.loggableId
-            ? `[${entry.loggableType ?? "Resource"} ${entry.loggableId}] ${entry.description}`
-            : entry.description,
-          time: entry.performedAt,
-        }))
-      : recentTickets.map((ticket) => ({
-          type: 'ticket_created' as const,
-          message: `${ticket.title} — ${labelStatus(ticket.status)}`,
-          time: ticket.dateReported,
-        }));
-  
-  const activeDowntimes = downtimes.filter(d => d.status === 'ongoing');
-
-  const inProgressCount =
-    stats.statusBreakdown?.inProgress ??
-    tickets.filter((t) => t.status === 'in_progress').length;
-  const resolvedCount =
-    stats.statusBreakdown?.resolved ??
-    tickets.filter((t) => ['resolved', 'closed'].includes(t.status)).length;
-  const otherOpen = Math.max(0, stats.openTickets - inProgressCount);
-
-  const statusData = [
-    { name: 'Terbuka', value: otherOpen, color: '#FFBB28' },
-    { name: 'Sedang dikerjakan', value: inProgressCount, color: '#0088FE' },
-    { name: 'Selesai', value: resolvedCount, color: '#00C49F' },
-    { name: 'Terlambat', value: stats.overdueTickets, color: '#FF8042' },
-  ].filter((d) => d.value > 0);
-
-  const teamSlaChart = teamWorkload.map((t) => ({
-    team: t.team,
-    sla: t.slaCompliance,
-    open: t.openTickets,
-    resolved: t.resolvedTickets,
-    workload: t.workloadPercentage,
-  }));
-
-  const downtimeCostThisMonth = downtimes
-    .filter((d) => {
-      const start = new Date(d.startTime);
-      const now = new Date();
-      return start.getMonth() === now.getMonth() && start.getFullYear() === now.getFullYear();
-    })
-    .reduce((sum, d) => sum + (d.estimatedCost ?? 0), 0);
-
-  const insights = (() => {
-    const items: { icon: 'trend' | 'warn' | 'ok'; title: string; detail: string }[] = [];
-    if (teamWorkload.length === 0) {
-      items.push({
-        icon: 'warn',
-        title: 'Tidak ada data beban kerja',
-        detail: 'Buat snapshot beban kerja tim untuk melihat insight performa.',
-      });
-      return items;
-    }
-    const bySla = [...teamWorkload].sort((a, b) => b.slaCompliance - a.slaCompliance);
-    const byLoad = [...teamWorkload].sort((a, b) => b.workloadPercentage - a.workloadPercentage);
-    const top = bySla[0];
-    const loaded = byLoad[0];
-    if (top) {
-      items.push({
-        icon: 'ok',
-        title: 'SLA tertinggi',
-        detail: `${labelTeam(top.team)} memimpin dengan kepatuhan SLA ${top.slaCompliance}%.`,
-      });
-    }
-    if (loaded && loaded.workloadPercentage >= 70) {
-      items.push({
-        icon: 'warn',
-        title: 'Tekanan kapasitas',
-        detail: `Beban kerja ${labelTeam(loaded.team)} mencapai ${loaded.workloadPercentage}%.`,
-      });
-    } else if (loaded) {
-      items.push({
-        icon: 'trend',
-        title: 'Beban kerja seimbang',
-        detail: `Beban tertinggi ada di ${labelTeam(loaded.team)} (${loaded.workloadPercentage}%).`,
-      });
-    }
-    if (stats.slaCompliance >= 90) {
-      items.push({
-        icon: 'ok',
-        title: 'SLA on track',
-        detail: `Kepatuhan SLA keseluruhan ${stats.slaCompliance}%.`,
-      });
-    } else if (stats.overdueTickets > 0) {
-      items.push({
-        icon: 'warn',
-        title: 'Backlog terlambat',
-        detail: `${stats.overdueTickets} tiket melanggar SLA dan perlu perhatian.`,
-      });
-    }
-    return items;
-  })();
-
-  const upcomingActions = [
-    ...(stats.overdueTickets > 0
-      ? [{
-          title: 'Tinjau tiket terlambat',
-          detail: `${stats.overdueTickets} tiket perlu perhatian`,
-          badge: 'Mendesak' as const,
-        }]
-      : []),
-    ...(activeDowntimes.length > 0
-      ? [{
-          title: 'Selesaikan downtime aktif',
-          detail: `${activeDowntimes.length} insiden berlangsung`,
-          badge: 'Mendesak' as const,
-        }]
-      : []),
-    ...(stats.criticalTickets > 0
-      ? [{
-          title: 'Triase tiket kritis',
-          detail: `${stats.criticalTickets} tiket kritis masih terbuka`,
-          badge: 'Mendesak' as const,
-        }]
-      : []),
-  ];
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Selamat pagi';
-    if (hour < 18) return 'Selamat siang';
-    return 'Selamat malam';
-  };
-
-  const getRoleSpecificStats = () => {
-    if (!currentUser) return null;
-
-    switch (currentUser.role) {
-      case 'admin':
-        return (
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total pengguna</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{users.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  {users.filter(u => u.isActive).length} active
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Kesehatan sistem</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${(stats.uptimePercent ?? 100) >= 95 ? 'text-green-600' : 'text-amber-600'}`}>
-                  {stats.uptimePercent != null ? `${stats.uptimePercent}%` : '—'}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Uptime bulan ini ({stats.downtimeHours}j downtime)
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Downtime aktif</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.activeDowntimes}</div>
-                <p className="text-xs text-muted-foreground">
-                  Insiden berlangsung
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Dampak biaya</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {downtimeCostThisMonth > 0
-                    ? `Rp ${Math.round(downtimeCostThisMonth).toLocaleString('id-ID')}`
-                    : '—'}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Estimasi biaya downtime bulan ini
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'team_lead': {
-        const teamStats = teamWorkload.find(t => t.team === currentUser.team);
-        return (
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tiket tim</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{teamStats?.openTickets || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  {teamStats?.totalTickets || 0} total bulan ini
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">SLA tim</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{teamStats?.slaCompliance || 0}%</div>
-                <p className="text-xs text-muted-foreground">
-                  Target: 95%
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Rata-rata respons</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{teamStats?.averageResponseTime || 0}h</div>
-                <p className="text-xs text-muted-foreground">
-                  Rata-rata tim
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Beban kerja tim</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{teamStats?.workloadPercentage || 0}%</div>
-                <p className="text-xs text-muted-foreground">
-                  Utilisasi kapasitas
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      }
-
-      case 'it_staff': {
-        const myTickets = userSpecificData.tickets;
-        const myOpenTickets = myTickets.filter(t => !['resolved', 'closed'].includes(t.status));
-        const myOverdueTickets = myTickets.filter(t => t.slaBreached);
-        const today = new Date();
-        const myResolvedToday = myTickets.filter((t) =>
-          t.resolvedDate && t.resolvedDate.toDateString() === today.toDateString()
-        ).length;
-        const mySla = myTickets.length > 0
-          ? Math.round(((myTickets.length - myOverdueTickets.length) / myTickets.length) * 100)
-          : 100;
-        return (
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tiket terbuka saya</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{myOpenTickets.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  {myTickets.length} total ditugaskan
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Terlambat</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{myOverdueTickets.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Perlu perhatian segera
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Selesai hari ini</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{myResolvedToday}</div>
-                <p className="text-xs text-muted-foreground">
-                  Ditutup atau diselesaikan hari ini
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Performa saya</CardTitle>
-                <Star className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{mySla}%</div>
-                <p className="text-xs text-muted-foreground">
-                  Tingkat kepatuhan SLA
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      }
-
-      case 'reporter': {
-        const myReportedTickets = userSpecificData.tickets;
-        const myPendingTickets = myReportedTickets.filter(t => !['resolved', 'closed'].includes(t.status));
-        const resolvedWithDates = myReportedTickets.filter(
-          (t) => t.resolvedDate && t.dateReported
-        );
-        const avgHours = resolvedWithDates.length > 0
-          ? Math.round(
-              resolvedWithDates.reduce((sum, t) => {
-                const ms = t.resolvedDate!.getTime() - t.dateReported.getTime();
-                return sum + ms / (1000 * 60 * 60);
-              }, 0) / resolvedWithDates.length
-            )
-          : null;
-        return (
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tiket saya</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{myReportedTickets.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Total dilaporkan
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Menunggu</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{myPendingTickets.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Menunggu penyelesaian
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Selesai</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {myReportedTickets.filter(t => ['resolved', 'closed'].includes(t.status)).length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Masalah terselesaikan
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Rata-rata penyelesaian</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{avgHours != null ? `${avgHours}h` : '—'}</div>
-                <p className="text-xs text-muted-foreground">
-                  Rata-rata waktu penyelesaian
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      }
-
-      default:
-        return null;
-    }
-  };
+  const multiStaff = (report?.byUser.length ?? 0) > 1;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-3xl tracking-tight">
-            {getGreeting()}, {currentUser?.name.split(' ')[0]}!
-          </h2>
-          <p className="text-muted-foreground">
-            Berikut ringkasan sistem IT Anda hari ini.
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Badge variant="outline" className="hidden md:flex">
-            Terakhir diperbarui: {new Date().toLocaleTimeString()}
-          </Badge>
-        </div>
+    <div className="flex-1 space-y-6 p-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+        <p className="text-muted-foreground">
+          {greeting}
+          {report ? ` · ${report.period.from} → ${report.period.to}` : ""}
+        </p>
       </div>
-      
-      {getRoleSpecificStats()}
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="insights">Insights</TabsTrigger>
-        </TabsList>
+      {!canPerf && (
+        <Card>
+          <CardContent className="pt-6 text-sm text-muted-foreground">
+            Dashboard performa staf tersedia untuk admin, team lead, dan staf IT. Reporter dapat
+            memantau tiket melalui menu Tickets.
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total tiket</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalTickets}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.resolvedToday} diselesaikan hari ini
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tiket terbuka</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.openTickets}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.overdueTickets} terlambat
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Rata-rata penyelesaian</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.averageResolutionTime}h</div>
-                <p className="text-xs text-muted-foreground">
-                  Dari snapshot tim terbaru
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Kepatuhan SLA</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.slaCompliance}%</div>
-                <Progress value={stats.slaCompliance} className="mt-2" />
-              </CardContent>
-            </Card>
+      {canPerf && report && (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            <MetricSummaryCard
+              title="Tickets"
+              icon={Ticket}
+              accent={RESOURCE_COLORS.tickets}
+              metrics={report.summary.tickets ?? EMPTY_METRICS}
+              size={72}
+            />
+            <MetricSummaryCard
+              title="Error Reports"
+              icon={Bug}
+              accent={RESOURCE_COLORS.errors}
+              metrics={report.summary.errors ?? EMPTY_METRICS}
+              size={72}
+            />
+            <MetricSummaryCard
+              title="Feature Requests"
+              icon={Sparkles}
+              accent={RESOURCE_COLORS.features}
+              metrics={report.summary.features ?? EMPTY_METRICS}
+              size={72}
+            />
           </div>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Ringkasan beban kerja tim</CardTitle>
-                <CardDescription>
-                  Distribusi tiket saat ini per tim
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {teamWorkload.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-12 text-center">
-                    Belum ada snapshot beban kerja.
-                  </p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={teamWorkload}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="team" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="openTickets" fill="#FF6B6B" name="Tiket terbuka" />
-                      <Bar dataKey="resolvedTickets" fill="#4ECDC4" name="Tiket selesai" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Status tiket</CardTitle>
-                <CardDescription>
-                  Distribusi tiket saat ini
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {statusData.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-12 text-center">Belum ada tiket.</p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={statusData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {statusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
 
-        <TabsContent value="performance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Kepatuhan SLA tim</CardTitle>
-              <CardDescription>
-                Snapshot terbaru per tim
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {teamSlaChart.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-12 text-center">
-                  Tidak ada data performa. Buat snapshot beban kerja terlebih dahulu.
-                </p>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={teamSlaChart}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="team" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Bar dataKey="sla" fill="#8884d8" name="SLA %" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Beban kerja tim %</CardTitle>
-              <CardDescription>
-                Utilisasi kapasitas from latest snapshots
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {teamSlaChart.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-12 text-center">Tidak ada data beban kerja.</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={teamSlaChart}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="team" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Bar dataKey="workload" fill="#45B7D1" name="Beban kerja %" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className={multiStaff ? "grid gap-4 lg:grid-cols-2" : "grid gap-4"}>
+            {multiStaff && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Completed items per staff</CardTitle>
+                  <CardDescription>
+                    Perbandingan Tickets, Errors, dan Feature Requests yang diselesaikan.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <StaffBarChart report={report} />
+                </CardContent>
+              </Card>
+            )}
             <Card>
               <CardHeader>
-                <CardTitle>Aktivitas terbaru</CardTitle>
+                <CardTitle className="text-base">Completed work distribution</CardTitle>
                 <CardDescription>
-                  Peristiwa dan pembaruan sistem terbaru
+                  {role === "it_staff"
+                    ? "Proporsi pekerjaan Anda yang selesai per bagian."
+                    : "Proporsi item selesai antar bagian."}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-80">
-                  <div className="space-y-4">
-                    {recentActivity.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Tidak ada aktivitas terbaru.</p>
-                    ) : (
-                      recentActivity.map((activity, index) => (
-                        <div key={index} className="flex items-start space-x-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 ${
-                            activity.type === 'ticket_created' ? 'bg-blue-500' :
-                            activity.type === 'ticket_resolved' ? 'bg-green-500' :
-                            activity.type === 'downtime_started' ? 'bg-orange-500' :
-                            'bg-red-500'
-                          }`} />
-                          <div className="flex-1 space-y-1">
-                            <p className="text-sm">{activity.message}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {activity.time.toLocaleTimeString()}
-                            </p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Tiket terbaru</CardTitle>
-                <CardDescription>
-                  Aktivitas tiket terbaru
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-80">
-                  <div className="space-y-4">
-                    {recentTickets.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Tidak ada tiket untuk ditampilkan.</p>
-                    ) : (
-                      recentTickets.map((ticket) => (
-                        <div key={ticket.id} className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium leading-none">
-                              {ticket.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {ticket.id} • {ticket.category} • {labelPriority(ticket.priority)}
-                            </p>
-                          </div>
-                          <Badge 
-                            variant={
-                              ticket.status === 'resolved' ? 'default' : 
-                              ticket.status === 'in_progress' ? 'secondary' : 
-                              ticket.slaBreached ? 'destructive' : 'outline'
-                            }
-                          >
-                            {labelStatus(ticket.status)}
-                          </Badge>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
+              <CardContent className="flex items-center justify-center py-4">
+                <ResourceCompletionDonut report={report} />
               </CardContent>
             </Card>
           </div>
 
-          {activeDowntimes.length > 0 && (
-            <Card className="border-destructive">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                  Downtime aktif
-                </CardTitle>
-                <CardDescription>
-                  Sistem yang sedang mengalami masalah
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {activeDowntimes.map((downtime) => (
-                    <div key={downtime.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="space-y-1">
-                        <p className="font-medium">{downtime.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Mulai: {downtime.startTime.toLocaleString()} • 
-                          Dampak: {downtime.impact} • 
-                          Sumber: {(downtime.sourceComponents?.map((c) => c.name).join(', ') || downtime.affectedSystems.join(', ') || '—')}
-                        </p>
-                      </div>
-                      <Badge variant="destructive">
-                        Berlangsung
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          {onNavigate && (
+            <Button variant="outline" onClick={() => go("/team-performance?view=overview")}>
+              Open Team Performance
+            </Button>
           )}
-        </TabsContent>
+        </>
+      )}
 
-        <TabsContent value="insights" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Insight utama</CardTitle>
-                <CardDescription>
-                  Diambil dari tiket saat ini dan snapshot beban kerja
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {insights.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-start space-x-3 p-3 rounded-lg ${
-                      item.icon === 'warn'
-                        ? 'bg-yellow-50 dark:bg-yellow-950'
-                        : item.icon === 'ok'
-                          ? 'bg-green-50 dark:bg-green-950'
-                          : 'bg-blue-50 dark:bg-blue-950'
-                    }`}
-                  >
-                    {item.icon === 'warn' ? (
-                      <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                    ) : item.icon === 'ok' ? (
-                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                    ) : (
-                      <TrendingUp className="h-5 w-5 text-blue-600 mt-0.5" />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">{item.detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Tindakan disarankan</CardTitle>
-                <CardDescription>
-                  Berdasarkan tiket terlambat dan insiden aktif
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {upcomingActions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Tidak ada tindakan mendesak saat ini.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {upcomingActions.map((action, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <p className="text-sm font-medium">{action.title}</p>
-                          <p className="text-xs text-muted-foreground">{action.detail}</p>
-                        </div>
-                        <Badge variant="destructive">{action.badge}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Activity className="h-4 w-4" /> Active downtime
+          </CardTitle>
+          <CardDescription>Event yang masih berlangsung.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {downtimes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Tidak ada downtime aktif.</p>
+          ) : (
+            <ul className="space-y-2">
+              {downtimes.slice(0, 5).map((d) => (
+                <li
+                  key={d.id}
+                  className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+                >
+                  <span className="truncate font-medium">{d.title}</span>
+                  <Badge variant="destructive">{d.status}</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
