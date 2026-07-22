@@ -8,9 +8,28 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Switch } from "./ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { Plus, ClipboardCheck, Trash2 } from "lucide-react";
 import { useApp } from "../lib/store";
 import {
@@ -21,6 +40,8 @@ import {
   fetchUsers,
 } from "../lib/api/services";
 import type {
+  InspectionChecklistItems,
+  InspectionChecklistKey,
   InspectionConclusion,
   InspectionEscalation,
   InspectionType,
@@ -29,36 +50,41 @@ import type {
 } from "../types";
 
 const TYPE_LABEL: Record<InspectionType, string> = {
-  weekly: "Mingguan",
-  incidental: "Insidental",
+  weekly: "Weekly",
+  incidental: "Incidental",
 };
 
 const CONCLUSION_LABEL: Record<InspectionConclusion, string> = {
-  safe: "Aman",
-  findings: "Ada temuan",
+  safe: "Safe",
+  findings: "Findings",
 };
 
 const ESCALATION_LABEL: Record<InspectionEscalation, string> = {
   ipsrs: "IPSRS",
-  director: "Direktur",
+  director: "Director",
 };
 
-const CHECKLIST_META: { key: "ups" | "alarm" | "cable_rack"; label: string }[] = [
+const CHECKLIST_META: { key: InspectionChecklistKey; label: string }[] = [
   { key: "ups", label: "UPS" },
-  { key: "alarm", label: "Alarm" },
-  { key: "cable_rack", label: "Kabel / Rak" },
+  { key: "cable", label: "Cable" },
+  { key: "rack", label: "Rack" },
+  { key: "ac", label: "AC" },
+  { key: "pc_server", label: "PC Server" },
+  { key: "mikrotik", label: "Server Mikrotik" },
+  { key: "switch", label: "Switch" },
 ];
+
+function emptyChecklist(): InspectionChecklistItems {
+  return Object.fromEntries(
+    CHECKLIST_META.map(({ key }) => [key, { ok: true, notes: "" }]),
+  ) as InspectionChecklistItems;
+}
 
 const emptyForm = {
   inspection_date: format(new Date(), "yyyy-MM-dd"),
   inspector_id: "",
   inspection_type: "weekly" as InspectionType,
-  ups_ok: true,
-  ups_notes: "",
-  alarm_ok: true,
-  alarm_notes: "",
-  cable_rack_ok: true,
-  cable_rack_notes: "",
+  checklist: emptyChecklist(),
   conclusion: "safe" as InspectionConclusion,
   follow_up: "",
   escalation: "none" as "none" | InspectionEscalation,
@@ -68,7 +94,8 @@ const emptyForm = {
 export function ServerRoomInspections() {
   const { state } = useApp();
   const canManage =
-    state.currentUser?.role === "admin" || state.currentUser?.role === "it_staff";
+    state.currentUser?.role === "admin" ||
+    state.currentUser?.role === "it_staff";
   const [records, setRecords] = useState<ServerRoomInspection[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +118,7 @@ export function ServerRoomInspections() {
       const { records: data } = await fetchServerRoomInspections(params);
       setRecords(data);
     } catch {
-      toast.error("Gagal memuat inspeksi");
+      toast.error("Failed to load inspections");
       setRecords([]);
     } finally {
       setLoading(false);
@@ -110,9 +137,11 @@ export function ServerRoomInspections() {
           list.filter(
             (u) =>
               u.isActive &&
-              (u.role === "it_staff" || u.role === "admin" || u.role === "team_lead")
-          )
-        )
+              (u.role === "it_staff" ||
+                u.role === "admin" ||
+                u.role === "team_lead"),
+          ),
+        ),
       )
       .catch(() => setUsers([]));
   }, [canManage]);
@@ -124,7 +153,7 @@ export function ServerRoomInspections() {
       (r) =>
         r.id.toLowerCase().includes(q) ||
         (r.notes ?? "").toLowerCase().includes(q) ||
-        (r.followUp ?? "").toLowerCase().includes(q)
+        (r.followUp ?? "").toLowerCase().includes(q),
     );
   }, [records, search]);
 
@@ -144,12 +173,15 @@ export function ServerRoomInspections() {
       inspection_date: format(row.inspectionDate, "yyyy-MM-dd"),
       inspector_id: row.inspector?.id ?? "",
       inspection_type: row.inspectionType,
-      ups_ok: row.checklistItems.ups.ok,
-      ups_notes: row.checklistItems.ups.notes ?? "",
-      alarm_ok: row.checklistItems.alarm.ok,
-      alarm_notes: row.checklistItems.alarm.notes ?? "",
-      cable_rack_ok: row.checklistItems.cable_rack.ok,
-      cable_rack_notes: row.checklistItems.cable_rack.notes ?? "",
+      checklist: Object.fromEntries(
+        CHECKLIST_META.map(({ key }) => [
+          key,
+          {
+            ok: row.checklistItems[key]?.ok ?? true,
+            notes: row.checklistItems[key]?.notes ?? "",
+          },
+        ]),
+      ) as InspectionChecklistItems,
       conclusion: row.conclusion,
       follow_up: row.followUp ?? "",
       escalation: row.escalation ?? "none",
@@ -158,20 +190,38 @@ export function ServerRoomInspections() {
     setFormOpen(true);
   };
 
+  const setChecklistItem = (
+    key: InspectionChecklistKey,
+    patch: Partial<{ ok: boolean; notes: string }>,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      checklist: {
+        ...prev.checklist,
+        [key]: { ...prev.checklist[key], ...patch },
+      },
+    }));
+  };
+
   const handleSave = async () => {
     if (!form.inspection_date) {
-      toast.error("Tanggal inspeksi wajib");
+      toast.error("Inspection date is required");
       return;
     }
     setSaving(true);
+    const checklist_items = Object.fromEntries(
+      CHECKLIST_META.map(({ key }) => [
+        key,
+        {
+          ok: form.checklist[key].ok,
+          notes: form.checklist[key].notes || null,
+        },
+      ]),
+    );
     const payload: Record<string, unknown> = {
       inspection_date: form.inspection_date,
       inspection_type: form.inspection_type,
-      checklist_items: {
-        ups: { ok: form.ups_ok, notes: form.ups_notes || null },
-        alarm: { ok: form.alarm_ok, notes: form.alarm_notes || null },
-        cable_rack: { ok: form.cable_rack_ok, notes: form.cable_rack_notes || null },
-      },
+      checklist_items,
       conclusion: form.conclusion,
       follow_up: form.follow_up || null,
       escalation: form.escalation === "none" ? null : form.escalation,
@@ -182,30 +232,30 @@ export function ServerRoomInspections() {
     try {
       if (editing) {
         const updated = await updateServerRoomInspection(editing.id, payload);
-        toast.success("Inspeksi diperbarui");
+        toast.success("Inspection updated");
         setSelected(updated);
       } else {
         await createServerRoomInspection(payload);
-        toast.success("Inspeksi dicatat");
+        toast.success("Inspection recorded");
       }
       setFormOpen(false);
       load();
     } catch {
-      toast.error("Gagal menyimpan");
+      toast.error("Failed to save");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (row: ServerRoomInspection) => {
-    if (!confirm(`Hapus ${row.id}?`)) return;
+    if (!confirm(`Delete ${row.id}?`)) return;
     try {
       await deleteServerRoomInspection(row.id);
-      toast.success("Dihapus");
+      toast.success("Deleted");
       if (selected?.id === row.id) setSelected(null);
       load();
     } catch {
-      toast.error("Gagal menghapus");
+      toast.error("Failed to delete");
     }
   };
 
@@ -218,13 +268,13 @@ export function ServerRoomInspections() {
             Server Room Inspections
           </h2>
           <p className="text-muted-foreground">
-            Checklist inspeksi berkala ruang server (INSP-YYYY-NNN)
+            Cek kondisi peralatan ruang server per alat (INSP-YYYY-NNN)
           </p>
         </div>
         {canManage && (
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            Catat Inspeksi
+            Record Inspection
           </Button>
         )}
       </div>
@@ -232,7 +282,7 @@ export function ServerRoomInspections() {
       <Card>
         <CardContent className="p-4 flex flex-wrap gap-3">
           <Input
-            placeholder="Cari ID / catatan…"
+            placeholder="Search ID / notes…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load()}
@@ -243,9 +293,9 @@ export function ServerRoomInspections() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua jenis</SelectItem>
-              <SelectItem value="weekly">Mingguan</SelectItem>
-              <SelectItem value="incidental">Insidental</SelectItem>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="incidental">Incidental</SelectItem>
             </SelectContent>
           </Select>
           <Select value={conclusionFilter} onValueChange={setConclusionFilter}>
@@ -253,36 +303,36 @@ export function ServerRoomInspections() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua kesimpulan</SelectItem>
-              <SelectItem value="safe">Aman</SelectItem>
-              <SelectItem value="findings">Ada temuan</SelectItem>
+              <SelectItem value="all">All conclusions</SelectItem>
+              <SelectItem value="safe">Safe</SelectItem>
+              <SelectItem value="findings">Findings</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={load}>
-            Terapkan
+            Apply
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>{filtered.length} inspeksi</CardTitle>
+          <CardTitle>{filtered.length} inspections</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Memuat…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Belum ada data.</p>
+            <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Jenis</TableHead>
-                  <TableHead>Petugas</TableHead>
-                  <TableHead>Kesimpulan</TableHead>
-                  <TableHead>Eskalasi</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Inspector</TableHead>
+                  <TableHead>Conclusion</TableHead>
+                  <TableHead>Escalation</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -292,13 +342,21 @@ export function ServerRoomInspections() {
                     className="cursor-pointer"
                     onClick={() => setSelected(row)}
                   >
-                    <TableCell className="font-mono text-sm">{row.id}</TableCell>
-                    <TableCell>{format(row.inspectionDate, "dd MMM yyyy")}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {row.id}
+                    </TableCell>
+                    <TableCell>
+                      {format(row.inspectionDate, "dd MMM yyyy")}
+                    </TableCell>
                     <TableCell>{TYPE_LABEL[row.inspectionType]}</TableCell>
                     <TableCell>{row.inspector?.name ?? "—"}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={row.conclusion === "findings" ? "destructive" : "default"}
+                        variant={
+                          row.conclusion === "findings"
+                            ? "destructive"
+                            : "default"
+                        }
                       >
                         {CONCLUSION_LABEL[row.conclusion]}
                       </Badge>
@@ -321,7 +379,13 @@ export function ServerRoomInspections() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 flex-wrap">
                   <span className="font-mono">{selected.id}</span>
-                  <Badge variant={selected.conclusion === "findings" ? "destructive" : "default"}>
+                  <Badge
+                    variant={
+                      selected.conclusion === "findings"
+                        ? "destructive"
+                        : "default"
+                    }
+                  >
                     {CONCLUSION_LABEL[selected.conclusion]}
                   </Badge>
                 </DialogTitle>
@@ -329,19 +393,19 @@ export function ServerRoomInspections() {
               <div className="space-y-4 text-sm">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-muted-foreground">Tanggal</p>
+                    <p className="text-muted-foreground">Date</p>
                     <p>{format(selected.inspectionDate, "dd MMM yyyy")}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Jenis</p>
+                    <p className="text-muted-foreground">Type</p>
                     <p>{TYPE_LABEL[selected.inspectionType]}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Petugas</p>
+                    <p className="text-muted-foreground">Inspector</p>
                     <p>{selected.inspector?.name ?? "—"}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Eskalasi</p>
+                    <p className="text-muted-foreground">Escalation</p>
                     <p>
                       {selected.escalation
                         ? ESCALATION_LABEL[selected.escalation]
@@ -350,7 +414,9 @@ export function ServerRoomInspections() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-muted-foreground mb-2">Checklist</p>
+                  <p className="text-muted-foreground mb-2">
+                    Equipment checklist
+                  </p>
                   <div className="space-y-2">
                     {CHECKLIST_META.map(({ key, label }) => {
                       const item = selected.checklistItems[key];
@@ -361,12 +427,14 @@ export function ServerRoomInspections() {
                         >
                           <div>
                             <p className="font-medium">{label}</p>
-                            {item.notes && (
-                              <p className="text-muted-foreground text-xs">{item.notes}</p>
+                            {item?.notes && (
+                              <p className="text-muted-foreground text-xs">
+                                {item.notes}
+                              </p>
                             )}
                           </div>
-                          <Badge variant={item.ok ? "default" : "destructive"}>
-                            {item.ok ? "OK" : "Temuan"}
+                          <Badge variant={item?.ok ? "default" : "destructive"}>
+                            {item?.ok ? "OK" : "Finding"}
                           </Badge>
                         </div>
                       );
@@ -375,13 +443,13 @@ export function ServerRoomInspections() {
                 </div>
                 {selected.followUp && (
                   <div>
-                    <p className="text-muted-foreground">Tindak lanjut</p>
+                    <p className="text-muted-foreground">Follow-up</p>
                     <p className="whitespace-pre-wrap">{selected.followUp}</p>
                   </div>
                 )}
                 {selected.notes && (
                   <div>
-                    <p className="text-muted-foreground">Catatan</p>
+                    <p className="text-muted-foreground">Notes</p>
                     <p className="whitespace-pre-wrap">{selected.notes}</p>
                   </div>
                 )}
@@ -391,9 +459,12 @@ export function ServerRoomInspections() {
                   <Button variant="outline" onClick={() => openEdit(selected)}>
                     Edit
                   </Button>
-                  <Button variant="destructive" onClick={() => handleDelete(selected)}>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleDelete(selected)}
+                  >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Hapus
+                    Delete
                   </Button>
                 </DialogFooter>
               )}
@@ -405,19 +476,23 @@ export function ServerRoomInspections() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Inspeksi" : "Catat Inspeksi"}</DialogTitle>
+            <DialogTitle>
+              {editing ? "Edit Inspection" : "Record Inspection"}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
             <div>
-              <Label>Tanggal *</Label>
+              <Label>Date *</Label>
               <Input
                 type="date"
                 value={form.inspection_date}
-                onChange={(e) => setForm({ ...form, inspection_date: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, inspection_date: e.target.value })
+                }
               />
             </div>
             <div>
-              <Label>Petugas</Label>
+              <Label>Inspector</Label>
               <Select
                 value={form.inspector_id || state.currentUser?.id || "self"}
                 onValueChange={(v) => setForm({ ...form, inspector_id: v })}
@@ -427,7 +502,7 @@ export function ServerRoomInspections() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={state.currentUser?.id ?? "self"}>
-                    {state.currentUser?.name ?? "Saya"}
+                    {state.currentUser?.name ?? "Me"}
                   </SelectItem>
                   {users
                     .filter((u) => u.id !== state.currentUser?.id)
@@ -440,7 +515,7 @@ export function ServerRoomInspections() {
               </Select>
             </div>
             <div>
-              <Label>Jenis *</Label>
+              <Label>Type *</Label>
               <Select
                 value={form.inspection_type}
                 onValueChange={(v) =>
@@ -451,35 +526,42 @@ export function ServerRoomInspections() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="weekly">Mingguan</SelectItem>
-                  <SelectItem value="incidental">Insidental</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="incidental">Incidental</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-3 border rounded p-3">
-              <p className="text-sm font-medium">Checklist</p>
+              <p className="text-sm font-medium">Equipment checklist</p>
+              <p className="text-xs text-muted-foreground">
+                Tandai OK jika alat berfungsi normal; isi catatan jika ada
+                temuan.
+              </p>
               {CHECKLIST_META.map(({ key, label }) => {
-                const okKey = `${key}_ok` as "ups_ok" | "alarm_ok" | "cable_rack_ok";
-                const notesKey = `${key}_notes` as
-                  | "ups_notes"
-                  | "alarm_notes"
-                  | "cable_rack_notes";
+                const item = form.checklist[key];
                 return (
                   <div key={key} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label>{label} OK</Label>
-                      <Switch
-                        checked={form[okKey]}
-                        onCheckedChange={(checked) =>
-                          setForm({ ...form, [okKey]: checked })
-                        }
-                      />
+                      <Label>{label}</Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {item.ok ? "OK" : "Finding"}
+                        </span>
+                        <Switch
+                          checked={item.ok}
+                          onCheckedChange={(checked) =>
+                            setChecklistItem(key, { ok: checked })
+                          }
+                        />
+                      </div>
                     </div>
                     <Input
-                      placeholder={`Catatan ${label} (opsional)`}
-                      value={form[notesKey]}
-                      onChange={(e) => setForm({ ...form, [notesKey]: e.target.value })}
+                      placeholder={`${label} notes (optional)`}
+                      value={item.notes ?? ""}
+                      onChange={(e) =>
+                        setChecklistItem(key, { notes: e.target.value })
+                      }
                     />
                   </div>
                 );
@@ -487,7 +569,7 @@ export function ServerRoomInspections() {
             </div>
 
             <div>
-              <Label>Kesimpulan *</Label>
+              <Label>Conclusion *</Label>
               <Select
                 value={form.conclusion}
                 onValueChange={(v) =>
@@ -498,21 +580,23 @@ export function ServerRoomInspections() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="safe">Aman</SelectItem>
-                  <SelectItem value="findings">Ada temuan</SelectItem>
+                  <SelectItem value="safe">Safe</SelectItem>
+                  <SelectItem value="findings">Findings</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Tindak lanjut</Label>
+              <Label>Follow-up</Label>
               <Textarea
                 value={form.follow_up}
-                onChange={(e) => setForm({ ...form, follow_up: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, follow_up: e.target.value })
+                }
                 rows={2}
               />
             </div>
             <div>
-              <Label>Eskalasi (opsional)</Label>
+              <Label>Escalation (optional)</Label>
               <Select
                 value={form.escalation}
                 onValueChange={(v) =>
@@ -526,14 +610,14 @@ export function ServerRoomInspections() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Tidak ada</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="ipsrs">IPSRS</SelectItem>
-                  <SelectItem value="director">Direktur</SelectItem>
+                  <SelectItem value="director">Director</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Catatan</Label>
+              <Label>Notes</Label>
               <Textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -543,10 +627,10 @@ export function ServerRoomInspections() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>
-              Batal
+              Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan"}
+              {saving ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

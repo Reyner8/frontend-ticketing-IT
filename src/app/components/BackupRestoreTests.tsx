@@ -20,19 +20,39 @@ import {
   fetchUsers,
 } from "../lib/api/services";
 import { AttachmentPanel } from "./AttachmentPanel";
-import type { BackupRestoreTest, RestoreTestResult, RestoreType, User } from "../types";
+import { ApplicationSelect } from "./ApplicationSelect";
+import type {
+  BackupRestoreTest,
+  BackupSource,
+  RestoreTestResult,
+  RestoreType,
+  TestEnvironment,
+  User,
+} from "../types";
 
 const RESULT_LABEL: Record<RestoreTestResult, string> = {
-  success: "Sukses",
-  failed: "Gagal",
-  success_with_notes: "Sukses + catatan",
+  success: "Success",
+  failed: "Failed",
+  success_with_notes: "Success + notes",
 };
 
 const TYPE_LABEL: Record<RestoreType, string> = {
   database: "Database",
-  application: "Aplikasi",
-  both: "Keduanya",
+  application: "Application",
+  both: "Both",
 };
+
+const BACKUP_SOURCE_OPTIONS: { value: BackupSource; label: string }[] = [
+  { value: "nas", label: "NAS" },
+  { value: "hdd", label: "HDD" },
+  { value: "pc", label: "PC" },
+  { value: "server", label: "Server" },
+];
+
+const TEST_ENVIRONMENT_OPTIONS: { value: TestEnvironment; label: string }[] = [
+  { value: "local_development", label: "Local Development" },
+  { value: "server_staging", label: "Server Staging" },
+];
 
 function toDateInput(d?: Date) {
   return d ? format(d, "yyyy-MM-dd") : "";
@@ -47,8 +67,8 @@ const emptyForm = {
   application_system: "",
   restore_type: "database" as RestoreType,
   backup_datetime: "",
-  backup_source: "",
-  test_environment: "",
+  backup_source: "none" as "none" | BackupSource,
+  test_environment: "local_development" as TestEnvironment,
   result: "success" as RestoreTestResult,
   notes: "",
   follow_up: "",
@@ -80,7 +100,7 @@ export function BackupRestoreTests() {
       const { records: data } = await fetchBackupRestoreTests(params);
       setRecords(data);
     } catch {
-      toast.error("Gagal memuat uji restore");
+      toast.error("Failed to load restore tests");
       setRecords([]);
     } finally {
       setLoading(false);
@@ -105,7 +125,9 @@ export function BackupRestoreTests() {
       (r) =>
         r.id.toLowerCase().includes(q) ||
         r.applicationSystem.toLowerCase().includes(q) ||
-        r.testEnvironment.toLowerCase().includes(q)
+        r.applicationLabel.toLowerCase().includes(q) ||
+        (r.testEnvironmentLabel || r.testEnvironment).toLowerCase().includes(q) ||
+        (r.backupSourceLabel || r.backupSource || "").toLowerCase().includes(q)
     );
   }, [records, search]);
 
@@ -126,8 +148,8 @@ export function BackupRestoreTests() {
       application_system: row.applicationSystem,
       restore_type: row.restoreType,
       backup_datetime: toDateTimeInput(row.backupDatetime),
-      backup_source: row.backupSource ?? "",
-      test_environment: row.testEnvironment,
+      backup_source: row.backupSource ?? "none",
+      test_environment: row.testEnvironment || "local_development",
       result: row.result,
       notes: row.notes ?? "",
       follow_up: row.followUp ?? "",
@@ -137,7 +159,7 @@ export function BackupRestoreTests() {
 
   const handleSave = async () => {
     if (!form.test_date || !form.application_system || !form.test_environment) {
-      toast.error("Lengkapi field wajib");
+      toast.error("Please fill in the required fields");
       return;
     }
     setSaving(true);
@@ -149,7 +171,7 @@ export function BackupRestoreTests() {
       result: form.result,
       notes: form.notes || null,
       follow_up: form.follow_up || null,
-      backup_source: form.backup_source || null,
+      backup_source: form.backup_source === "none" ? null : form.backup_source,
       backup_datetime: form.backup_datetime
         ? form.backup_datetime.replace("T", " ") + ":00"
         : null,
@@ -159,30 +181,30 @@ export function BackupRestoreTests() {
     try {
       if (editing) {
         const updated = await updateBackupRestoreTest(editing.id, payload);
-        toast.success("Uji restore diperbarui");
+        toast.success("Restore test updated");
         setSelected(updated);
       } else {
         await createBackupRestoreTest(payload);
-        toast.success("Uji restore dicatat");
+        toast.success("Restore test recorded");
       }
       setFormOpen(false);
       load();
     } catch {
-      toast.error("Gagal menyimpan");
+      toast.error("Failed to save");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (row: BackupRestoreTest) => {
-    if (!confirm(`Hapus ${row.id}?`)) return;
+    if (!confirm(`Delete ${row.id}?`)) return;
     try {
       await deleteBackupRestoreTest(row.id);
-      toast.success("Dihapus");
+      toast.success("Deleted");
       if (selected?.id === row.id) setSelected(null);
       load();
     } catch {
-      toast.error("Gagal menghapus");
+      toast.error("Failed to delete");
     }
   };
 
@@ -207,7 +229,7 @@ export function BackupRestoreTests() {
         {canManage && (
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            Catat Uji Restore
+            Record Restore Test
           </Button>
         )}
       </div>
@@ -215,7 +237,7 @@ export function BackupRestoreTests() {
       <Card>
         <CardContent className="p-4 flex flex-wrap gap-3">
           <Input
-            placeholder="Cari ID / aplikasi / lingkungan…"
+            placeholder="Search ID / application / environment…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load()}
@@ -223,51 +245,51 @@ export function BackupRestoreTests() {
           />
           <Select value={resultFilter} onValueChange={setResultFilter}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="Hasil" />
+              <SelectValue placeholder="Result" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua hasil</SelectItem>
-              <SelectItem value="success">Sukses</SelectItem>
-              <SelectItem value="failed">Gagal</SelectItem>
-              <SelectItem value="success_with_notes">Sukses + catatan</SelectItem>
+              <SelectItem value="all">All results</SelectItem>
+              <SelectItem value="success">Success</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="success_with_notes">Success + notes</SelectItem>
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="Jenis" />
+              <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua jenis</SelectItem>
+              <SelectItem value="all">All types</SelectItem>
               <SelectItem value="database">Database</SelectItem>
-              <SelectItem value="application">Aplikasi</SelectItem>
-              <SelectItem value="both">Keduanya</SelectItem>
+              <SelectItem value="application">Application</SelectItem>
+              <SelectItem value="both">Both</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={load}>
-            Terapkan
+            Apply
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>{filtered.length} catatan</CardTitle>
+          <CardTitle>{filtered.length} records</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Memuat…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Belum ada data.</p>
+            <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Aplikasi/Sistem</TableHead>
-                  <TableHead>Jenis</TableHead>
-                  <TableHead>Hasil</TableHead>
-                  <TableHead>Pelaksana</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Application/System</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Result</TableHead>
+                  <TableHead>Performed By</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -279,7 +301,7 @@ export function BackupRestoreTests() {
                   >
                     <TableCell className="font-mono text-sm">{row.id}</TableCell>
                     <TableCell>{format(row.testDate, "dd MMM yyyy")}</TableCell>
-                    <TableCell>{row.applicationSystem}</TableCell>
+                    <TableCell>{row.applicationLabel || row.applicationSystem}</TableCell>
                     <TableCell>{TYPE_LABEL[row.restoreType]}</TableCell>
                     <TableCell>{resultBadge(row.result)}</TableCell>
                     <TableCell>{row.performedBy?.name ?? "—"}</TableCell>
@@ -304,23 +326,23 @@ export function BackupRestoreTests() {
               <div className="grid gap-3 text-sm">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-muted-foreground">Tanggal uji</p>
+                    <p className="text-muted-foreground">Test date</p>
                     <p>{format(selected.testDate, "dd MMM yyyy")}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Pelaksana</p>
+                    <p className="text-muted-foreground">Performed By</p>
                     <p>{selected.performedBy?.name ?? "—"}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Aplikasi/Sistem</p>
-                    <p>{selected.applicationSystem}</p>
+                    <p className="text-muted-foreground">Application/System</p>
+                    <p>{selected.applicationLabel || selected.applicationSystem}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Jenis</p>
+                    <p className="text-muted-foreground">Type</p>
                     <p>{TYPE_LABEL[selected.restoreType]}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Backup dipakai</p>
+                    <p className="text-muted-foreground">Backup used</p>
                     <p>
                       {selected.backupDatetime
                         ? format(selected.backupDatetime, "dd MMM yyyy HH:mm")
@@ -328,23 +350,23 @@ export function BackupRestoreTests() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Sumber backup</p>
-                    <p>{selected.backupSource || "—"}</p>
+                    <p className="text-muted-foreground">Backup source</p>
+                    <p>{selected.backupSourceLabel || selected.backupSource || "—"}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-muted-foreground">Lingkungan uji</p>
-                    <p>{selected.testEnvironment}</p>
+                    <p className="text-muted-foreground">Test environment</p>
+                    <p>{selected.testEnvironmentLabel || selected.testEnvironment}</p>
                   </div>
                 </div>
                 {selected.notes && (
                   <div>
-                    <p className="text-muted-foreground">Catatan</p>
+                    <p className="text-muted-foreground">Notes</p>
                     <p className="whitespace-pre-wrap">{selected.notes}</p>
                   </div>
                 )}
                 {selected.followUp && (
                   <div>
-                    <p className="text-muted-foreground">Tindak lanjut</p>
+                    <p className="text-muted-foreground">Follow-up</p>
                     <p className="whitespace-pre-wrap">{selected.followUp}</p>
                   </div>
                 )}
@@ -362,7 +384,7 @@ export function BackupRestoreTests() {
                   </Button>
                   <Button variant="destructive" onClick={() => handleDelete(selected)}>
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Hapus
+                    Delete
                   </Button>
                 </DialogFooter>
               )}
@@ -374,11 +396,11 @@ export function BackupRestoreTests() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Uji Restore" : "Catat Uji Restore"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Restore Test" : "Record Restore Test"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
             <div>
-              <Label>Tanggal uji *</Label>
+              <Label>Test date *</Label>
               <Input
                 type="date"
                 value={form.test_date}
@@ -386,7 +408,7 @@ export function BackupRestoreTests() {
               />
             </div>
             <div>
-              <Label>Pelaksana</Label>
+              <Label>Performed By</Label>
               <Select
                 value={form.performed_by || "self"}
                 onValueChange={(v) =>
@@ -398,7 +420,7 @@ export function BackupRestoreTests() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={state.currentUser?.id ?? "self"}>
-                    {state.currentUser?.name ?? "Saya"}
+                    {state.currentUser?.name ?? "Me"}
                   </SelectItem>
                   {users
                     .filter((u) => u.id !== state.currentUser?.id)
@@ -411,15 +433,15 @@ export function BackupRestoreTests() {
               </Select>
             </div>
             <div>
-              <Label>Aplikasi / Sistem *</Label>
-              <Input
+              <Label>Application / System *</Label>
+              <ApplicationSelect
                 value={form.application_system}
-                onChange={(e) => setForm({ ...form, application_system: e.target.value })}
-                placeholder="SIMRS / Antrean / …"
+                includeCode={editing?.applicationSystem}
+                onValueChange={(v) => setForm({ ...form, application_system: v })}
               />
             </div>
             <div>
-              <Label>Jenis restore *</Label>
+              <Label>Restore type *</Label>
               <Select
                 value={form.restore_type}
                 onValueChange={(v) => setForm({ ...form, restore_type: v as RestoreType })}
@@ -429,13 +451,13 @@ export function BackupRestoreTests() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="database">Database</SelectItem>
-                  <SelectItem value="application">Aplikasi</SelectItem>
-                  <SelectItem value="both">Keduanya</SelectItem>
+                  <SelectItem value="application">Application</SelectItem>
+                  <SelectItem value="both">Both</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Waktu backup yang dipakai</Label>
+              <Label>Backup time used</Label>
               <Input
                 type="datetime-local"
                 value={form.backup_datetime}
@@ -443,23 +465,48 @@ export function BackupRestoreTests() {
               />
             </div>
             <div>
-              <Label>Sumber / lokasi backup</Label>
-              <Input
+              <Label>Backup source / location</Label>
+              <Select
                 value={form.backup_source}
-                onChange={(e) => setForm({ ...form, backup_source: e.target.value })}
-                placeholder="NAS / tape / cloud path (opsional)"
-              />
+                onValueChange={(v) =>
+                  setForm({ ...form, backup_source: v as "none" | BackupSource })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Not specified</SelectItem>
+                  {BACKUP_SOURCE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <Label>Lingkungan uji *</Label>
-              <Input
+              <Label>Test environment *</Label>
+              <Select
                 value={form.test_environment}
-                onChange={(e) => setForm({ ...form, test_environment: e.target.value })}
-                placeholder="Staging / DR / Lab"
-              />
+                onValueChange={(v) =>
+                  setForm({ ...form, test_environment: v as TestEnvironment })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEST_ENVIRONMENT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <Label>Hasil *</Label>
+              <Label>Result *</Label>
               <Select
                 value={form.result}
                 onValueChange={(v) => setForm({ ...form, result: v as RestoreTestResult })}
@@ -468,14 +515,14 @@ export function BackupRestoreTests() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="success">Sukses</SelectItem>
-                  <SelectItem value="failed">Gagal</SelectItem>
-                  <SelectItem value="success_with_notes">Sukses + catatan</SelectItem>
+                  <SelectItem value="success">Success</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="success_with_notes">Success + notes</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Catatan</Label>
+              <Label>Notes</Label>
               <Textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -483,7 +530,7 @@ export function BackupRestoreTests() {
               />
             </div>
             <div>
-              <Label>Tindak lanjut</Label>
+              <Label>Follow-up</Label>
               <Textarea
                 value={form.follow_up}
                 onChange={(e) => setForm({ ...form, follow_up: e.target.value })}
@@ -493,10 +540,10 @@ export function BackupRestoreTests() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>
-              Batal
+              Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Menyimpan…" : "Simpan"}
+              {saving ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
