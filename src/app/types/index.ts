@@ -36,8 +36,8 @@ export type ErrorReportStatus =
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'critical';
 
-// Target application for Feature Requests / Bug Fixes
-export type TargetApplication = 'simrs' | 'rme' | 'antrean' | 'lainnya';
+// Target application code from master `applications` (e.g. simrs, antrean)
+export type TargetApplication = string;
 
 export type ApprovalStatusValue = 'pending' | 'approved' | 'rejected';
 
@@ -373,35 +373,64 @@ export interface DowntimeRecord {
   estimatedCost?: number;
 }
 
-export interface TeamWorkload {
-  team: TeamType;
-  totalTickets: number;
-  openTickets: number;
-  resolvedTickets: number;
-  overdueTickets: number;
-  averageResponseTime: number;
-  averageResolutionTime: number;
-  slaCompliance: number;
-  workloadPercentage: number;
-  members: string[]; // User IDs
+/** Metrik sederhana completed / open / overdue */
+export interface StaffPerformanceMetrics {
+  completed: number;
+  open: number;
+  overdue: number;
 }
 
-export interface DashboardStats {
-  totalTickets: number;
-  openTickets: number;
-  resolvedToday: number;
-  overdueTickets: number;
-  averageResolutionTime: number;
-  slaCompliance: number;
-  downtimeHours: number;
-  activeDowntimes: number;
-  criticalTickets: number;
-  userSatisfactionScore: number;
-  uptimePercent?: number;
-  statusBreakdown?: {
-    inProgress: number;
-    resolved: number;
+export type StaffPerformanceSection = 'all' | 'tickets' | 'errors' | 'features';
+
+export interface StaffPerformanceUserRow {
+  userId: string;
+  name: string;
+  username?: string;
+  team?: string | null;
+  teamLabel?: string;
+  tickets?: StaffPerformanceMetrics;
+  errors?: StaffPerformanceMetrics;
+  features?: StaffPerformanceMetrics;
+}
+
+export interface StaffPerformanceTeamRow {
+  team: string | null;
+  teamLabel: string;
+  tickets?: StaffPerformanceMetrics;
+  errors?: StaffPerformanceMetrics;
+  features?: StaffPerformanceMetrics;
+}
+
+export interface StaffPerformanceReport {
+  period: { from: string; to: string };
+  section: StaffPerformanceSection;
+  team: string | null;
+  userId: string | null;
+  summary: {
+    tickets?: StaffPerformanceMetrics;
+    errors?: StaffPerformanceMetrics;
+    features?: StaffPerformanceMetrics;
   };
+  byTeam: StaffPerformanceTeamRow[];
+  byUser: StaffPerformanceUserRow[];
+}
+
+export interface QualityIndicatorSemesterRow {
+  year: number;
+  semester: 1 | 2;
+  label: string;
+  period: { from: string; to: string };
+  total: number;
+  completed: number;
+  completionRate: number;
+}
+
+export interface QualityIndicatorReport {
+  application: { value: string; label: string };
+  userId: string | null;
+  userName?: string;
+  generatedAt: string;
+  semesters: QualityIndicatorSemesterRow[];
 }
 
 export interface Notification {
@@ -516,6 +545,8 @@ export interface FilterParams {
 /** Ops logging modules */
 export type RestoreType = 'database' | 'application' | 'both';
 export type RestoreTestResult = 'success' | 'failed' | 'success_with_notes';
+export type BackupSource = 'nas' | 'hdd' | 'pc' | 'server';
+export type TestEnvironment = 'local_development' | 'server_staging';
 export type VisitorStatus = 'inside' | 'completed';
 export type InspectionType = 'weekly' | 'incidental';
 export type InspectionConclusion = 'safe' | 'findings';
@@ -527,15 +558,29 @@ export interface OpsUserRef {
   username?: string;
 }
 
+export interface CatalogApplication {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
 export interface BackupRestoreTest {
   id: string;
   testDate: Date;
   performedBy?: OpsUserRef;
+  /** Application master code (e.g. simrs). */
   applicationSystem: string;
+  /** Display name from master. */
+  applicationLabel: string;
   restoreType: RestoreType;
   backupDatetime?: Date;
-  backupSource?: string;
-  testEnvironment: string;
+  backupSource?: BackupSource;
+  backupSourceLabel?: string;
+  testEnvironment: TestEnvironment;
+  testEnvironmentLabel: string;
   result: RestoreTestResult;
   notes?: string;
   followUp?: string;
@@ -550,7 +595,6 @@ export interface ServerRoomVisitor {
   exitAt?: Date;
   visitorName: string;
   unitOrVendor: string;
-  identityDocument: string;
   purpose: string;
   escortedBy?: OpsUserRef;
   notes?: string;
@@ -565,16 +609,27 @@ export interface InspectionChecklistItem {
   notes?: string | null;
 }
 
+/** Peralatan ruang server yang dicek per inspeksi. */
+export type InspectionChecklistKey =
+  | "ups"
+  | "cable"
+  | "rack"
+  | "ac"
+  | "pc_server"
+  | "mikrotik"
+  | "switch";
+
+export type InspectionChecklistItems = Record<
+  InspectionChecklistKey,
+  InspectionChecklistItem
+>;
+
 export interface ServerRoomInspection {
   id: string;
   inspectionDate: Date;
   inspector?: OpsUserRef;
   inspectionType: InspectionType;
-  checklistItems: {
-    ups: InspectionChecklistItem;
-    alarm: InspectionChecklistItem;
-    cable_rack: InspectionChecklistItem;
-  };
+  checklistItems: InspectionChecklistItems;
   conclusion: InspectionConclusion;
   followUp?: string;
   escalation?: InspectionEscalation;

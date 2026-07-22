@@ -1,26 +1,51 @@
-import type { FeatureRequestStatus, TargetApplication } from '../types';
+import type { FeatureRequestStatus, TargetApplication, CatalogApplication } from '../types';
 
 // Chart colors
 export const CHART_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
+/** Fallback labels used while the applications master list has not loaded yet. */
 export const TARGET_APPLICATION_OPTIONS: { value: TargetApplication; label: string }[] = [
   { value: 'simrs', label: 'SIMRS' },
   { value: 'rme', label: 'RME' },
-  { value: 'antrean', label: 'ANTREAN' },
-  { value: 'lainnya', label: 'Lainnya' },
+  { value: 'antrean', label: 'Queue' },
+  { value: 'bridging-bpjs', label: 'Bridging BPJS' },
+  { value: 'bridging-satusehat', label: 'Bridging SATUSEHAT' },
+  { value: 'lainnya', label: 'Other' },
 ];
 
+const applicationLabelCache: Record<string, string> = {};
+
+export function setApplicationLabelCache(apps: CatalogApplication[]): void {
+  for (const app of apps) {
+    applicationLabelCache[app.code] = app.name;
+  }
+}
+
 export function getApplicationLabel(app?: TargetApplication): string {
-  return TARGET_APPLICATION_OPTIONS.find((o) => o.value === app)?.label ?? '-';
+  if (!app) return '-';
+  return (
+    applicationLabelCache[app] ??
+    TARGET_APPLICATION_OPTIONS.find((o) => o.value === app)?.label ??
+    app
+  );
 }
 
 export function getApplicationColor(app?: TargetApplication): string {
   switch (app) {
-    case 'simrs': return 'text-blue-600 bg-blue-100';
-    case 'rme': return 'text-green-600 bg-green-100';
-    case 'antrean': return 'text-purple-600 bg-purple-100';
-    case 'lainnya': return 'text-gray-600 bg-gray-100';
-    default: return 'text-gray-600 bg-gray-100';
+    case 'simrs':
+      return 'text-blue-600 bg-blue-100';
+    case 'rme':
+      return 'text-green-600 bg-green-100';
+    case 'antrean':
+      return 'text-purple-600 bg-purple-100';
+    case 'bridging-bpjs':
+      return 'text-sky-600 bg-sky-100';
+    case 'bridging-satusehat':
+      return 'text-teal-600 bg-teal-100';
+    case 'lainnya':
+      return 'text-gray-600 bg-gray-100';
+    default:
+      return 'text-gray-600 bg-gray-100';
   }
 }
 

@@ -9,8 +9,6 @@ import {
   DowntimeLocation,
   DowntimeRecord,
   Notification,
-  TeamWorkload,
-  DashboardStats,
   TicketStatus,
   ErrorReportStatus,
   FeatureRequestStatus,
@@ -304,6 +302,17 @@ export function mapDowntimeLocation(data: Record<string, unknown>): DowntimeLoca
   };
 }
 
+export function mapCatalogApplication(data: Record<string, unknown>): import('../../types').CatalogApplication {
+  return {
+    id: String(data.id),
+    code: String(data.code ?? ''),
+    name: String(data.name ?? ''),
+    description: data.description ? String(data.description) : undefined,
+    isActive: Boolean(data.is_active ?? true),
+    sortOrder: Number(data.sort_order ?? 0),
+  };
+}
+
 export function mapDowntimeComponent(data: Record<string, unknown>): DowntimeComponent {
   const defaults = (data.default_affected_components as Record<string, unknown>[] | undefined) ?? [];
   return {
@@ -436,24 +445,83 @@ export function mapNotification(data: Record<string, unknown>): Notification {
   };
 }
 
-export function mapTeamWorkload(data: Record<string, unknown>): TeamWorkload {
-  const team = data.team as { value?: string };
-  const tickets = (data.tickets ?? {}) as Record<string, number>;
-  const performance = (data.performance ?? {}) as Record<string, unknown>;
-  const avgResponse = performance.average_response_time as { hours?: number } | null;
-  const avgResolution = performance.average_resolution_time as { hours?: number } | null;
+function mapStaffMetrics(
+  raw: Record<string, unknown> | undefined
+): import('../../types').StaffPerformanceMetrics | undefined {
+  if (!raw) return undefined;
+  return {
+    completed: Number(raw.completed ?? 0),
+    open: Number(raw.open ?? 0),
+    overdue: Number(raw.overdue ?? 0),
+  };
+}
+
+export function mapStaffPerformanceReport(
+  data: Record<string, unknown>
+): import('../../types').StaffPerformanceReport {
+  const period = (data.period ?? {}) as Record<string, string>;
+  const summary = (data.summary ?? {}) as Record<string, Record<string, unknown>>;
+  const section = String(data.section ?? 'all') as import('../../types').StaffPerformanceSection;
 
   return {
-    team: (team?.value ?? 'programmer') as TeamWorkload['team'],
-    totalTickets: tickets.total ?? 0,
-    openTickets: tickets.open ?? 0,
-    resolvedTickets: tickets.resolved ?? 0,
-    overdueTickets: tickets.overdue ?? 0,
-    averageResponseTime: avgResponse?.hours ?? 0,
-    averageResolutionTime: avgResolution?.hours ?? 0,
-    slaCompliance: (performance.sla_compliance as number) ?? 0,
-    workloadPercentage: Number(data.workload_percentage ?? 0),
-    members: [],
+    period: {
+      from: String(period.from ?? ''),
+      to: String(period.to ?? ''),
+    },
+    section: ['all', 'tickets', 'errors', 'features'].includes(section) ? section : 'all',
+    team: data.team ? String(data.team) : null,
+    userId: data.user_id != null ? String(data.user_id) : null,
+    summary: {
+      tickets: mapStaffMetrics(summary.tickets),
+      errors: mapStaffMetrics(summary.errors),
+      features: mapStaffMetrics(summary.features),
+    },
+    byTeam: ((data.by_team as Record<string, unknown>[]) ?? []).map((row) => ({
+      team: row.team ? String(row.team) : null,
+      teamLabel: String(row.team_label ?? 'Unassigned'),
+      tickets: mapStaffMetrics(row.tickets as Record<string, unknown> | undefined),
+      errors: mapStaffMetrics(row.errors as Record<string, unknown> | undefined),
+      features: mapStaffMetrics(row.features as Record<string, unknown> | undefined),
+    })),
+    byUser: ((data.by_user as Record<string, unknown>[]) ?? []).map((row) => ({
+      userId: String(row.user_id ?? ''),
+      name: String(row.name ?? ''),
+      username: row.username ? String(row.username) : undefined,
+      team: row.team ? String(row.team) : null,
+      teamLabel: row.team_label ? String(row.team_label) : undefined,
+      tickets: mapStaffMetrics(row.tickets as Record<string, unknown> | undefined),
+      errors: mapStaffMetrics(row.errors as Record<string, unknown> | undefined),
+      features: mapStaffMetrics(row.features as Record<string, unknown> | undefined),
+    })),
+  };
+}
+
+export function mapQualityIndicatorReport(
+  data: Record<string, unknown>
+): import('../../types').QualityIndicatorReport {
+  const application = (data.application ?? {}) as Record<string, unknown>;
+  const semesters = ((data.semesters as Record<string, unknown>[]) ?? []).map((row) => {
+    const period = (row.period ?? {}) as Record<string, string>;
+    return {
+      year: Number(row.year ?? 0),
+      semester: (Number(row.semester ?? 1) === 2 ? 2 : 1) as 1 | 2,
+      label: String(row.label ?? ''),
+      period: { from: String(period.from ?? ''), to: String(period.to ?? '') },
+      total: Number(row.total ?? 0),
+      completed: Number(row.completed ?? 0),
+      completionRate: Number(row.completion_rate ?? 0),
+    };
+  });
+
+  return {
+    application: {
+      value: String(application.value ?? ''),
+      label: String(application.label ?? application.value ?? ''),
+    },
+    userId: data.user_id != null ? String(data.user_id) : null,
+    userName: data.user_name ? String(data.user_name) : undefined,
+    generatedAt: String(data.generated_at ?? ''),
+    semesters,
   };
 }
 
@@ -623,29 +691,6 @@ export function mapSystemConfigItem(data: Record<string, unknown>): import('../.
   };
 }
 
-export function mapDashboardStatsFromApi(data: Record<string, unknown>): import('../../types').DashboardStats {
-  const breakdown = (data.status_breakdown ?? {}) as Record<string, number>;
-  return {
-    totalTickets: Number(data.total_tickets ?? 0),
-    openTickets: Number(data.open_tickets ?? 0),
-    resolvedToday: Number(data.resolved_today ?? 0),
-    overdueTickets: Number(data.overdue_tickets ?? 0),
-    criticalTickets: Number(data.critical_tickets ?? 0),
-    activeDowntimes: Number(data.active_downtimes ?? 0),
-    downtimeHours: Number(data.downtime_hours ?? 0),
-    averageResolutionTime: Number(data.average_resolution_time ?? 0),
-    slaCompliance: Number(data.sla_compliance ?? 0),
-    userSatisfactionScore: data.user_satisfaction_score != null
-      ? Number(data.user_satisfaction_score)
-      : 0,
-    uptimePercent: data.uptime_percent != null ? Number(data.uptime_percent) : undefined,
-    statusBreakdown: {
-      inProgress: Number(breakdown.in_progress ?? 0),
-      resolved: Number(breakdown.resolved ?? 0),
-    },
-  };
-}
-
 export function mapMention(data: Record<string, unknown>): import('../../types').Mention {
   const user = data.user as Record<string, unknown> | undefined;
   const comment = data.comment as Record<string, unknown> | undefined;
@@ -657,49 +702,6 @@ export function mapMention(data: Record<string, unknown>): import('../../types')
     commentableId: comment?.commentable_id ? String(comment.commentable_id) : undefined,
     commentableType: comment?.commentable_type ? String(comment.commentable_type) : undefined,
     createdAt: comment?.created_at ? parseDate(comment.created_at as string) : new Date(),
-  };
-}
-
-export function computeDashboardStats(
-  tickets: Ticket[],
-  downtimes: DowntimeRecord[],
-  teamWorkloads: TeamWorkload[],
-  totalTicketCount?: number
-): DashboardStats {
-  const openStatuses: TicketStatus[] = ['draft', 'pending_approval', 'assigned', 'in_progress', 'waiting_for_user'];
-  const openTickets = tickets.filter((t) => openStatuses.includes(t.status)).length;
-  const overdueTickets = tickets.filter((t) => t.slaBreached).length;
-  const criticalTickets = tickets.filter((t) => t.priority === 'critical').length;
-  const resolvedToday = tickets.filter((t) => {
-    if (!t.resolvedDate) return false;
-    const today = new Date();
-    return t.resolvedDate.toDateString() === today.toDateString();
-  }).length;
-
-  const activeDowntimes = downtimes.filter((d) => d.status === 'ongoing').length;
-  const downtimeHours = downtimes.reduce((sum, d) => sum + (d.duration ?? 0) / 60, 0);
-
-  const avgSla =
-    teamWorkloads.length > 0
-      ? teamWorkloads.reduce((sum, t) => sum + t.slaCompliance, 0) / teamWorkloads.length
-      : 0;
-
-  const avgResolution =
-    teamWorkloads.length > 0
-      ? teamWorkloads.reduce((sum, t) => sum + t.averageResolutionTime, 0) / teamWorkloads.length
-      : 0;
-
-  return {
-    totalTickets: totalTicketCount ?? tickets.length,
-    openTickets,
-    resolvedToday,
-    overdueTickets,
-    averageResolutionTime: avgResolution,
-    slaCompliance: Math.round(avgSla),
-    downtimeHours: Math.round(downtimeHours * 10) / 10,
-    activeDowntimes,
-    criticalTickets,
-    userSatisfactionScore: 0,
   };
 }
 
@@ -738,15 +740,48 @@ function unwrapEnumValue(raw: unknown, fallback: string): string {
 }
 
 export function mapBackupRestoreTest(data: Record<string, unknown>): import('../../types').BackupRestoreTest {
+  const application = data.application as { value?: string; label?: string } | null | undefined;
+  const code = String(application?.value ?? data.application_system ?? '');
+  const label = String(application?.label ?? data.application_system ?? code);
+
   return {
     id: String(data.id),
     testDate: parseDate(data.test_date as string),
     performedBy: mapOpsUser(data.performed_by as Record<string, unknown>),
-    applicationSystem: String(data.application_system ?? ''),
+    applicationSystem: code,
+    applicationLabel: label,
     restoreType: unwrapEnumValue(data.restore_type, 'database') as import('../../types').RestoreType,
     backupDatetime: data.backup_datetime ? parseDate(data.backup_datetime as string) : undefined,
-    backupSource: data.backup_source ? String(data.backup_source) : undefined,
-    testEnvironment: String(data.test_environment ?? ''),
+    backupSource: (() => {
+      const raw = data.backup_source;
+      if (!raw) return undefined;
+      if (typeof raw === 'object' && raw !== null && 'value' in raw) {
+        return String((raw as { value?: string }).value) as import('../../types').BackupSource;
+      }
+      return String(raw) as import('../../types').BackupSource;
+    })(),
+    backupSourceLabel: (() => {
+      const raw = data.backup_source;
+      if (!raw) return undefined;
+      if (typeof raw === 'object' && raw !== null && 'label' in raw) {
+        return String((raw as { label?: string }).label ?? '');
+      }
+      return String(raw);
+    })(),
+    testEnvironment: (() => {
+      const raw = data.test_environment;
+      if (typeof raw === 'object' && raw !== null && 'value' in raw) {
+        return String((raw as { value?: string }).value ?? 'local_development') as import('../../types').TestEnvironment;
+      }
+      return String(raw ?? 'local_development') as import('../../types').TestEnvironment;
+    })(),
+    testEnvironmentLabel: (() => {
+      const raw = data.test_environment;
+      if (typeof raw === 'object' && raw !== null && 'label' in raw) {
+        return String((raw as { label?: string }).label ?? '');
+      }
+      return String(raw ?? '');
+    })(),
     result: unwrapEnumValue(data.result, 'success') as import('../../types').RestoreTestResult,
     notes: data.notes ? String(data.notes) : undefined,
     followUp: data.follow_up ? String(data.follow_up) : undefined,
@@ -763,7 +798,6 @@ export function mapServerRoomVisitor(data: Record<string, unknown>): import('../
     exitAt: data.exit_at ? parseDate(data.exit_at as string) : undefined,
     visitorName: String(data.visitor_name ?? ''),
     unitOrVendor: String(data.unit_or_vendor ?? ''),
-    identityDocument: String(data.identity_document ?? ''),
     purpose: String(data.purpose ?? ''),
     escortedBy: mapOpsUser(data.escorted_by as Record<string, unknown>),
     notes: data.notes ? String(data.notes) : undefined,
@@ -774,23 +808,33 @@ export function mapServerRoomVisitor(data: Record<string, unknown>): import('../
   };
 }
 
+const INSPECTION_CHECKLIST_KEYS = [
+  'ups',
+  'cable',
+  'rack',
+  'ac',
+  'pc_server',
+  'mikrotik',
+  'switch',
+] as const;
+
 export function mapServerRoomInspection(data: Record<string, unknown>): import('../../types').ServerRoomInspection {
   const items = (data.checklist_items ?? {}) as Record<string, { ok?: boolean; notes?: string | null }>;
   const mapItem = (key: string) => ({
-    ok: Boolean(items[key]?.ok),
+    ok: items[key]?.ok ?? true,
     notes: items[key]?.notes ?? null,
   });
+
+  const checklistItems = Object.fromEntries(
+    INSPECTION_CHECKLIST_KEYS.map((key) => [key, mapItem(key)])
+  ) as import('../../types').InspectionChecklistItems;
 
   return {
     id: String(data.id),
     inspectionDate: parseDate(data.inspection_date as string),
     inspector: mapOpsUser(data.inspector as Record<string, unknown>),
     inspectionType: unwrapEnumValue(data.inspection_type, 'weekly') as import('../../types').InspectionType,
-    checklistItems: {
-      ups: mapItem('ups'),
-      alarm: mapItem('alarm'),
-      cable_rack: mapItem('cable_rack'),
-    },
+    checklistItems,
     conclusion: unwrapEnumValue(data.conclusion, 'safe') as import('../../types').InspectionConclusion,
     followUp: data.follow_up ? String(data.follow_up) : undefined,
     escalation: data.escalation

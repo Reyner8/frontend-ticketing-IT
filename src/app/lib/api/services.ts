@@ -23,22 +23,22 @@ import {
   mapDowntimeComponent,
   mapDowntimeAnalytics,
   mapNotification,
-  mapTeamWorkload,
+  mapStaffPerformanceReport,
+  mapQualityIndicatorReport,
   mapStatusHistory,
   mapActivityLog,
   mapComment,
   mapAttachment,
   mapMilestone,
   mapCalendarEvent,
-  computeDashboardStats,
   preferencesToApi,
   mapConversionHistory,
   mapSystemConfigItem,
-  mapDashboardStatsFromApi,
   mapMention,
   mapBackupRestoreTest,
   mapServerRoomVisitor,
   mapServerRoomInspection,
+  mapCatalogApplication,
 } from './mappers';
 import {
   User,
@@ -52,8 +52,9 @@ import {
   DowntimeAnalyticsSummary,
   DowntimeComponentCategory,
   Notification,
-  TeamWorkload,
-  DashboardStats,
+  StaffPerformanceReport,
+  StaffPerformanceSection,
+  QualityIndicatorReport,
   UserPreferences,
   Comment,
   Attachment,
@@ -66,6 +67,7 @@ import {
   BackupRestoreTest,
   ServerRoomVisitor,
   ServerRoomInspection,
+  CatalogApplication,
 } from '../../types';
 
 let usersCache: User[] = [];
@@ -693,49 +695,29 @@ export async function markAllNotificationsRead(): Promise<void> {
   await apiPatch('/notifications/read-all');
 }
 
-export async function fetchTeamWorkloadLatest(): Promise<TeamWorkload[]> {
-  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
-    '/team-workload/latest'
-  );
-  const data = response.data ?? [];
-  return (Array.isArray(data) ? data : [data]).map(mapTeamWorkload);
-}
-
-export async function fetchDashboardStats(): Promise<DashboardStats> {
+export async function fetchStaffPerformance(params?: {
+  from?: string;
+  to?: string;
+  team?: string;
+  user_id?: string | number;
+  section?: StaffPerformanceSection;
+}): Promise<StaffPerformanceReport> {
   const response = await apiGet<{ success: boolean; data: Record<string, unknown> }>(
-    '/dashboard/stats'
+    '/staff-performance',
+    params
   );
-  return mapDashboardStatsFromApi(response.data ?? {});
+  return mapStaffPerformanceReport(response.data ?? {});
 }
 
-export async function fetchDashboardData(): Promise<{
-  stats: DashboardStats;
-  tickets: Ticket[];
-  downtimes: DowntimeRecord[];
-  teamWorkload: TeamWorkload[];
-}> {
-  const [statsResult, ticketsResult, downtimesResult, teamWorkload] = await Promise.all([
-    fetchDashboardStats().catch(() => null),
-    fetchTickets({ per_page: 50 }),
-    fetchDowntimeRecords({ per_page: 50 }),
-    fetchTeamWorkloadLatest().catch(() => [] as TeamWorkload[]),
-  ]);
-
-  const stats =
-    statsResult ??
-    computeDashboardStats(
-      ticketsResult.tickets,
-      downtimesResult.records,
-      teamWorkload,
-      ticketsResult.total
-    );
-
-  return {
-    stats,
-    tickets: ticketsResult.tickets,
-    downtimes: downtimesResult.records,
-    teamWorkload,
-  };
+export async function fetchQualityIndicators(params?: {
+  application?: string;
+  user_id?: string | number;
+}): Promise<QualityIndicatorReport> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown> }>(
+    '/quality-indicators/feature-requests',
+    params
+  );
+  return mapQualityIndicatorReport(response.data ?? {});
 }
 
 export async function searchTickets(query: string): Promise<Ticket[]> {
@@ -849,7 +831,14 @@ export async function deleteSystemConfig(id: string): Promise<void> {
   await apiDelete(`/system-configuration/${id}`);
 }
 
-export type ExportDataset = 'tickets' | 'errors' | 'features' | 'downtimes' | 'users';
+export type ExportDataset =
+  | 'tickets'
+  | 'errors'
+  | 'features'
+  | 'downtimes'
+  | 'users'
+  | 'staff-performance'
+  | 'quality-indicators';
 export type ExportFormat = 'csv' | 'excel' | 'pdf';
 
 export async function downloadServerExport(
@@ -1042,33 +1031,6 @@ export async function deleteFeatureRequest(id: string): Promise<void> {
   await apiDelete(`/feature-requests/${id}`);
 }
 
-export async function fetchTeamWorkloadCompare(date: string): Promise<TeamWorkload[]> {
-  const response = await apiGet<{ success: boolean; data: Record<string, unknown>[] }>(
-    '/team-workload/compare',
-    { date }
-  );
-  return (response.data ?? []).map(mapTeamWorkload);
-}
-
-export async function fetchTeamWorkloadHistory(
-  team: string,
-  from: string,
-  to: string
-): Promise<TeamWorkload[]> {
-  const { data } = await apiGetPaginated<Record<string, unknown>[]>(
-    `/team-workload/${team}/history`,
-    { from, to, per_page: 100 }
-  );
-  return (data as unknown as Record<string, unknown>[]).map(mapTeamWorkload);
-}
-
-export async function generateTeamWorkload(): Promise<TeamWorkload[]> {
-  const response = await apiPost<{ success: boolean; data: Record<string, unknown>[] }>(
-    '/team-workload/generate'
-  );
-  return (response.data ?? []).map(mapTeamWorkload);
-}
-
 export async function registerUser(payload: {
   name: string;
   username: string;
@@ -1094,6 +1056,58 @@ export async function resetPassword(payload: {
   password_confirmation: string;
 }): Promise<void> {
   await apiPost('/reset-password', payload, false);
+}
+
+/* ── Shared application / system master ── */
+
+export async function fetchApplications(params?: Record<string, string | number | boolean>): Promise<{
+  applications: CatalogApplication[];
+  total: number;
+}> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/applications', {
+    per_page: 100,
+    ...params,
+  });
+  return {
+    applications: (data as unknown as Record<string, unknown>[]).map(mapCatalogApplication),
+    total: meta.total,
+  };
+}
+
+export async function createApplication(payload: {
+  name: string;
+  code?: string;
+  description?: string;
+  is_active?: boolean;
+  sort_order?: number;
+}): Promise<CatalogApplication> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/applications',
+    payload
+  );
+  return mapCatalogApplication(response.data);
+}
+
+export async function updateApplication(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<CatalogApplication> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/applications/${id}`,
+    payload
+  );
+  return mapCatalogApplication(response.data);
+}
+
+export async function deactivateApplication(id: string): Promise<CatalogApplication> {
+  const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
+    `/applications/${id}/deactivate`
+  );
+  return mapCatalogApplication(response.data);
+}
+
+export async function deleteApplication(id: string): Promise<void> {
+  await apiDelete(`/applications/${id}`);
 }
 
 /* ── Ops logging modules ── */
@@ -1172,11 +1186,11 @@ export async function updateServerRoomVisitor(
 
 export async function checkoutServerRoomVisitor(
   id: string,
-  exitAt?: string
+  exitAt: string
 ): Promise<ServerRoomVisitor> {
   const response = await apiPatch<{ success: boolean; data: Record<string, unknown> }>(
     `/server-room-visitors/${id}/checkout`,
-    exitAt ? { exit_at: exitAt } : {}
+    { exit_at: exitAt }
   );
   return mapServerRoomVisitor(response.data);
 }
