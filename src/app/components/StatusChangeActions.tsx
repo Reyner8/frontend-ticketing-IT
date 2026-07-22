@@ -69,7 +69,7 @@ export function StatusChangeActions({
 
   const handleSubmit = async () => {
     if (status === currentStatus) {
-      toast.error("Pilih status yang berbeda");
+      toast.error("Select a different status");
       return;
     }
     setSubmitting(true);
@@ -98,13 +98,13 @@ export function StatusChangeActions({
           due_date: format(dueDate, "yyyy-MM-dd"),
         });
       }
-      toast.success("Status diperbarui");
+      toast.success("Status updated");
       setOpen(false);
       setDueDate(undefined);
       setEffectiveAt(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
       onCompleted?.();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Pembaruan gagal");
+      toast.error(err instanceof ApiError ? err.message : "Update failed");
     } finally {
       setSubmitting(false);
     }
@@ -114,13 +114,13 @@ export function StatusChangeActions({
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
         <ArrowRightCircle className="mr-2 h-4 w-4" />
-        Ubah status
+        Change status
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ubah status</DialogTitle>
+            <DialogTitle>Change status</DialogTitle>
             <DialogDescription>
               Pindahkan item ke status lain. Riwayat perubahan akan tercatat.
             </DialogDescription>
@@ -128,7 +128,7 @@ export function StatusChangeActions({
 
           <div className="space-y-3">
             <div>
-              <Label>Status baru</Label>
+              <Label>New status</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger>
                   <SelectValue />
@@ -144,21 +144,21 @@ export function StatusChangeActions({
             </div>
 
             <div>
-              <Label>Alasan (opsional)</Label>
+              <Label>Reason (optional)</Label>
               <Input
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Ringkasan singkat di riwayat status"
+                placeholder="Short summary for status history"
                 maxLength={500}
               />
             </div>
 
             <div>
-              <Label>Catatan (opsional)</Label>
+              <Label>Notes (optional)</Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Konteks detail untuk jejak audit"
+                placeholder="Detailed context for audit trail"
                 maxLength={1000}
                 rows={3}
               />
@@ -166,7 +166,7 @@ export function StatusChangeActions({
 
             {(target === "features" || target === "errors") && (
               <div>
-                <Label>Tanggal & waktu efektif</Label>
+                <Label>Effective date & time</Label>
                 <p className="text-xs text-muted-foreground mb-2">
                   Kapan perubahan status ini berlaku (wajib untuk pelacakan siklus hidup).
                 </p>
@@ -181,7 +181,7 @@ export function StatusChangeActions({
 
             {target === "features" && status === "development" && (
               <div>
-                <Label>Due Date (opsional)</Label>
+                <Label>Due Date (optional)</Label>
                 <p className="text-xs text-muted-foreground mb-2">
                   Due date dapat diatur saat masuk Development. Bisa juga diubah lewat Edit di detail.
                 </p>
@@ -192,7 +192,7 @@ export function StatusChangeActions({
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dueDate ? format(dueDate, "PPP") : "Pilih tanggal target selesai"}
+                      {dueDate ? format(dueDate, "PPP") : "Select target completion date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -209,7 +209,7 @@ export function StatusChangeActions({
 
             {target === "errors" && status === "in_progress" && (
               <div>
-                <Label>Due Date (opsional)</Label>
+                <Label>Due Date (optional)</Label>
                 <p className="text-xs text-muted-foreground mb-2">
                   Due date dapat disesuaikan saat penanganan dimulai. Bisa juga diubah lewat Edit.
                 </p>
@@ -220,7 +220,7 @@ export function StatusChangeActions({
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dueDate ? format(dueDate, "PPP") : "Pilih target penyelesaian"}
+                      {dueDate ? format(dueDate, "PPP") : "Select completion target"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -238,10 +238,10 @@ export function StatusChangeActions({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Batal
+              Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? "Menyimpan..." : "Perbarui"}
+              {submitting ? "Saving..." : "Update"}
             </Button>
           </DialogFooter>
         </DialogContent>

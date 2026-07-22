@@ -29,21 +29,21 @@ export function ConversionHistoryView() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>{entries.length} konversi</CardTitle>
+          <CardTitle>{entries.length} conversions</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Memuat...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : entries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Belum ada riwayat konversi.</p>
+            <p className="text-sm text-muted-foreground">No conversion history yet.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tiket Sumber</TableHead>
+                  <TableHead>Source Ticket</TableHead>
                   <TableHead>Target</TableHead>
-                  <TableHead>Dikonversi Oleh</TableHead>
-                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Converted By</TableHead>
+                  <TableHead>Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

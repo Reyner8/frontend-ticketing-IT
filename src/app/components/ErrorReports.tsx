@@ -40,7 +40,7 @@ const ERROR_STATUS_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const ERROR_LIFECYCLE: { status: ErrorReportStatus; label: string }[] = [
-  { status: "pending_approval", label: "Dilaporkan" },
+  { status: "pending_approval", label: "Reported" },
   { status: "assigned", label: labelStatus("assigned") },
   { status: "in_progress", label: labelStatus("in_progress") },
   { status: "completed", label: labelStatus("completed") },
@@ -347,7 +347,7 @@ export function ErrorReports() {
 
   const calculateSLAStatus = (report: ErrorReport) => {
     if (report.slaBreached) {
-      return { status: 'Melanggar', color: 'text-red-600 bg-red-100' };
+      return { status: 'Breached', color: 'text-red-600 bg-red-100' };
     }
 
     return { status: 'On track', color: 'text-green-600 bg-green-100' };
@@ -356,7 +356,7 @@ export function ErrorReports() {
   const getUserName = (userId: string, fallbackName?: string) => {
     if (fallbackName) return fallbackName;
     const user = mockUsers.find(u => u.id === userId);
-    return user?.name || 'Pengguna tidak dikenal';
+    return user?.name || 'Unknown user';
   };
 
   const formatDate = (date: Date) => {
@@ -391,7 +391,7 @@ export function ErrorReports() {
         {currentUser?.role === 'it_staff' && (
           <Button onClick={() => setShowNewReportDialog(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Laporan error baru
+            New error report
           </Button>
         )}
       </div>
@@ -400,7 +400,7 @@ export function ErrorReports() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total laporan</CardTitle>
+            <CardTitle className="text-sm font-medium">Total reports</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -410,7 +410,7 @@ export function ErrorReports() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Menunggu persetujuan</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending approval</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -420,7 +420,7 @@ export function ErrorReports() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sedang dikerjakan</CardTitle>
+            <CardTitle className="text-sm font-medium">In progress</CardTitle>
             <Timer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -430,7 +430,7 @@ export function ErrorReports() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -440,7 +440,7 @@ export function ErrorReports() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Terlambat</CardTitle>
+            <CardTitle className="text-sm font-medium">Overdue</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -450,7 +450,7 @@ export function ErrorReports() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">SLA melanggar</CardTitle>
+            <CardTitle className="text-sm font-medium">SLA breached</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -462,17 +462,17 @@ export function ErrorReports() {
       {/* Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filter & pencarian</CardTitle>
+          <CardTitle className="text-lg">Filter & search</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="search">Cari</Label>
+              <Label htmlFor="search">Search</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Cari laporan, ID, deskripsi..."
+                  placeholder="Search reports, ID, description..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -487,7 +487,7 @@ export function ErrorReports() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua status</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="pending_approval">{labelStatus("pending_approval")}</SelectItem>
                   <SelectItem value="in_progress">{labelStatus("in_progress")}</SelectItem>
                   <SelectItem value="completed">{labelStatus("completed")}</SelectItem>
@@ -497,28 +497,28 @@ export function ErrorReports() {
             </div>
             
             <div>
-              <Label htmlFor="category">Kategori</Label>
+              <Label htmlFor="category">Category</Label>
               <Select value={categoryFilter} onValueChange={(value: any) => setCategoryFilter(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua kategori</SelectItem>
-                  <SelectItem value="hardware">{labelTeam("hardware")}</SelectItem>
-                  <SelectItem value="network">{labelTeam("network")}</SelectItem>
+                  <SelectItem value="all">All categories</SelectItem>
+                  <SelectItem value="hardware">Hardware</SelectItem>
+                  <SelectItem value="network">Network</SelectItem>
                   <SelectItem value="software">Software</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label htmlFor="priority">Prioritas</Label>
+              <Label htmlFor="priority">Priority</Label>
               <Select value={priorityFilter} onValueChange={(value: any) => setPriorityFilter(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua prioritas</SelectItem>
+                  <SelectItem value="all">All priorities</SelectItem>
                   <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
                   <SelectItem value="high">{labelPriority("high")}</SelectItem>
                   <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
@@ -528,16 +528,15 @@ export function ErrorReports() {
             </div>
             
             <div>
-              <Label htmlFor="team">Tim penanggung jawab</Label>
+              <Label htmlFor="team">Responsible team</Label>
               <Select value={teamFilter} onValueChange={(value: any) => setTeamFilter(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua tim</SelectItem>
+                  <SelectItem value="all">All teams</SelectItem>
                   <SelectItem value="programmer">{labelTeam("programmer")}</SelectItem>
                   <SelectItem value="network">{labelTeam("network")}</SelectItem>
-                  <SelectItem value="hardware">{labelTeam("hardware")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -548,20 +547,20 @@ export function ErrorReports() {
       {/* Results Summary */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Menampilkan {paginatedReports.length} dari {filteredReports.length} laporan error
+          Showing {paginatedReports.length} of {filteredReports.length} error reports
         </p>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Urutkan:</span>
+          <span className="text-sm text-muted-foreground">Sort by:</span>
           <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="dateReported">Tanggal dilaporkan</SelectItem>
-              <SelectItem value="dueDate">Tenggat waktu</SelectItem>
-              <SelectItem value="priority">Prioritas</SelectItem>
+              <SelectItem value="dateReported">Date reported</SelectItem>
+              <SelectItem value="dueDate">Due date</SelectItem>
+              <SelectItem value="priority">Priority</SelectItem>
               <SelectItem value="status">Status</SelectItem>
-              <SelectItem value="sla">Status SLA</SelectItem>
+              <SelectItem value="sla">SLA Status</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -582,13 +581,13 @@ export function ErrorReports() {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('dateReported')}
                   >
-                    ID laporan
+                    Report ID
                     {sortBy === 'dateReported' && (
                       <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
                     )}
                   </TableHead>
-                  <TableHead>Judul</TableHead>
-                  <TableHead>Kategori</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('priority')}
@@ -607,7 +606,7 @@ export function ErrorReports() {
                       <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
                     )}
                   </TableHead>
-                  <TableHead>Ditugaskan ke</TableHead>
+                  <TableHead>Assigned to</TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleSort('dueDate')}
@@ -626,7 +625,7 @@ export function ErrorReports() {
                       <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
                     )}
                   </TableHead>
-                  <TableHead>Tindakan</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -669,7 +668,7 @@ export function ErrorReports() {
                             <span className="text-sm">{getUserName(report.assignedToId, report.assignedToName)}</span>
                           </div>
                         ) : (
-                          <span className="text-sm text-muted-foreground">Belum ditugaskan</span>
+                          <span className="text-sm text-muted-foreground">Unassigned</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -677,11 +676,11 @@ export function ErrorReports() {
                           <div className="text-sm">
                             {formatDate(report.dueDate)}
                             {report.status !== 'completed' && new Date() > report.dueDate && (
-                              <div className="text-xs text-red-600">Terlambat</div>
+                              <div className="text-xs text-red-600">Overdue</div>
                             )}
                           </div>
                         ) : (
-                          <span className="text-sm text-muted-foreground">Tanpa tenggat</span>
+                          <span className="text-sm text-muted-foreground">No due date</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -699,20 +698,20 @@ export function ErrorReports() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleSelectReport(report)}>
                               <Eye className="mr-2 h-4 w-4" />
-                              Lihat detail
+                              View details
                             </DropdownMenuItem>
                             {(currentUser?.role === 'admin' || 
                               currentUser?.role === 'team_lead' || 
                               report.assignedToId === currentUser?.id) && (
                               <DropdownMenuItem>
                                 <Edit className="mr-2 h-4 w-4" />
-                                Ubah
+                                Edit
                               </DropdownMenuItem>
                             )}
                             {currentUser?.role === 'admin' && (
                               <DropdownMenuItem>
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Hapus
+                                Delete
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -731,7 +730,7 @@ export function ErrorReports() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Halaman {currentPage} dari {totalPages}
+            Page {currentPage} of {totalPages}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -740,7 +739,7 @@ export function ErrorReports() {
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
             >
-              Sebelumnya
+              Previous
             </Button>
             <Button
               variant="outline"
@@ -748,7 +747,7 @@ export function ErrorReports() {
               onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
             >
-              Berikutnya
+              Next
             </Button>
           </div>
         </div>
@@ -802,7 +801,7 @@ function NewErrorReportDialog({
         category: formData.category,
         priority: formData.priority,
       });
-      toast.success('Laporan error dibuat');
+      toast.success('Error report created');
       onCreated?.();
       onOpenChange(false);
       setFormData({
@@ -812,7 +811,7 @@ function NewErrorReportDialog({
         category: 'software',
       });
     } catch {
-      toast.error('Gagal membuat laporan error');
+      toast.error('Failed to create error report');
     } finally {
       setSubmitting(false);
     }
@@ -822,7 +821,7 @@ function NewErrorReportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Buat laporan error baru</DialogTitle>
+          <DialogTitle>Create new error report</DialogTitle>
           <DialogDescription>
             Laporkan error atau masalah sistem baru untuk dukungan IT
           </DialogDescription>
@@ -830,23 +829,23 @@ function NewErrorReportDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="title">Judul *</Label>
+            <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Deskripsi singkat masalah"
+              placeholder="Short description of the issue"
               required
             />
           </div>
           
           <div>
-            <Label htmlFor="description">Deskripsi *</Label>
+            <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Deskripsi detail masalah, langkah reproduksi, pesan error, dan dampak..."
+              placeholder="Detailed description of the issue, reproduction steps, error messages, and impact..."
               rows={4}
               required
             />
@@ -854,54 +853,54 @@ function NewErrorReportDialog({
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="category">Kategori *</Label>
+              <Label htmlFor="category">Category *</Label>
               <Select value={formData.category} onValueChange={(value: any) => setFormData({ ...formData, category: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hardware">{labelTeam("hardware")}</SelectItem>
-                  <SelectItem value="network">{labelTeam("network")}</SelectItem>
+                  <SelectItem value="hardware">Hardware</SelectItem>
+                  <SelectItem value="network">Network</SelectItem>
                   <SelectItem value="software">Software</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label htmlFor="priority">Prioritas *</Label>
+              <Label htmlFor="priority">Priority *</Label>
               <Select value={formData.priority} onValueChange={(value: TicketPriority) => setFormData({ ...formData, priority: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Rendah — masalah minor</SelectItem>
-                  <SelectItem value="medium">Sedang — masalah standar</SelectItem>
-                  <SelectItem value="high">Tinggi — masalah mendesak</SelectItem>
-                  <SelectItem value="critical">Kritis — sistem down</SelectItem>
+                  <SelectItem value="low">Low — minor issue</SelectItem>
+                  <SelectItem value="medium">Medium — standard issue</SelectItem>
+                  <SelectItem value="high">High — urgent issue</SelectItem>
+                  <SelectItem value="critical">Critical — system down</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="border rounded-lg p-4 bg-muted/30">
-            <h4 className="font-medium mb-2">Informasi SLA</h4>
+            <h4 className="font-medium mb-2">SLA Information</h4>
             <p className="text-sm text-muted-foreground">
-              Berdasarkan prioritas yang dipilih:
+              Based on the selected priority:
             </p>
             <ul className="text-sm text-muted-foreground mt-1 space-y-1">
-              <li>• <span className="font-medium">Critical:</span> waktu respons 4 jam</li>
-              <li>• <span className="font-medium">High:</span> 2waktu respons 4 jam</li>
-              <li>• <span className="font-medium">Medium:</span> waktu respons 72 jam</li>
-              <li>• <span className="font-medium">Low:</span> waktu respons 168 jam</li>
+              <li>• <span className="font-medium">Critical:</span> 4 hour response time</li>
+              <li>• <span className="font-medium">High:</span> 24 hour response time</li>
+              <li>• <span className="font-medium">Medium:</span> 72 hour response time</li>
+              <li>• <span className="font-medium">Low:</span> 168 hour response time</li>
             </ul>
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
+              Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Membuat...' : 'Buat laporan error'}
+              {submitting ? 'Creating...' : 'Create error report'}
             </Button>
           </div>
         </form>
@@ -956,13 +955,13 @@ function ErrorReportDetailDialog({
   }, [open, report.id]);
   
   const slaStatus = liveReport.slaBreached 
-    ? { status: 'Melanggar', color: 'text-red-600 bg-red-100' }
-    : { status: 'Tepat waktu', color: 'text-green-600 bg-green-100' };
+    ? { status: 'Breached', color: 'text-red-600 bg-red-100' }
+    : { status: 'On time', color: 'text-green-600 bg-green-100' };
 
   const getUserName = (userId: string, fallbackName?: string) => {
     if (fallbackName) return fallbackName;
     const user = users.find(u => u.id === userId);
-    return user?.name || 'Pengguna tidak dikenal';
+    return user?.name || 'Unknown user';
   };
 
   const formatDateTime = (date: Date) => {
@@ -1041,7 +1040,7 @@ function ErrorReportDetailDialog({
         <div className="flex flex-col md:flex-row md:items-stretch justify-between gap-4 border-b pb-4 bg-slate-50/50 dark:bg-slate-900/20 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
           <div className="flex-1 flex flex-col gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Alur Kerja
+              Workflow
             </span>
             <div className="flex flex-wrap items-center gap-2">
               <ClaimActions
@@ -1081,7 +1080,7 @@ function ErrorReportDetailDialog({
 
           <div className="flex flex-col gap-2 md:pl-2 min-w-[120px]">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Kelola
+              Manage
             </span>
             <ResourceEditActions
               title={liveReport.title}
@@ -1104,10 +1103,10 @@ function ErrorReportDetailDialog({
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="inline-flex h-auto w-max min-w-full flex-wrap gap-1 p-1">
             <TabsTrigger value="details">Detail</TabsTrigger>
-            <TabsTrigger value="progress">Linimasa progress</TabsTrigger>
-            <TabsTrigger value="comments">Komentar</TabsTrigger>
+            <TabsTrigger value="progress">Progress timeline</TabsTrigger>
+            <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="files">Berkas</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="mt-4">
@@ -1116,20 +1115,20 @@ function ErrorReportDetailDialog({
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium mb-3">Informasi laporan</h4>
+                    <h4 className="font-medium mb-3">Report information</h4>
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">ID laporan:</span>
+                        <span className="text-muted-foreground">Report ID:</span>
                         <span className="font-mono">{liveReport.id}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Kategori:</span>
+                        <span className="text-muted-foreground">Category:</span>
                         <Badge className={getCategoryColor(liveReport.category)}>
                           {liveReport.category}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Prioritas:</span>
+                        <span className="text-muted-foreground">Priority:</span>
                         <Badge className={getPriorityColor(liveReport.priority)}>
                           {labelPriority(liveReport.priority)}
                         </Badge>
@@ -1141,23 +1140,23 @@ function ErrorReportDetailDialog({
                         </Badge>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Tim penanggung jawab:</span>
-                        <span>{liveReport.assignedTeam ? labelTeam(liveReport.assignedTeam) : 'Belum ditugaskan'}</span>
+                        <span className="text-muted-foreground">Responsible team:</span>
+                        <span>{liveReport.assignedTeam ? labelTeam(liveReport.assignedTeam) : 'Unassigned'}</span>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-medium mb-3">Target Penyelesaian</h4>
+                    <h4 className="font-medium mb-3">Completion Target</h4>
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status SLA:</span>
+                        <span className="text-muted-foreground">SLA Status:</span>
                         <Badge className={slaStatus.color}>
                           {slaStatus.status}
                         </Badge>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">Tenggat waktu:</span>
+                        <span className="text-muted-foreground">Due date:</span>
                         <span className={
                           liveReport.dueDate &&
                           new Date() > liveReport.dueDate &&
@@ -1165,7 +1164,7 @@ function ErrorReportDetailDialog({
                             ? 'text-red-600'
                             : ''
                         }>
-                          {liveReport.dueDate ? formatDateTime(liveReport.dueDate) : 'Belum diatur'}
+                          {liveReport.dueDate ? formatDateTime(liveReport.dueDate) : 'Not set'}
                         </span>
                       </div>
                     </div>
@@ -1174,7 +1173,7 @@ function ErrorReportDetailDialog({
 
                 {/* Description */}
                 <div>
-                  <h4 className="font-medium mb-3">Deskripsi</h4>
+                  <h4 className="font-medium mb-3">Description</h4>
                   <div className="p-4 bg-muted rounded-lg text-sm">
                     {liveReport.description}
                   </div>
@@ -1182,22 +1181,22 @@ function ErrorReportDetailDialog({
 
                 {/* Key Dates */}
                 <div>
-                  <h4 className="font-medium mb-3">Tanggal penting</h4>
+                  <h4 className="font-medium mb-3">Key dates</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Tanggal dilaporkan:</span>
+                        <span className="text-muted-foreground">Date reported:</span>
                         <span>{formatDateTime(liveReport.dateReported)}</span>
                       </div>
                       {liveReport.startDate && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Tanggal mulai:</span>
+                          <span className="text-muted-foreground">Start date:</span>
                           <span>{formatDateTime(liveReport.startDate)}</span>
                         </div>
                       )}
                       {liveReport.dueDate && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Tenggat waktu:</span>
+                          <span className="text-muted-foreground">Due date:</span>
                           <span className={new Date() > liveReport.dueDate && liveReport.status !== 'completed' ? 'text-red-600' : ''}>
                             {formatDateTime(liveReport.dueDate)}
                           </span>
@@ -1207,16 +1206,16 @@ function ErrorReportDetailDialog({
                     <div className="space-y-2">
                       {liveReport.completionDate && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Tanggal selesai:</span>
+                          <span className="text-muted-foreground">Completion date:</span>
                           <span>{formatDateTime(liveReport.completionDate)}</span>
                         </div>
                       )}
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Dibuat:</span>
+                        <span className="text-muted-foreground">Created:</span>
                         <span>{formatDateTime(liveReport.createdAt)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Terakhir diperbarui:</span>
+                        <span className="text-muted-foreground">Last updated:</span>
                         <span>{formatDateTime(liveReport.updatedAt)}</span>
                       </div>
                     </div>
@@ -1225,10 +1224,10 @@ function ErrorReportDetailDialog({
 
                 {/* People */}
                 <div>
-                  <h4 className="font-medium mb-3">Orang terlibat</h4>
+                  <h4 className="font-medium mb-3">People involved</h4>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Pelapor:</span>
+                      <span className="text-muted-foreground">Reporter:</span>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarFallback className="text-xs">
@@ -1240,7 +1239,7 @@ function ErrorReportDetailDialog({
                     </div>
                     {liveReport.assignedToId && (
                       <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Ditugaskan ke:</span>
+                        <span className="text-muted-foreground">Assigned to:</span>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
                             <AvatarFallback className="text-xs">
@@ -1262,7 +1261,7 @@ function ErrorReportDetailDialog({
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-6">
                 <div>
-                  <h4 className="font-medium mb-3">Lifecycle Penanganan Error</h4>
+                  <h4 className="font-medium mb-3">Error Handling Lifecycle</h4>
                   <div className="space-y-4">
                     {lifecycleSteps.map((step) => (
                       <div key={step.status} className="flex items-start gap-3">
@@ -1287,9 +1286,9 @@ function ErrorReportDetailDialog({
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {step.stepState === 'completed' ? 'Selesai' :
-                             step.stepState === 'current' ? 'Sedang dikerjakan' :
-                             'Menunggu'}
+                            {step.stepState === 'completed' ? 'Completed' :
+                             step.stepState === 'current' ? 'In progress' :
+                             'Waiting'}
                             {step.duration && ` · ${step.duration}`}
                           </div>
                         </div>
@@ -1306,7 +1305,7 @@ function ErrorReportDetailDialog({
 
                 {sortedHistory.length > 0 ? (
                   <div>
-                    <h4 className="font-medium mb-3">Transisi status</h4>
+                    <h4 className="font-medium mb-3">Status transitions</h4>
                     <div className="space-y-3">
                       {sortedHistory.map((entry, index) => {
                         const next = sortedHistory[index + 1];
@@ -1331,7 +1330,7 @@ function ErrorReportDetailDialog({
                               <p className="text-muted-foreground mt-1">{entry.reason}</p>
                             )}
                             {duration && (
-                              <p className="text-xs text-muted-foreground mt-1">Durasi: {duration}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Duration: {duration}</p>
                             )}
                           </div>
                         );
@@ -1340,7 +1339,7 @@ function ErrorReportDetailDialog({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
-                    Belum ada riwayat status tercatat
+                    No status history recorded yet
                   </p>
                 )}
               </div>
@@ -1353,7 +1352,7 @@ function ErrorReportDetailDialog({
 
           <TabsContent value="activity" className="mt-4">
             {activityLoading ? (
-              <p className="text-sm text-muted-foreground">Memuat aktivitas...</p>
+              <p className="text-sm text-muted-foreground">Loading activity...</p>
             ) : (
               <ActivityTimelinePanel activityLog={activityLog} />
             )}
@@ -1402,7 +1401,7 @@ function NewTicketDialog({
         category: formData.category,
         priority: formData.priority,
       });
-      toast.success('Tiket dibuat');
+      toast.success('Ticket created');
       onOpenChange(false);
       setFormData({
         title: '',
@@ -1411,7 +1410,7 @@ function NewTicketDialog({
         category: 'system_error'
       });
     } catch {
-      toast.error('Gagal membuat tiket');
+      toast.error('Failed to create ticket');
     } finally {
       setSubmitting(false);
     }
@@ -1421,7 +1420,7 @@ function NewTicketDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Buat laporan error baru</DialogTitle>
+          <DialogTitle>Create new error report</DialogTitle>
           <DialogDescription>
             Laporkan error atau masalah sistem baru untuk dukungan IT
           </DialogDescription>
@@ -1429,23 +1428,23 @@ function NewTicketDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="title">Judul *</Label>
+            <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Deskripsi singkat masalah"
+              placeholder="Short description of the issue"
               required
             />
           </div>
           
           <div>
-            <Label htmlFor="description">Deskripsi *</Label>
+            <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Deskripsi detail masalah, langkah reproduksi, pesan error, dan dampak..."
+              placeholder="Detailed description of the issue, reproduction steps, error messages, and impact..."
               rows={4}
               required
             />
@@ -1453,32 +1452,32 @@ function NewTicketDialog({
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="priority">Prioritas</Label>
+              <Label htmlFor="priority">Priority</Label>
               <Select value={formData.priority} onValueChange={(value: TicketPriority) => setFormData({ ...formData, priority: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Rendah — masalah minor</SelectItem>
-                  <SelectItem value="medium">Sedang — masalah standar</SelectItem>
-                  <SelectItem value="high">Tinggi — masalah mendesak</SelectItem>
-                  <SelectItem value="critical">Kritis — sistem down</SelectItem>
+                  <SelectItem value="low">Low — minor issue</SelectItem>
+                  <SelectItem value="medium">Medium — standard issue</SelectItem>
+                  <SelectItem value="high">High — urgent issue</SelectItem>
+                  <SelectItem value="critical">Critical — system down</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div>
-              <Label htmlFor="category">Kategori</Label>
+              <Label htmlFor="category">Category</Label>
               <Select value={formData.category} onValueChange={(value: TicketCategory) => setFormData({ ...formData, category: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="system_error">Error sistem</SelectItem>
-                  <SelectItem value="software_bug">Bug perangkat lunak</SelectItem>
-                  <SelectItem value="network_issue">Masalah jaringan</SelectItem>
-                  <SelectItem value="hardware_problem">Masalah hardware</SelectItem>
-                  <SelectItem value="performance_issue">Masalah performa</SelectItem>
+                  <SelectItem value="system_error">System error</SelectItem>
+                  <SelectItem value="software_bug">Software bug</SelectItem>
+                  <SelectItem value="network_issue">Network issue</SelectItem>
+                  <SelectItem value="hardware_problem">Hardware issue</SelectItem>
+                  <SelectItem value="performance_issue">Performance issue</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1486,10 +1485,10 @@ function NewTicketDialog({
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
+              Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Membuat...' : 'Buat laporan'}
+              {submitting ? 'Creating...' : 'Create report'}
             </Button>
           </div>
         </form>

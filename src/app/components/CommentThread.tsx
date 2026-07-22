@@ -51,9 +51,9 @@ export function CommentThread({
       const created = await createComment(parent, resourceId, content);
       setComments((prev) => [...prev, created]);
       setNewComment("");
-      toast.success("Komentar ditambahkan");
+      toast.success("Comment added");
     } catch {
-      toast.error("Gagal menambahkan komentar");
+      toast.error("Failed to add comment");
     } finally {
       setSubmitting(false);
     }
@@ -63,9 +63,9 @@ export function CommentThread({
     <div className="space-y-3">
       <ScrollArea className="h-[320px] pr-4">
         {loading ? (
-          <p className="text-sm text-muted-foreground">Memuat komentar...</p>
+          <p className="text-sm text-muted-foreground">Loading comments...</p>
         ) : comments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Belum ada komentar</p>
+          <p className="text-sm text-muted-foreground">No comments yet</p>
         ) : (
           <div className="space-y-4">
             {comments.map((c) => (
@@ -92,7 +92,7 @@ export function CommentThread({
         <Textarea
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Tambahkan komentar..."
+          placeholder="Add a comment..."
           rows={2}
           className="flex-1"
         />

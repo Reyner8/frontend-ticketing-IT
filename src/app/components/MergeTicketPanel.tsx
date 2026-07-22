@@ -45,10 +45,10 @@ export function MergeTicketPanel({ ticketId, onChanged }: MergeTicketPanelProps)
     try {
       setMerged(await mergeTickets(ticketId, [id]));
       setMergeId("");
-      toast.success("Ticket digabung");
+      toast.success("Ticket merged");
       onChanged?.();
     } catch {
-      toast.error("Gagal menggabungkan");
+      toast.error("Failed to merge");
     } finally {
       setBusy(false);
     }
@@ -58,10 +58,10 @@ export function MergeTicketPanel({ ticketId, onChanged }: MergeTicketPanelProps)
     setBusy(true);
     try {
       setMerged(await unmergeTicket(ticketId, mergedTicketId));
-      toast.success("Gabungan dilepas");
+      toast.success("Merge removed");
       onChanged?.();
     } catch {
-      toast.error("Gagal melepas gabungan");
+      toast.error("Failed to remove merge");
     } finally {
       setBusy(false);
     }
@@ -74,9 +74,9 @@ export function MergeTicketPanel({ ticketId, onChanged }: MergeTicketPanelProps)
         <h4 className="font-medium">Merged Tickets</h4>
       </div>
       {loading ? (
-        <p className="text-sm text-muted-foreground">Memuat...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : merged.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Belum ada ticket digabung</p>
+        <p className="text-sm text-muted-foreground">No merged tickets yet</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {merged.map((t) => (
@@ -96,7 +96,7 @@ export function MergeTicketPanel({ ticketId, onChanged }: MergeTicketPanelProps)
       )}
       <div className="flex gap-2 items-end">
         <div className="flex-1 space-y-1">
-          <Label htmlFor="merge-id">ID ticket yang digabung</Label>
+          <Label htmlFor="merge-id">Merged ticket ID</Label>
           <Input
             id="merge-id"
             value={mergeId}
@@ -105,7 +105,7 @@ export function MergeTicketPanel({ ticketId, onChanged }: MergeTicketPanelProps)
           />
         </div>
         <Button onClick={handleMerge} disabled={busy || !mergeId.trim()}>
-          Gabungkan
+          Merge
         </Button>
       </div>
     </div>

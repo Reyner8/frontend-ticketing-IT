@@ -36,15 +36,14 @@ import type { User, UserRole, TeamType } from "../types";
 
 const ROLES: { value: UserRole; label: string }[] = [
   { value: "admin", label: "Admin" },
-  { value: "team_lead", label: "Ketua Tim" },
-  { value: "it_staff", label: "Staf IT" },
+  { value: "team_lead", label: "Team Lead" },
+  { value: "it_staff", label: "IT Staff" },
   { value: "reporter", label: "Reporter" },
 ];
 
 const TEAMS: { value: TeamType; label: string }[] = [
-  { value: "programmer", label: "Programmer" },
-  { value: "network", label: "Jaringan" },
-  { value: "hardware", label: "Hardware" },
+  { value: "programmer", label: "Software Engineer" },
+  { value: "network", label: "Network Engineer" },
 ];
 
 export function UserManagement() {
@@ -67,7 +66,7 @@ export function UserManagement() {
       setUsers(data);
       setCachedUsers(data);
     } catch {
-      toast.error("Gagal memuat pengguna");
+      toast.error("Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -97,9 +96,9 @@ export function UserManagement() {
     try {
       const updated = await toggleUserActive(user.id);
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-      toast.success(`Pengguna ${updated.isActive ? "diaktifkan" : "dinonaktifkan"}`);
+      toast.success(`User ${updated.isActive ? "activated" : "deactivated"}`);
     } catch {
-      toast.error("Gagal mengubah status pengguna");
+      toast.error("Failed to change user status");
     }
   };
 
@@ -108,9 +107,9 @@ export function UserManagement() {
     try {
       await deleteUser(deletingUser.id);
       setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
-      toast.success("Pengguna dihapus");
+      toast.success("User deleted");
     } catch {
-      toast.error("Gagal menghapus pengguna");
+      toast.error("Failed to delete user");
     } finally {
       setDeletingUser(null);
     }
@@ -141,7 +140,7 @@ export function UserManagement() {
             setShowDialog(true);
           }}
         >
-          <Plus className="mr-2 h-4 w-4" /> Pengguna Baru
+          <Plus className="mr-2 h-4 w-4" /> New User
         </Button>
       </div>
 
@@ -157,7 +156,7 @@ export function UserManagement() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Cari berdasarkan nama atau email"
+                placeholder="Search by name or email"
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -171,7 +170,7 @@ export function UserManagement() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Peran</SelectItem>
+                <SelectItem value="all">All Roles</SelectItem>
                 {ROLES.map((r) => (
                   <SelectItem key={r.value} value={r.value}>
                     {r.label}
@@ -187,7 +186,7 @@ export function UserManagement() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Tim</SelectItem>
+                <SelectItem value="all">All Teams</SelectItem>
                 {TEAMS.map((t) => (
                   <SelectItem key={t.value} value={t.value}>
                     {t.label}
@@ -201,7 +200,7 @@ export function UserManagement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Pengguna ({filtered.length})</CardTitle>
+          <CardTitle>Users ({filtered.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -212,11 +211,11 @@ export function UserManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Pengguna</TableHead>
-                  <TableHead>Peran</TableHead>
-                  <TableHead>Tim</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Team</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -262,7 +261,7 @@ export function UserManagement() {
                           disabled={user.id === currentUser?.id}
                         />
                         <span className="text-xs text-muted-foreground">
-                          {user.isActive ? "Aktif" : "Nonaktif"}
+                          {user.isActive ? "Active" : "Inactive"}
                         </span>
                       </div>
                     </TableCell>
@@ -294,7 +293,7 @@ export function UserManagement() {
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       <UserCog className="mx-auto h-8 w-8 mb-2 opacity-40" />
-                      Tidak ada pengguna yang sesuai filter
+                      No users match the filter
                     </TableCell>
                   </TableRow>
                 )}
@@ -320,15 +319,15 @@ export function UserManagement() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus pengguna?</AlertDialogTitle>
+            <AlertDialogTitle>Delete user?</AlertDialogTitle>
             <AlertDialogDescription>
               Tindakan ini akan menghapus {deletingUser?.name} dari sistem secara permanen.
               Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Hapus</AlertDialogAction>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -399,10 +398,10 @@ function UserFormDialog({
       if (!payload.password) delete payload.password;
       if (isEditing && user) {
         await updateUser(user.id, payload);
-        toast.success("Pengguna diperbarui");
+        toast.success("User updated");
       } else {
         await createUser(payload);
-        toast.success("Pengguna dibuat");
+        toast.success("User created");
       }
       onSaved();
       onOpenChange(false);
@@ -414,8 +413,8 @@ function UserFormDialog({
         err instanceof ApiError
           ? err.message
           : isEditing
-            ? "Gagal memperbarui pengguna"
-            : "Gagal membuat pengguna"
+            ? "Failed to update user"
+            : "Failed to create user"
       );
     } finally {
       setSubmitting(false);
@@ -426,7 +425,7 @@ function UserFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Pengguna" : "Buat Pengguna"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit User" : "Create User"}</DialogTitle>
           <DialogDescription>
             {isEditing
               ? "Perbarui informasi dan peran pengguna."
@@ -437,7 +436,7 @@ function UserFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="name">Nama Lengkap</Label>
+              <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 value={form.name}
@@ -478,14 +477,14 @@ function UserFormDialog({
 
           <div>
             <Label htmlFor="password">
-              {isEditing ? "Kata Sandi Baru (opsional)" : "Kata Sandi"}
+              {isEditing ? "New Password (optional)" : "Password"}
             </Label>
             <Input
               id="password"
               type="password"
               value={form.password ?? ""}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder={isEditing ? "Kosongkan untuk mempertahankan yang sekarang" : ""}
+              placeholder={isEditing ? "Leave blank to keep current" : ""}
               minLength={8}
               required={!isEditing}
             />
@@ -496,7 +495,7 @@ function UserFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Peran</Label>
+              <Label>Role</Label>
               <Select
                 value={form.role}
                 onValueChange={(v) => setForm({ ...form, role: v })}
@@ -514,7 +513,7 @@ function UserFormDialog({
               </Select>
             </div>
             <div>
-              <Label>Tim {form.role === "it_staff" && <span className="text-red-500">*</span>}</Label>
+              <Label>Team {form.role === "it_staff" && <span className="text-red-500">*</span>}</Label>
               <Select
                 value={form.team ?? "none"}
                 onValueChange={(v) =>
@@ -526,7 +525,7 @@ function UserFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">— Tidak ada —</SelectItem>
+                  <SelectItem value="none">— None —</SelectItem>
                   {TEAMS.map((t) => (
                     <SelectItem key={t.value} value={t.value}>
                       {t.label}
@@ -542,7 +541,7 @@ function UserFormDialog({
 
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>
-              <Label>Aktif</Label>
+              <Label>Active</Label>
               <p className="text-xs text-muted-foreground">
                 Pengguna nonaktif tidak dapat masuk
               </p>
@@ -555,10 +554,10 @@ function UserFormDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
+              Cancel
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Buat Pengguna"}
+              {submitting ? "Saving..." : isEditing ? "Save Changes" : "Create User"}
             </Button>
           </DialogFooter>
         </form>

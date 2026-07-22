@@ -15,15 +15,8 @@ import { Pencil, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { format } from "date-fns";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import { TARGET_APPLICATION_OPTIONS } from "../lib/constants";
 import type { TargetApplication } from "../types";
+import { ApplicationSelect } from "./ApplicationSelect";
 
 import { useApp } from "../lib/store";
 
@@ -91,23 +84,23 @@ export function ResourceEditActions({
           ? { due_date: editDueDate ? format(editDueDate, "yyyy-MM-dd") : null }
           : {}),
       });
-      toast.success("Berhasil diperbarui");
+      toast.success("Updated successfully");
       setEditOpen(false);
     } catch {
-      toast.error("Pembaruan gagal");
+      toast.error("Update failed");
     } finally {
       setBusy(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Hapus "${title}"?`)) return;
+    if (!confirm(`Delete "${title}"?`)) return;
     setBusy(true);
     try {
       await onDelete();
-      toast.success("Berhasil dihapus");
+      toast.success("Deleted successfully");
     } catch {
-      toast.error("Penghapusan gagal");
+      toast.error("Deletion failed");
     } finally {
       setBusy(false);
     }
@@ -120,27 +113,27 @@ export function ResourceEditActions({
       {canEdit && (
         <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           <Pencil className="h-4 w-4 mr-1" />
-          Ubah
+          Edit
         </Button>
       )}
       {canDelete && (
         <Button size="sm" variant="destructive" onClick={handleDelete} disabled={busy}>
           <Trash2 className="h-4 w-4 mr-1" />
-          Hapus
+          Delete
         </Button>
       )}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ubah</DialogTitle>
+            <DialogTitle>Edit</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label>Judul</Label>
+              <Label>Title</Label>
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Deskripsi</Label>
+              <Label>Description</Label>
               <Textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
@@ -149,22 +142,12 @@ export function ResourceEditActions({
             </div>
             {showTargetApplication && (
               <div className="space-y-1">
-                <Label>Aplikasi Tujuan</Label>
-                <Select
+                <Label>Target Application</Label>
+                <ApplicationSelect
                   value={editTargetApplication}
+                  includeCode={targetApplication}
                   onValueChange={(v) => setEditTargetApplication(v as TargetApplication)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TARGET_APPLICATION_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
             )}
             {showDueDate && (
@@ -177,7 +160,7 @@ export function ResourceEditActions({
                       className="w-full justify-start text-left font-normal"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {editDueDate ? format(editDueDate, "PPP") : "Pilih tanggal"}
+                      {editDueDate ? format(editDueDate, "PPP") : "Select date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -197,7 +180,7 @@ export function ResourceEditActions({
                     className="px-0 h-auto text-xs text-muted-foreground"
                     onClick={() => setEditDueDate(undefined)}
                   >
-                    Hapus due date
+                    Remove due date
                   </Button>
                 )}
               </div>
@@ -205,10 +188,10 @@ export function ResourceEditActions({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Batal
+              Cancel
             </Button>
             <Button onClick={handleSave} disabled={busy || !editTitle.trim()}>
-              Simpan
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -97,7 +97,7 @@ export function Tickets() {
       setTickets(data);
     } catch {
       setTickets([]);
-      toast.error("Gagal memuat tiket");
+      toast.error("Failed to load tickets");
     } finally {
       setLoading(false);
     }
@@ -179,7 +179,7 @@ export function Tickets() {
             Antrian laporan masuk — termasuk form publik (PUB-*). IT meninjau, lalu convert ke Error Report / Feature Request
           </p>
         </div>
-        <Badge variant="outline">{filtered.length} ditampilkan</Badge>
+        <Badge variant="outline">{filtered.length} shown</Badge>
       </div>
 
       <Card>
@@ -191,7 +191,7 @@ export function Tickets() {
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               className="pl-9"
-              placeholder="Cari ID, judul..."
+              placeholder="Search ID, title..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -201,7 +201,7 @@ export function Tickets() {
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua status</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
               {TICKET_STATUS_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}
@@ -211,10 +211,10 @@ export function Tickets() {
           </Select>
           <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as TicketPriority | "all")}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Prioritas" />
+              <SelectValue placeholder="Priority" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua prioritas</SelectItem>
+              <SelectItem value="all">All priorities</SelectItem>
               <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
               <SelectItem value="high">{labelPriority("high")}</SelectItem>
               <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
@@ -226,31 +226,31 @@ export function Tickets() {
             variant={publicOnlyFilter ? "default" : "outline"}
             onClick={() => setPublicOnlyFilter((v) => !v)}
           >
-            Laporan Publik
+            Public Report
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Daftar tiket</CardTitle>
+          <CardTitle>Ticket list</CardTitle>
           <CardDescription>Klik baris untuk membuka detail, komentar, lampiran, dan tindakan</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <TableSkeleton />
           ) : filtered.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">Tiket tidak ditemukan</p>
+            <p className="text-center py-8 text-muted-foreground">No tickets found</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Judul</TableHead>
-                  <TableHead>Pelapor</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Reporter</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Prioritas</TableHead>
-                  <TableHead>Dilaporkan</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Reported</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -262,7 +262,7 @@ export function Tickets() {
                         {ticket.id}
                         {ticket.isPublicSubmission && (
                           <Badge variant="outline" className="text-xs">
-                            Publik
+                            Public
                           </Badge>
                         )}
                       </div>
@@ -342,7 +342,7 @@ function TicketDetailDialog({
   const getUserName = (userId: string) => {
     if (userId === detail.reporterId && detail.reporterName) return detail.reporterName;
     if (userId === detail.assignedToId && detail.assignedToName) return detail.assignedToName;
-    return users.find((u) => u.id === userId)?.name ?? "Tidak dikenal";
+    return users.find((u) => u.id === userId)?.name ?? "Unknown";
   };
 
   const refreshDetail = () => {
@@ -362,7 +362,7 @@ function TicketDetailDialog({
             </Badge>
             <Badge className={priorityColor(detail.priority)}>{labelPriority(detail.priority)}</Badge>
             {detail.isPublicSubmission && (
-              <Badge variant="outline">Laporan Publik</Badge>
+              <Badge variant="outline">Public Report</Badge>
             )}
           </DialogTitle>
           <DialogDescription>{detail.title}</DialogDescription>
@@ -371,7 +371,7 @@ function TicketDetailDialog({
         <div className="flex flex-col md:flex-row md:items-stretch justify-between gap-4 border-b pb-4 bg-slate-50/50 dark:bg-slate-900/20 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
           <div className="flex-1 flex flex-col gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Alur Kerja
+              Workflow
             </span>
             <div className="flex flex-wrap items-center gap-2">
               {detail.status !== "converted" && (
@@ -426,7 +426,7 @@ function TicketDetailDialog({
 
           <div className="flex flex-col gap-2 md:pl-2 min-w-[120px]">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Kelola
+              Manage
             </span>
             <ResourceEditActions
               title={detail.title}
@@ -447,9 +447,9 @@ function TicketDetailDialog({
           <div className="overflow-x-auto pb-1">
             <TabsList className="inline-flex h-auto w-max min-w-full flex-wrap gap-1 p-1">
               <TabsTrigger value="details" className="flex-none px-3">Detail</TabsTrigger>
-              <TabsTrigger value="comments" className="flex-none px-3">Komentar</TabsTrigger>
-              <TabsTrigger value="files" className="flex-none px-3">Berkas</TabsTrigger>
-              <TabsTrigger value="merge" className="flex-none px-3">Gabung</TabsTrigger>
+              <TabsTrigger value="comments" className="flex-none px-3">Comments</TabsTrigger>
+              <TabsTrigger value="files" className="flex-none px-3">Files</TabsTrigger>
+              <TabsTrigger value="merge" className="flex-none px-3">Merge</TabsTrigger>
               <TabsTrigger value="activity" className="flex-none px-3">Activity</TabsTrigger>
             </TabsList>
           </div>
@@ -460,7 +460,7 @@ function TicketDetailDialog({
                 {detail.isPublicSubmission && (
                   <div className="rounded-lg border bg-slate-50 p-3 grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Pelapor (form publik)</Label>
+                      <Label>Reporter (public form)</Label>
                       <p className="mt-1 font-medium">{detail.submitterName ?? "—"}</p>
                     </div>
                     <div>
@@ -471,34 +471,34 @@ function TicketDetailDialog({
                 )}
 
                 <div>
-                  <Label>Deskripsi</Label>
+                  <Label>Description</Label>
                   <p className="mt-1 whitespace-pre-wrap">{detail.description || "—"}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Kategori</Label>
+                    <Label>Category</Label>
                     <p className="mt-1 capitalize">{detail.category.replace(/_/g, " ")}</p>
                   </div>
                   <div>
-                    <Label>Pelapor</Label>
+                    <Label>Reporter</Label>
                     <p className="mt-1">{getUserName(detail.reporterId)}</p>
                   </div>
                   <div>
-                    <Label>Penanggung jawab</Label>
+                    <Label>Assignee</Label>
                     <p className="mt-1">
-                      {detail.assignedToId ? getUserName(detail.assignedToId) : "Belum ditugaskan"}
+                      {detail.assignedToId ? getUserName(detail.assignedToId) : "Unassigned"}
                     </p>
                   </div>
                   <div>
-                    <Label>Tim</Label>
+                    <Label>Team</Label>
                     <p className="mt-1">{detail.assignedTeam ? labelTeam(detail.assignedTeam) : "—"}</p>
                   </div>
                   <div>
-                    <Label>Dilaporkan</Label>
+                    <Label>Reported</Label>
                     <p className="mt-1">{format(detail.dateReported, "PPpp")}</p>
                   </div>
                   <div>
-                    <Label>Tenggat waktu</Label>
+                    <Label>Due date</Label>
                     <p className="mt-1">
                       {detail.dueDate ? format(detail.dueDate, "PPpp") : "—"}
                     </p>
@@ -526,7 +526,7 @@ function TicketDetailDialog({
                 <div className="mb-4">
                   <h4 className="font-medium mb-2 flex items-center gap-2">
                     <MessageSquare className="h-4 w-4" />
-                    Riwayat status
+                    Status history
                   </h4>
                   <ul className="space-y-2 text-sm">
                     {statusHistory.map((s) => (
@@ -540,9 +540,9 @@ function TicketDetailDialog({
                   </ul>
                 </div>
               )}
-              <h4 className="font-medium mb-2">Log aktivitas</h4>
+              <h4 className="font-medium mb-2">Activity log</h4>
               {activityLog.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Belum ada aktivitas tercatat</p>
+                <p className="text-sm text-muted-foreground">No activity recorded yet</p>
               ) : (
                 <ul className="space-y-2 text-sm">
                   {activityLog.map((a) => (

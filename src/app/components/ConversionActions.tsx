@@ -27,7 +27,7 @@ import {
 import { ApiError } from "../lib/api/client";
 import { useApp } from "../lib/store";
 import type { ConversionHistoryEntry, TargetApplication, TicketPriority } from "../types";
-import { TARGET_APPLICATION_OPTIONS } from "../lib/constants";
+import { ApplicationSelect } from "./ApplicationSelect";
 import { labelPriority } from "../lib/ui-labels";
 
 interface ConversionActionsProps {
@@ -80,7 +80,7 @@ export function ConversionActions({
         }
       >
         <ArrowRightLeft className="h-3.5 w-3.5" />
-        Dikonversi{targetId ? ` → ${targetId}` : ` ke ${targetType}`}
+        Converted{targetId ? ` → ${targetId}` : ` to ${targetType}`}
       </span>
     );
   }
@@ -91,7 +91,7 @@ export function ConversionActions({
 
   const handleConvert = async () => {
     if (!reason.trim()) {
-      toast.error("Alasan konversi wajib diisi");
+      toast.error("Conversion reason is required");
       return;
     }
     setSubmitting(true);
@@ -110,11 +110,11 @@ export function ConversionActions({
           priority,
         });
       }
-      toast.success("Ticket berhasil dikonversi");
+      toast.success("Ticket converted successfully");
       setOpen(false);
       onCompleted?.();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Konversi gagal");
+      toast.error(err instanceof ApiError ? err.message : "Conversion failed");
     } finally {
       setSubmitting(false);
     }
@@ -124,13 +124,13 @@ export function ConversionActions({
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
         <ArrowRightLeft className="mr-2 h-4 w-4" />
-        Konversi
+        Convert
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Convert Ticket — Arahkan ke Tim</DialogTitle>
+            <DialogTitle>Convert Ticket — Route to Team</DialogTitle>
             <DialogDescription>
               Tentukan apakah laporan ini masuk Error Report (insiden) atau Feature
               Request/Bug Fix (pengembangan). Untuk Error Report, pilih ranah
@@ -140,7 +140,7 @@ export function ConversionActions({
 
           <div className="space-y-3">
             <div>
-              <Label>Tujuan konversi</Label>
+              <Label>Conversion target</Label>
               <Select
                 value={target}
                 onValueChange={(v) => setTarget(v as typeof target)}
@@ -149,9 +149,9 @@ export function ConversionActions({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="error_report">Error Report (insiden IT)</SelectItem>
+                  <SelectItem value="error_report">Error Report (IT incident)</SelectItem>
                   <SelectItem value="feature_request">
-                    Feature Request / Bug Fix (pengembangan)
+                    Feature Request / Bug Fix (development)
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -159,7 +159,7 @@ export function ConversionActions({
 
             {target === "error_report" ? (
               <div>
-                <Label>Ranah masalah (IT)</Label>
+                <Label>Problem domain (IT)</Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
                     <SelectValue />
@@ -174,7 +174,7 @@ export function ConversionActions({
             ) : (
               <>
                 <div>
-                  <Label>Jenis permintaan</Label>
+                  <Label>Request type</Label>
                   <Select value={requestType} onValueChange={setRequestType}>
                     <SelectTrigger>
                       <SelectValue />
@@ -186,28 +186,17 @@ export function ConversionActions({
                   </Select>
                 </div>
                 <div>
-                  <Label>Aplikasi Tujuan</Label>
-                  <Select
+                  <Label>Target Application</Label>
+                  <ApplicationSelect
                     value={targetApplication}
                     onValueChange={(v) => setTargetApplication(v as TargetApplication)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TARGET_APPLICATION_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
               </>
             )}
 
             <div>
-              <Label>Prioritas</Label>
+              <Label>Priority</Label>
               <Select
                 value={priority}
                 onValueChange={(v) => setPriority(v as TicketPriority)}
@@ -225,11 +214,11 @@ export function ConversionActions({
             </div>
 
             <div>
-              <Label>Alasan konversi</Label>
+              <Label>Conversion reason</Label>
               <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Mengapa ticket ini diarahkan ke modul tersebut?"
+                placeholder="Why is this ticket being routed to that module?"
                 rows={3}
               />
             </div>
@@ -237,10 +226,10 @@ export function ConversionActions({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
-              Batal
+              Cancel
             </Button>
             <Button onClick={handleConvert} disabled={submitting}>
-              {submitting ? "Mengonversi..." : "Konversi"}
+              {submitting ? "Converting..." : "Convert"}
             </Button>
           </DialogFooter>
         </DialogContent>

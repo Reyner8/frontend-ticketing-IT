@@ -55,16 +55,16 @@ export function AttachmentPanel({
 
   const handleFile = async (file: File) => {
     if (file.size > MAX_MB * 1024 * 1024) {
-      toast.error(`Ukuran file melebihi batas ${MAX_MB} MB`);
+      toast.error(`File size exceeds the ${MAX_MB} MB limit`);
       return;
     }
     setUploading(true);
     try {
       const created = await uploadAttachment(parent, parentId, file);
       setAttachments((prev) => [created, ...prev]);
-      toast.success("File berhasil diunggah");
+      toast.success("File uploaded successfully");
     } catch {
-      toast.error("Gagal mengunggah file");
+      toast.error("Failed to upload file");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -72,13 +72,13 @@ export function AttachmentPanel({
   };
 
   const handleDelete = async (attachment: Attachment) => {
-    if (!confirm(`Hapus ${attachment.name}?`)) return;
+    if (!confirm(`Delete ${attachment.name}?`)) return;
     try {
       await deleteAttachment(parent, parentId, attachment.id);
       setAttachments((prev) => prev.filter((a) => a.id !== attachment.id));
-      toast.success("Lampiran dihapus");
+      toast.success("Attachment deleted");
     } catch {
-      toast.error("Gagal menghapus lampiran");
+      toast.error("Failed to delete attachment");
     }
   };
 
@@ -88,7 +88,7 @@ export function AttachmentPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="font-medium">Lampiran ({attachments.length})</h4>
+        <h4 className="font-medium">Attachments ({attachments.length})</h4>
         {canUpload && (
           <>
             <input
@@ -107,7 +107,7 @@ export function AttachmentPanel({
               disabled={uploading}
             >
               <Upload className="mr-2 h-4 w-4" />
-              {uploading ? "Mengunggah..." : "Unggah"}
+              {uploading ? "Uploading..." : "Upload"}
             </Button>
           </>
         )}
@@ -116,12 +116,12 @@ export function AttachmentPanel({
       {loading ? (
         <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
           <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          Memuat...
+          Loading...
         </div>
       ) : attachments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-6 text-sm text-muted-foreground border rounded-md border-dashed">
           <Paperclip className="h-6 w-6 mb-2 opacity-40" />
-          <span>Belum ada lampiran</span>
+          <span>No attachments yet</span>
         </div>
       ) : (
         <div className="space-y-2">
@@ -137,7 +137,7 @@ export function AttachmentPanel({
                 <div className="flex-1 min-w-0">
                   <p className="truncate font-medium">{a.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatSize(a.size)} · {a.type || "berkas"}
+                    {formatSize(a.size)} · {a.type || "file"}
                   </p>
                 </div>
                 <a href={a.url} target="_blank" rel="noreferrer">

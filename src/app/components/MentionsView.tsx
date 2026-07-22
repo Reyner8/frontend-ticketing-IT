@@ -60,9 +60,9 @@ export function MentionsView({ onNavigate }: MentionsViewProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Memuat...</p>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           ) : mentions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Belum ada mention.</p>
+            <p className="text-sm text-muted-foreground">No mentions yet.</p>
           ) : (
             mentions.map((m) => {
               const route = resolveMentionRoute(m);
@@ -75,7 +75,7 @@ export function MentionsView({ onNavigate }: MentionsViewProps) {
                   <p>{m.content ?? "—"}</p>
                   {route && (
                     <Button variant="outline" size="sm" onClick={() => openMention(m)}>
-                      Buka {route.type.replace(/_/g, " ")}
+                      Open {route.type.replace(/_/g, " ")}
                     </Button>
                   )}
                 </div>
