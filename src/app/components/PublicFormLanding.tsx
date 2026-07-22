@@ -17,7 +17,7 @@ export function PublicFormLanding() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl tracking-tight">Form Laporan Publik</h2>
+          <h2 className="text-3xl tracking-tight">Public Report Form</h2>
           <p className="text-muted-foreground mt-1">
             Bagikan form ini agar pengguna dapat melaporkan masalah tanpa login. Tim IT
             meninjau dan mengarahkan laporan ke Error Report atau Feature Request.
@@ -30,13 +30,13 @@ export function PublicFormLanding() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ExternalLink className="h-5 w-5" />
-              Akses Cepat
+              Quick Access
             </CardTitle>
             <CardDescription>Buka form publik di tab baru</CardDescription>
           </CardHeader>
           <CardContent>
             <Button className="w-full" onClick={() => window.open("/public/submit", "_blank")}>
-              Buka Form Publik
+              Open Public Form
             </Button>
           </CardContent>
         </Card>
@@ -45,7 +45,7 @@ export function PublicFormLanding() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Copy className="h-5 w-5" />
-              Bagikan Tautan
+              Share Link
             </CardTitle>
             <CardDescription>Salin URL form publik</CardDescription>
           </CardHeader>
@@ -57,12 +57,12 @@ export function PublicFormLanding() {
               {copied ? (
                 <>
                   <Check className="h-4 w-4 mr-2" />
-                  Tersalin!
+                  Copied!
                 </>
               ) : (
                 <>
                   <Copy className="h-4 w-4 mr-2" />
-                  Salin Tautan
+                  Copy Link
                 </>
               )}
             </Button>
@@ -83,7 +83,7 @@ export function PublicFormLanding() {
                 window.open(qrUrl, "_blank");
               }}
             >
-              Buat QR Code
+              Generate QR Code
             </Button>
           </CardContent>
         </Card>
@@ -94,7 +94,7 @@ export function PublicFormLanding() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-blue-500" />
-              Yang Diisi Pengguna
+              What Users Fill In
             </CardTitle>
             <CardDescription>Form sederhana — tanpa klasifikasi teknis</CardDescription>
           </CardHeader>
@@ -102,15 +102,15 @@ export function PublicFormLanding() {
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">✓</span>
-                <span>Nama pelapor dan unit/departemen</span>
+                <span>Reporter name and unit/department</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">✓</span>
-                <span>Judul dan keterangan detail masalah</span>
+                <span>Title and detailed description of the issue</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">✓</span>
-                <span>Bukti gambar (screenshot/foto, opsional)</span>
+                <span>Image evidence (screenshot/photo, optional)</span>
               </li>
             </ul>
           </CardContent>
@@ -120,7 +120,7 @@ export function PublicFormLanding() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-purple-500" />
-              Peran Tim IT
+              IT Team's Role
             </CardTitle>
             <CardDescription>Setelah laporan masuk sebagai ticket PUB-*</CardDescription>
           </CardHeader>
@@ -128,19 +128,19 @@ export function PublicFormLanding() {
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">✓</span>
-                <span>Tentukan kategori dan prioritas di halaman Tickets</span>
+                <span>Determine category and priority on the Tickets page</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">✓</span>
-                <span>Convert ke Error Report (hardware/network/software)</span>
+                <span>Convert to Error Report (hardware/network/software)</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">✓</span>
-                <span>Convert ke Feature Request atau Bug Fix</span>
+                <span>Convert to Feature Request or Bug Fix</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-600 mt-0.5">✓</span>
-                <span>Assign ke tim dan lacak hingga selesai</span>
+                <span>Assign to team and track until completion</span>
               </li>
             </ul>
           </CardContent>
@@ -161,7 +161,7 @@ export function PublicFormLanding() {
               </svg>
             </div>
             <div className="flex-1">
-              <h4 className="font-medium text-blue-900 mb-1">Tanpa Login</h4>
+              <h4 className="font-medium text-blue-900 mb-1">No Login Required</h4>
               <p className="text-sm text-blue-800">
                 Pengguna tidak perlu akun. Semua laporan masuk ke menu <strong>Tickets</strong>{" "}
                 dengan ID <code className="text-xs">PUB-YYYY-####</code>. Tim IT yang

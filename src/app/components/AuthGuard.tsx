@@ -16,7 +16,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-muted-foreground">Memuat...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -31,7 +31,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-muted-foreground">Mengautentikasi...</p>
+          <p className="text-muted-foreground">Authenticating...</p>
         </div>
       </div>
     );

@@ -40,7 +40,7 @@ export function PublicSubmissionForm() {
     );
 
     if (newFiles.length !== e.target.files.length) {
-      toast.error("Hanya file gambar yang diperbolehkan");
+      toast.error("Only image files are allowed");
     }
 
     const totalSize = [...formData.attachments, ...newFiles].reduce(
@@ -49,12 +49,12 @@ export function PublicSubmissionForm() {
     );
 
     if (totalSize > 10 * 1024 * 1024) {
-      toast.error("Total ukuran file melebihi batas 10MB");
+      toast.error("Total file size exceeds the 10MB limit");
       return;
     }
 
     if (formData.attachments.length + newFiles.length > 5) {
-      toast.error("Maksimal 5 gambar bukti");
+      toast.error("Maximum 5 evidence images");
       return;
     }
 
@@ -92,20 +92,20 @@ export function PublicSubmissionForm() {
       );
 
       setReferenceNumber(result.reference_number);
-      toast.success("Laporan berhasil dikirim!");
+      toast.success("Report submitted successfully!");
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
-        toast.error("Terlalu banyak pengiriman. Silakan coba lagi beberapa menit.");
+        toast.error("Too many submissions. Please try again in a few minutes.");
       } else if (err instanceof ApiError && err.status === 401) {
-        toast.error("Form tidak tersedia saat ini. Hubungi tim IT secara langsung.");
+        toast.error("The form is currently unavailable. Please contact the IT team directly.");
       } else if (err instanceof ApiError && err.errors) {
         const first = Object.values(err.errors)[0]?.[0];
         toast.error(first ?? err.message);
       } else {
         toast.error(
-          err instanceof Error ? err.message : "Gagal mengirim laporan. Silakan coba lagi."
+          err instanceof Error ? err.message : "Failed to submit report. Please try again."
         );
       }
     } finally {
@@ -133,7 +133,7 @@ export function PublicSubmissionForm() {
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
               <CheckCircle2 className="w-10 h-10 text-green-600" />
             </div>
-            <CardTitle className="text-2xl">Laporan Berhasil Dikirim</CardTitle>
+            <CardTitle className="text-2xl">Report Submitted Successfully</CardTitle>
             <CardDescription className="text-base">
               Tim IT akan meninjau laporan Anda dan menindaklanjuti sesuai kebutuhan.
             </CardDescription>
@@ -149,25 +149,25 @@ export function PublicSubmissionForm() {
 
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <div className="text-sm text-gray-600">
-                <strong>Nomor referensi:</strong> {referenceNumber ?? "—"}
+                <strong>Reference number:</strong> {referenceNumber ?? "—"}
               </div>
               <div className="text-sm text-gray-600">
-                <strong>Pelapor:</strong> {formData.reporterName}
+                <strong>Reporter:</strong> {formData.reporterName}
               </div>
               <div className="text-sm text-gray-600">
                 <strong>Unit:</strong> {formData.reporterUnit}
               </div>
               <div className="text-sm text-gray-600">
-                <strong>Tanggal:</strong> {new Date().toLocaleString("id-ID")}
+                <strong>Date:</strong> {new Date().toLocaleString("id-ID")}
               </div>
             </div>
 
             <div className="flex gap-3">
               <Button onClick={resetForm} className="flex-1">
-                Kirim Laporan Lain
+                Submit Another Report
               </Button>
               <Button variant="outline" className="flex-1" onClick={() => window.close()}>
-                Tutup
+                Close
               </Button>
             </div>
           </CardContent>
@@ -181,7 +181,7 @@ export function PublicSubmissionForm() {
       <div className="max-w-2xl mx-auto">
         <Card className="shadow-lg">
           <CardHeader className="space-y-2 border-b bg-white">
-            <CardTitle className="text-2xl">Form Laporan IT</CardTitle>
+            <CardTitle className="text-2xl">IT Report Form</CardTitle>
             <CardDescription>
               Laporkan masalah atau kendala yang Anda alami. Tim IT akan meninjau dan
               menindaklanjuti laporan Anda.
@@ -200,30 +200,30 @@ export function PublicSubmissionForm() {
               />
 
               <div className="space-y-4">
-                <h3 className="font-semibold">Data Pelapor</h3>
+                <h3 className="font-semibold">Reporter Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="reporterName">Nama Lengkap *</Label>
+                    <Label htmlFor="reporterName">Full Name *</Label>
                     <Input
                       id="reporterName"
                       value={formData.reporterName}
                       onChange={(e) =>
                         setFormData({ ...formData, reporterName: e.target.value })
                       }
-                      placeholder="Nama Anda"
+                      placeholder="Your name"
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="reporterUnit">Unit / Departemen *</Label>
+                    <Label htmlFor="reporterUnit">Unit / Department *</Label>
                     <Input
                       id="reporterUnit"
                       value={formData.reporterUnit}
                       onChange={(e) =>
                         setFormData({ ...formData, reporterUnit: e.target.value })
                       }
-                      placeholder="Contoh: Keuangan, HR, Operasional"
+                      placeholder="e.g. Finance, HR, Operations"
                       required
                     />
                   </div>
@@ -231,28 +231,28 @@ export function PublicSubmissionForm() {
               </div>
 
               <div className="border-t pt-6 space-y-4">
-                <h3 className="font-semibold">Detail Laporan</h3>
+                <h3 className="font-semibold">Report Details</h3>
 
                 <div className="space-y-2">
-                  <Label htmlFor="title">Judul Laporan *</Label>
+                  <Label htmlFor="title">Report Title *</Label>
                   <Input
                     id="title"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="Ringkasan singkat masalah yang dialami"
+                    placeholder="Brief summary of the issue you experienced"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Keterangan Detail *</Label>
+                  <Label htmlFor="description">Detailed Description *</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="Jelaskan masalah yang terjadi, kapan, dan dampaknya terhadap pekerjaan Anda..."
+                    placeholder="Describe the issue, when it happened, and its impact on your work..."
                     rows={5}
                     required
                   />
@@ -263,7 +263,7 @@ export function PublicSubmissionForm() {
                 <div className="space-y-3">
                   <Label className="flex items-center gap-2">
                     <ImageIcon className="h-4 w-4" />
-                    Bukti Gambar (opsional)
+                    Image Evidence (optional)
                   </Label>
                   <p className="text-sm text-gray-500">
                     Unggah screenshot atau foto sebagai bukti (maks. 5 gambar, total 10MB)
@@ -281,8 +281,8 @@ export function PublicSubmissionForm() {
                     <label htmlFor="fileUpload" className="cursor-pointer">
                       <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
                       <div className="text-sm">
-                        <span className="text-blue-600 font-medium">Klik untuk unggah</span>{" "}
-                        atau seret file ke sini
+                        <span className="text-blue-600 font-medium">Click to upload</span>{" "}
+                        or drag a file here
                       </div>
                       <div className="text-xs text-gray-500 mt-1">JPG, PNG, GIF, WEBP</div>
                     </label>
@@ -290,7 +290,7 @@ export function PublicSubmissionForm() {
 
                   {formData.attachments.length > 0 && (
                     <div className="space-y-2">
-                      <div className="text-sm font-medium">File terlampir:</div>
+                      <div className="text-sm font-medium">Attached files:</div>
                       {formData.attachments.map((file, index) => (
                         <div
                           key={index}
@@ -323,7 +323,7 @@ export function PublicSubmissionForm() {
 
               <div className="border-t pt-6 flex gap-3">
                 <Button type="submit" className="flex-1" disabled={submitting}>
-                  {submitting ? "Mengirim..." : "Kirim Laporan"}
+                  {submitting ? "Sending..." : "Submit Report"}
                 </Button>
                 <Button
                   type="button"
@@ -344,7 +344,7 @@ export function PublicSubmissionForm() {
         </Card>
 
         <div className="text-center mt-6 text-sm text-gray-600">
-          <p>Butuh bantuan segera? Hubungi IT Support: support@company.com | Ext. 1234</p>
+          <p>Need immediate help? Contact IT Support: support@company.com | Ext. 1234</p>
         </div>
       </div>
     </div>

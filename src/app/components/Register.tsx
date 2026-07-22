@@ -23,7 +23,7 @@ export function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password !== form.confirm) {
-      toast.error("Kata sandi tidak cocok");
+      toast.error("Passwords do not match");
       return;
     }
     setLoading(true);
@@ -34,10 +34,10 @@ export function Register() {
         email: form.email,
         password: form.password,
       });
-      toast.success("Akun berhasil dibuat. Silakan masuk.");
+      toast.success("Account created successfully. Please sign in.");
       navigate("/login");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Pendaftaran gagal");
+      toast.error(err instanceof ApiError ? err.message : "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export function Register() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nama lengkap</Label>
+              <Label htmlFor="name">Full name</Label>
               <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div className="space-y-2">
@@ -68,20 +68,20 @@ export function Register() {
               <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Kata sandi</Label>
+              <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm">Konfirmasi kata sandi</Label>
+              <Label htmlFor="confirm">Confirm password</Label>
               <Input id="confirm" type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} required />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Membuat..." : "Daftar"}
+              {loading ? "Creating..." : "Register"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Sudah punya akun?{" "}
+              Already have an account?{" "}
               <Link to="/login" className="text-primary hover:underline">
-                Masuk
+                Sign in
               </Link>
             </p>
           </form>

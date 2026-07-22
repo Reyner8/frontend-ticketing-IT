@@ -20,9 +20,9 @@ export function ForgotPassword() {
     try {
       await requestPasswordReset(email);
       setSent(true);
-      toast.success("Jika email terdaftar, tautan reset telah dikirim.");
+      toast.success("If the email is registered, a reset link has been sent.");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Permintaan gagal");
+      toast.error(err instanceof ApiError ? err.message : "Request failed");
     } finally {
       setLoading(false);
     }
@@ -41,7 +41,7 @@ export function ForgotPassword() {
         <CardContent>
           {sent ? (
             <p className="text-sm text-center text-muted-foreground">
-              Periksa kotak masuk Anda untuk instruksi reset.
+              Check your inbox for reset instructions.
             </p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -56,13 +56,13 @@ export function ForgotPassword() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Mengirim..." : "Kirim tautan reset"}
+                {loading ? "Sending..." : "Send reset link"}
               </Button>
             </form>
           )}
           <p className="text-center text-sm text-muted-foreground mt-4">
             <Link to="/login" className="text-primary hover:underline">
-              Kembali ke masuk
+              Back to sign in
             </Link>
           </p>
         </CardContent>

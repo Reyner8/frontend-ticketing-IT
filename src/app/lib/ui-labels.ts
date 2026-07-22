@@ -1,34 +1,34 @@
-/** Indonesian display labels for API enum values (values stay snake_case). */
+/** English display labels for API enum values (values stay snake_case). */
 
 const STATUS: Record<string, string> = {
-  draft: 'Draf',
-  pending_approval: 'Menunggu persetujuan',
-  assigned: 'Ditugaskan',
-  in_progress: 'Sedang dikerjakan',
-  waiting_for_user: 'Menunggu pengguna',
-  resolved: 'Selesai',
-  closed: 'Ditutup',
-  converted: 'Dikonversi',
-  rejected: 'Ditolak',
-  submission: 'Pengajuan',
-  approved: 'Disetujui',
-  development: 'Pengembangan',
-  testing: 'Pengujian',
-  validation: 'Validasi',
-  completed: 'Selesai',
-  cancelled: 'Dibatalkan',
-  overdue: 'Terlambat',
-  post_implementation_review: 'Review pasca implementasi',
-  ongoing: 'Berlangsung',
-  planned: 'Terencana',
-  unplanned: 'Tidak terencana',
+  draft: 'Draft',
+  pending_approval: 'Pending Approval',
+  assigned: 'Assigned',
+  in_progress: 'In Progress',
+  waiting_for_user: 'Waiting for User',
+  resolved: 'Resolved',
+  closed: 'Closed',
+  converted: 'Converted',
+  rejected: 'Rejected',
+  submission: 'Submission',
+  approved: 'Approved',
+  development: 'Development',
+  testing: 'Testing',
+  validation: 'Validation',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  overdue: 'Overdue',
+  post_implementation_review: 'Post-Implementation Review',
+  ongoing: 'Ongoing',
+  planned: 'Planned',
+  unplanned: 'Unplanned',
 };
 
 const PRIORITY: Record<string, string> = {
-  critical: 'Kritis',
-  high: 'Tinggi',
-  medium: 'Sedang',
-  low: 'Rendah',
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
 };
 
 const ROLE: Record<string, string> = {
@@ -39,9 +39,9 @@ const ROLE: Record<string, string> = {
 };
 
 const TEAM: Record<string, string> = {
-  programmer: 'Programmer',
-  network: 'Network',
-  hardware: 'Hardware',
+  programmer: 'Software Engineer',
+  network: 'Network Engineer',
+  hardware: 'Network Engineer', // legacy — hardware issues routed to SE/Network team
 };
 
 export function labelStatus(value: string): string {
