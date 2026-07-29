@@ -5,7 +5,7 @@ import {
   Notification, 
   QuickAction, 
 } from '../types';
-import { getToken, clearToken } from './api/client';
+import { getToken, clearToken, ApiError } from './api/client';
 import {
   fetchCurrentUser,
   fetchNotifications,
@@ -84,14 +84,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
         unreadNotificationCount: state.unreadNotificationCount + 1
       };
 
-    case 'MARK_NOTIFICATION_READ':
+    case 'MARK_NOTIFICATION_READ': {
+      const target = state.notifications.find((n) => n.id === action.payload);
+      const wasUnread = target ? !target.isRead : false;
       return {
         ...state,
-        notifications: state.notifications.map(n => 
+        notifications: state.notifications.map(n =>
           n.id === action.payload ? { ...n, isRead: true } : n
         ),
-        unreadNotificationCount: Math.max(0, state.unreadNotificationCount - 1)
+        unreadNotificationCount: wasUnread
+          ? Math.max(0, state.unreadNotificationCount - 1)
+          : state.unreadNotificationCount,
       };
+    }
 
     case 'MARK_ALL_NOTIFICATIONS_READ':
       return {
@@ -181,9 +186,14 @@ export function AppProvider({ children }: AppProviderProps) {
         dispatch({ type: 'SET_NOTIFICATIONS', payload: { notifications, unreadCount } });
 
         fetchUsers().catch(() => {});
-      } catch {
-        clearToken();
-        dispatch({ type: 'SET_USER', payload: null });
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          clearToken();
+          dispatch({ type: 'SET_USER', payload: null });
+        } else {
+          // Network/5xx: keep token so AuthGuard can offer retry instead of forced logout.
+          dispatch({ type: 'SET_USER', payload: null });
+        }
       } finally {
         dispatch({ type: 'SET_AUTH_LOADING', payload: false });
       }

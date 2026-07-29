@@ -92,6 +92,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const payload = isJson ? await response.json() : null;
 
   if (!response.ok) {
+    if (response.status === 401 && auth) {
+      clearToken();
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login');
+      }
+    }
     const message = payload?.message || `Request failed (${response.status})`;
     throw new ApiError(message, response.status, payload?.errors);
   }
@@ -148,6 +154,12 @@ export async function apiDownload(
 
   const response = await fetch(url, { headers });
   if (!response.ok) {
+    if (response.status === 401) {
+      clearToken();
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login');
+      }
+    }
     let message = `Request failed (${response.status})`;
     try {
       const body = await response.json();

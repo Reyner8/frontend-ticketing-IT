@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Toaster } from "sonner";
 import { SidebarProvider, SidebarInset } from "./ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
@@ -198,14 +197,6 @@ export default function DashboardLayout() {
       
       {/* Quick Action Dialogs */}
       {renderQuickActionDialog()}
-      
-      {/* Toast Notifications */}
-      <Toaster 
-        position="top-right" 
-        toastOptions={{
-          duration: 4000,
-        }}
-      />
     </SidebarProvider>
   );
 }

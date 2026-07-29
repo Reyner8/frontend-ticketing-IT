@@ -89,7 +89,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { format } from "date-fns";
-import { consumeFocusResource } from "../lib/resource-focus";
+import { consumeFocusResource, FOCUS_RESOURCE_EVENT } from "../lib/resource-focus";
 import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
 import {
   getApplicationColor,
@@ -269,18 +269,25 @@ export function FeatureRequests() {
 
   useEffect(() => {
     if (isLoading) return;
-    const focus = consumeFocusResource();
-    if (focus?.type !== "feature") return;
 
-    const match = features.find((f) => f.id === focus.id);
-    if (match) {
-      void handleSelectFeature(match);
-      return;
-    }
+    const applyFocus = () => {
+      const focus = consumeFocusResource();
+      if (focus?.type !== "feature") return;
 
-    void fetchFeatureDetail(focus.id)
-      .then((detail) => handleSelectFeature(detail))
-      .catch(() => {});
+      const match = features.find((f) => f.id === focus.id);
+      if (match) {
+        void handleSelectFeature(match);
+        return;
+      }
+
+      void fetchFeatureDetail(focus.id)
+        .then((detail) => handleSelectFeature(detail))
+        .catch(() => {});
+    };
+
+    applyFocus();
+    window.addEventListener(FOCUS_RESOURCE_EVENT, applyFocus);
+    return () => window.removeEventListener(FOCUS_RESOURCE_EVENT, applyFocus);
   }, [isLoading, features]);
 
   const filteredTickets = useMemo(() => {
@@ -289,7 +296,7 @@ export function FeatureRequests() {
     // Apply role-based filtering
     if (currentUser?.role === "it_staff") {
       filtered = filtered.filter(
-        (ticket) => ticket.assignedToId === currentUser.id,
+        (ticket) => ticket.assignedToId === currentUser.id || !ticket.assignedToId,
       );
     } else if (currentUser?.role === "team_lead") {
       filtered = filtered.filter(

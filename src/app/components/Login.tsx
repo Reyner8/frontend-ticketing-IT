@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useApp } from '../lib/store';
-import { login } from '../lib/api/services';
+import { login, fetchNotifications, fetchUnreadNotificationCount, fetchUsers, setCachedUsers } from '../lib/api/services';
 import { ApiError, getToken } from '../lib/api/client';
 import { Ticket, AlertTriangle } from 'lucide-react';
 
@@ -29,6 +29,19 @@ export function Login() {
     try {
       const { user } = await login(email, password);
       dispatch({ type: 'SET_USER', payload: user });
+      setCachedUsers([user]);
+
+      if (user.preferences.darkMode) {
+        document.documentElement.classList.add('dark');
+      }
+
+      const [notifications, unreadCount] = await Promise.all([
+        fetchNotifications().catch(() => []),
+        fetchUnreadNotificationCount().catch(() => 0),
+      ]);
+      dispatch({ type: 'SET_NOTIFICATIONS', payload: { notifications, unreadCount } });
+      fetchUsers().catch(() => {});
+
       toast.success(`Welcome, ${user.name}!`);
       navigate('/');
     } catch (err) {

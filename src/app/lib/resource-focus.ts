@@ -1,9 +1,11 @@
 export type FocusResourceType = "ticket" | "error" | "feature";
 
 const STORAGE_KEY = "ticketing:focusResource";
+export const FOCUS_RESOURCE_EVENT = "ticketing:focus-resource";
 
 export function setFocusResource(type: FocusResourceType, id: string): void {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ type, id }));
+  window.dispatchEvent(new CustomEvent(FOCUS_RESOURCE_EVENT));
 }
 
 export function consumeFocusResource(): { type: FocusResourceType; id: string } | null {

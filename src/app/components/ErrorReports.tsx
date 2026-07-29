@@ -25,7 +25,7 @@ import { AssignmentActions } from "./AssignmentActions";
 import { ClaimActions } from "./ClaimActions";
 import { StatusChangeActions } from "./StatusChangeActions";
 import { ActivityTimelinePanel } from "./ActivityTimelinePanel";
-import { consumeFocusResource } from "../lib/resource-focus";
+import { consumeFocusResource, FOCUS_RESOURCE_EVENT } from "../lib/resource-focus";
 import { toast } from "sonner";
 import { ErrorReport, ErrorReportStatus, TicketPriority, TicketCategory, TeamType, Comment, ActivityLogEntry, StatusHistoryEntry } from "../types";
 import { labelStatus, labelPriority, labelTeam } from "../lib/ui-labels";
@@ -184,18 +184,25 @@ export function ErrorReports() {
 
   useEffect(() => {
     if (isLoading) return;
-    const focus = consumeFocusResource();
-    if (focus?.type !== "error") return;
 
-    const match = reports.find((r) => r.id === focus.id);
-    if (match) {
-      void handleSelectReport(match);
-      return;
-    }
+    const applyFocus = () => {
+      const focus = consumeFocusResource();
+      if (focus?.type !== "error") return;
 
-    void fetchErrorReportDetail(focus.id)
-      .then((detail) => handleSelectReport(detail))
-      .catch(() => {});
+      const match = reports.find((r) => r.id === focus.id);
+      if (match) {
+        void handleSelectReport(match);
+        return;
+      }
+
+      void fetchErrorReportDetail(focus.id)
+        .then((detail) => handleSelectReport(detail))
+        .catch(() => {});
+    };
+
+    applyFocus();
+    window.addEventListener(FOCUS_RESOURCE_EVENT, applyFocus);
+    return () => window.removeEventListener(FOCUS_RESOURCE_EVENT, applyFocus);
   }, [isLoading, reports]);
 
   const refreshReports = async () => {
@@ -213,7 +220,7 @@ export function ErrorReports() {
 
     // Apply role-based filtering
     if (currentUser?.role === 'it_staff') {
-      filtered = filtered.filter(report => report.assignedToId === currentUser.id);
+      filtered = filtered.filter(report => report.assignedToId === currentUser.id || !report.assignedToId);
     } else if (currentUser?.role === 'team_lead') {
       filtered = filtered.filter(report => report.assignedTeam === currentUser.team);
     } else if (currentUser?.role === 'reporter') {

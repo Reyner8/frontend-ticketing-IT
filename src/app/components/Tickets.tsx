@@ -33,7 +33,7 @@ import { MergeTicketPanel } from "./MergeTicketPanel";
 import { ResourceEditActions } from "./ResourceEditActions";
 import { TableSkeleton } from "./LoadingStates";
 import { Search, Eye, Ticket as TicketIcon, MessageSquare } from "lucide-react";
-import { consumeFocusResource } from "../lib/resource-focus";
+import { consumeFocusResource, FOCUS_RESOURCE_EVENT } from "../lib/resource-focus";
 import type { Ticket, TicketStatus, TicketPriority, StatusHistoryEntry, ActivityLogEntry } from "../types";
 import { labelStatus, labelPriority, labelTeam } from "../lib/ui-labels";
 
@@ -150,21 +150,28 @@ export function Tickets() {
 
   useEffect(() => {
     if (loading) return;
-    const focus = consumeFocusResource();
-    if (focus?.type !== "ticket") return;
 
-    const match = tickets.find((t) => t.id === focus.id);
-    if (match) {
-      void openDetail(match);
-      return;
-    }
+    const applyFocus = () => {
+      const focus = consumeFocusResource();
+      if (focus?.type !== "ticket") return;
 
-    void fetchTicketDetail(focus.id)
-      .then((detail) => {
-        setSelected(detail);
-        setDetailOpen(true);
-      })
-      .catch(() => {});
+      const match = tickets.find((t) => t.id === focus.id);
+      if (match) {
+        void openDetail(match);
+        return;
+      }
+
+      void fetchTicketDetail(focus.id)
+        .then((detail) => {
+          setSelected(detail);
+          setDetailOpen(true);
+        })
+        .catch(() => {});
+    };
+
+    applyFocus();
+    window.addEventListener(FOCUS_RESOURCE_EVENT, applyFocus);
+    return () => window.removeEventListener(FOCUS_RESOURCE_EVENT, applyFocus);
   }, [loading, tickets]);
 
   return (
@@ -271,7 +278,7 @@ export function Tickets() {
                     <TableCell className="text-sm text-muted-foreground">
                       {ticket.isPublicSubmission
                         ? `${ticket.submitterName ?? "—"}${ticket.submitterUnit ? ` · ${ticket.submitterUnit}` : ""}`
-                        : "—"}
+                        : (ticket.reporterName ?? "—")}
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColor(ticket.status)}>
