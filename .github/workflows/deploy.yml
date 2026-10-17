@@ -1,0 +1,33 @@
+name: Deploy SPA ke VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps-ticketing
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Siapkan kunci SSH
+        run: |
+          install -m 600 /dev/null ~/.ssh/deploy_key
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          ssh-keyscan -H 43.156.77.223 >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Pull & rebuild SPA di VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes ubuntu@43.156.77.223 '
+            set -e
+            cd ~/ticketing/frontend
+            git pull --ff-only origin main
+            cd ~/ticketing
+            docker compose --profile prod build frontend-prod
+            docker compose --profile prod up -d
+            sleep 5
+            curl -fsS http://127.0.0.1:8080/ >/dev/null && echo "Deploy OK: SPA 200"
+          '
