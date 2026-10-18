@@ -15,6 +15,7 @@ import { ApiError } from "../lib/api/client";
 import {
   createDowntimeComponent,
   createDowntimeRecord,
+  deleteDowntimeRecord,
   fetchDowntimeAnalytics,
   fetchDowntimeComponents,
   fetchDowntimeLocations,
@@ -86,6 +87,7 @@ export function DowntimeMonev() {
   const [typeFilter, setTypeFilter] = useState<DowntimeType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<"ongoing" | "resolved" | "all">("all");
   const [selectedDowntime, setSelectedDowntime] = useState<DowntimeRecord | null>(null);
+  const [detailEditMode, setDetailEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewDowntimeDialog, setShowNewDowntimeDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -118,6 +120,29 @@ export function DowntimeMonev() {
   useEffect(() => {
     loadDowntimes();
   }, []);
+
+  const openDowntimeDetails = (downtime: DowntimeRecord) => {
+    setSelectedDowntime(downtime);
+    setDetailEditMode(false);
+  };
+
+  const editDowntime = (downtime: DowntimeRecord) => {
+    setSelectedDowntime(downtime);
+    setDetailEditMode(true);
+  };
+
+  const deleteDowntime = async (downtime: DowntimeRecord) => {
+    if (!window.confirm(`Delete downtime record "${downtime.title}"?`)) return;
+    try {
+      await deleteDowntimeRecord(downtime.id);
+      toast.success("Downtime deleted");
+      setSelectedDowntime((current) => (current?.id === downtime.id ? null : current));
+      setDetailEditMode(false);
+      await loadDowntimes();
+    } catch (err) {
+      toast.error(firstError(err));
+    }
+  };
 
   const filteredDowntimes = useMemo(() => {
     let filtered = [...downtimes];
@@ -345,7 +370,9 @@ export function DowntimeMonev() {
               ) : (
                 <DowntimeTable
                   downtimes={paginatedDowntimes}
-                  onViewDetails={setSelectedDowntime}
+                  onViewDetails={openDowntimeDetails}
+                  onEdit={editDowntime}
+                  onDelete={deleteDowntime}
                   canEdit={canManage}
                 />
               )}
@@ -409,9 +436,15 @@ export function DowntimeMonev() {
         <DowntimeDetailDialog
           downtime={selectedDowntime}
           open={!!selectedDowntime}
-          onOpenChange={(open) => !open && setSelectedDowntime(null)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedDowntime(null);
+              setDetailEditMode(false);
+            }
+          }}
           onUpdated={loadDowntimes}
           canManage={canManage}
+          initialEditing={detailEditMode}
         />
       )}
 
@@ -430,21 +463,25 @@ function DowntimeDetailDialog({
   onOpenChange,
   onUpdated,
   canManage,
+  initialEditing = false,
 }: {
   downtime: DowntimeRecord;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdated?: () => void;
   canManage: boolean;
+  initialEditing?: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const [resolving, setResolving] = useState(false);
   const [title, setTitle] = useState(downtime.title);
+  const [type, setType] = useState<DowntimeType>(downtime.type);
+  const [impact, setImpact] = useState<DowntimeRecord["impact"]>(downtime.impact);
   const [reason, setReason] = useState(downtime.reason);
   const [description, setDescription] = useState(downtime.description ?? "");
   const [startTime, setStartTime] = useState(toLocalInput(downtime.startTime));
   const [endTime, setEndTime] = useState(
-    downtime.endTime ? toLocalInput(downtime.endTime) : toLocalInput(new Date())
+    downtime.endTime ? toLocalInput(downtime.endTime) : ""
   );
   const [rootCause, setRootCause] = useState(downtime.rootCause ?? "");
   const [preventiveMeasures, setPreventiveMeasures] = useState(downtime.preventiveMeasures ?? "");
@@ -461,10 +498,12 @@ function DowntimeDetailDialog({
 
   useEffect(() => {
     setTitle(downtime.title);
+    setType(downtime.type);
+    setImpact(downtime.impact);
     setReason(downtime.reason);
     setDescription(downtime.description ?? "");
     setStartTime(toLocalInput(downtime.startTime));
-    setEndTime(downtime.endTime ? toLocalInput(downtime.endTime) : toLocalInput(new Date()));
+    setEndTime(downtime.endTime ? toLocalInput(downtime.endTime) : "");
     setRootCause(downtime.rootCause ?? "");
     setPreventiveMeasures(downtime.preventiveMeasures ?? "");
     setAffectedUsers(String(downtime.affectedUsers ?? ""));
@@ -472,9 +511,9 @@ function DowntimeDetailDialog({
     setLocationIds(downtime.locations.map((location) => location.id));
     setSourceIds(downtime.sourceComponents.map((c) => c.id));
     setAffectedIds(downtime.affectedComponents.map((c) => c.id));
-    setEditing(false);
+    setEditing(initialEditing);
     setResolving(false);
-  }, [downtime]);
+  }, [downtime, initialEditing]);
 
   useEffect(() => {
     if (!open) return;
@@ -527,12 +566,19 @@ function DowntimeDetailDialog({
     try {
       await updateDowntimeRecord(downtime.id, {
         title,
+        type,
+        impact,
         reason,
         description: description || null,
         start_time: toApiDateTime(startTime),
+        end_time: endTime ? toApiDateTime(endTime) : null,
         location_ids: locationIds.map(Number),
         source_component_ids: sourceIds.map(Number),
         affected_component_ids: affectedIds.map(Number),
+        root_cause: rootCause.trim() || null,
+        preventive_measures: preventiveMeasures.trim() || null,
+        affected_users: affectedUsers ? Number(affectedUsers) : null,
+        estimated_cost: estimatedCost ? Number(estimatedCost) : null,
       });
       toast.success("Downtime updated");
       setEditing(false);
@@ -546,6 +592,10 @@ function DowntimeDetailDialog({
   };
 
   const resolve = async () => {
+    if (!endTime) {
+      toast.error("End time is required");
+      return;
+    }
     if (!rootCause.trim() || !preventiveMeasures.trim()) {
       toast.error("Root cause and preventive measures are required");
       return;
@@ -569,9 +619,24 @@ function DowntimeDetailDialog({
     }
   };
 
+  const deleteRecord = async () => {
+    if (!window.confirm(`Delete downtime record "${downtime.title}"?`)) return;
+    setBusy(true);
+    try {
+      await deleteDowntimeRecord(downtime.id);
+      toast.success("Downtime deleted");
+      onOpenChange(false);
+      onUpdated?.();
+    } catch (err) {
+      toast.error(firstError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2 pr-8">
             <Zap className="h-5 w-5" />
@@ -601,6 +666,9 @@ function DowntimeDetailDialog({
               >
                 Resolve
               </Button>
+              <Button size="sm" variant="destructive" disabled={busy} onClick={deleteRecord}>
+                Delete
+              </Button>
             </div>
           </div>
         )}
@@ -612,17 +680,69 @@ function DowntimeDetailDialog({
               <Label>Title</Label>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Type</Label>
+                <Select value={type} onValueChange={(value: DowntimeType) => setType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planned">Planned maintenance</SelectItem>
+                    <SelectItem value="unplanned">Unplanned disruption</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Impact level</Label>
+                <Select
+                  value={impact}
+                  onValueChange={(value: DowntimeRecord["impact"]) => setImpact(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">{labelPriority("low")}</SelectItem>
+                    <SelectItem value="medium">{labelPriority("medium")}</SelectItem>
+                    <SelectItem value="high">{labelPriority("high")}</SelectItem>
+                    <SelectItem value="critical">{labelPriority("critical")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="space-y-1">
               <Label>Reason</Label>
               <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
             </div>
             <div className="space-y-1">
-              <Label>Start time</Label>
-              <Input
-                type="datetime-local"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+              <Label>Description</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Start time</Label>
+                <Input
+                  type="datetime-local"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>End time (optional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Kosongkan jika masih ongoing. Jika diisi, status otomatis menjadi resolved.
+                </p>
+              </div>
             </div>
             <LocationMultiSelect
               locations={locations}
@@ -645,6 +765,38 @@ function DowntimeDetailDialog({
               suggestedIds={suggestedIds}
               helperText="Saran dari dependensi master sudah dipilih dan dapat diubah."
             />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Affected users</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={affectedUsers}
+                  onChange={(e) => setAffectedUsers(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Estimated cost</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={estimatedCost}
+                  onChange={(e) => setEstimatedCost(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Root cause</Label>
+              <Textarea value={rootCause} onChange={(e) => setRootCause(e.target.value)} rows={2} />
+            </div>
+            <div className="space-y-1">
+              <Label>Preventive measures</Label>
+              <Textarea
+                value={preventiveMeasures}
+                onChange={(e) => setPreventiveMeasures(e.target.value)}
+                rows={2}
+              />
+            </div>
             <div className="flex gap-2">
               <Button onClick={saveEdit} disabled={busy}>
                 {busy ? "Saving..." : "Save changes"}
@@ -710,7 +862,7 @@ function DowntimeDetailDialog({
           </div>
         )}
 
-        <ScrollArea className="h-[420px] pr-4">
+        <ScrollArea className={`${editing || resolving ? "h-[240px]" : "h-[420px]"} pr-4`}>
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -757,10 +909,22 @@ function DowntimeDetailDialog({
 
             <div>
               <h4 className="font-medium mb-2">Description & reason</h4>
-              <div className="p-3 bg-muted rounded-lg text-sm">{downtime.reason}</div>
-              {downtime.description && (
-                <div className="p-3 bg-muted rounded-lg text-sm mt-2">{downtime.description}</div>
-              )}
+              <div className="space-y-2">
+                <div>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Reason
+                  </span>
+                  <div className="p-3 bg-muted rounded-lg text-sm mt-1">{downtime.reason}</div>
+                </div>
+                <div>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Description
+                  </span>
+                  <div className="p-3 bg-muted rounded-lg text-sm mt-1">
+                    {downtime.description || "—"}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div>

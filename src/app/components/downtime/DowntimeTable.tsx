@@ -5,11 +5,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { DowntimeRecord } from "../../types";
 import { getStatusColor, getTypeColor, getImpactColor, formatDuration, formatDate } from "../../lib/downtime-utils";
 import { labelStatus, labelPriority } from "../../lib/ui-labels";
-import { Clock, MoreHorizontal, Eye } from "lucide-react";
+import { Clock, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
 
 interface DowntimeTableProps {
   downtimes: DowntimeRecord[];
   onViewDetails: (downtime: DowntimeRecord) => void;
+  onEdit: (downtime: DowntimeRecord) => void;
+  onDelete: (downtime: DowntimeRecord) => void;
   canEdit: boolean;
 }
 
@@ -17,7 +19,7 @@ function liveMinutes(start: Date): number {
   return Math.max(0, Math.floor((Date.now() - start.getTime()) / 60000));
 }
 
-export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTableProps) {
+export function DowntimeTable({ downtimes, onViewDetails, onEdit, onDelete, canEdit }: DowntimeTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -119,9 +121,19 @@ export function DowntimeTable({ downtimes, onViewDetails, canEdit }: DowntimeTab
                       View details
                     </DropdownMenuItem>
                     {canEdit && downtime.status === "ongoing" && (
-                      <DropdownMenuItem onClick={() => onViewDetails(downtime)}>
-                        Resolve / edit
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => onEdit(downtime)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => onDelete(downtime)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>

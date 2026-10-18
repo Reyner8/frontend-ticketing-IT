@@ -877,6 +877,10 @@ export async function resolveDowntimeRecord(
   return mapDowntimeRecord(response.data);
 }
 
+export async function deleteDowntimeRecord(id: string): Promise<void> {
+  await apiDelete(`/downtime-records/${id}`);
+}
+
 export async function createMilestone(
   featureId: string,
   payload: { title: string; description?: string; target_date: string; progress?: number }
