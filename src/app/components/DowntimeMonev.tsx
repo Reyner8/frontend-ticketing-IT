@@ -8,7 +8,6 @@ import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { ScrollArea } from "./ui/scroll-area";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
 import { ApiError } from "../lib/api/client";
@@ -862,7 +861,7 @@ function DowntimeDetailDialog({
           </div>
         )}
 
-        <ScrollArea className={`${editing || resolving ? "h-[240px]" : "h-[420px]"} pr-4`}>
+        <div className="space-y-6 pb-2">
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -908,7 +907,7 @@ function DowntimeDetailDialog({
             </div>
 
             <div>
-              <h4 className="font-medium mb-2">Description & reason</h4>
+              <h4 className="font-medium mb-2">Reason & additional details</h4>
               <div className="space-y-2">
                 <div>
                   <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -918,7 +917,7 @@ function DowntimeDetailDialog({
                 </div>
                 <div>
                   <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Description
+                    Additional details
                   </span>
                   <div className="p-3 bg-muted rounded-lg text-sm mt-1">
                     {downtime.description || "—"}
@@ -990,7 +989,7 @@ function DowntimeDetailDialog({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
