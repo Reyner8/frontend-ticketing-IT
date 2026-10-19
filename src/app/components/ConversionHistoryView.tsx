@@ -1,22 +1,39 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { History } from "lucide-react";
 import { fetchGlobalConversionHistory } from "../lib/api/services";
+import { usePaginatedList } from "../lib/api/hooks";
+import type { PaginatedListParams, PaginatedListResult } from "../lib/api/hooks";
+import { PaginationControls } from "./PaginationControls";
 import type { ConversionHistoryEntry } from "../types";
 
 export function ConversionHistoryView() {
-  const [entries, setEntries] = useState<ConversionHistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Paginasi dikerjakan backend (endpoint /conversion-history sudah paginate).
+  const fetcher = useCallback(
+    async ({
+      page,
+      perPage,
+    }: PaginatedListParams): Promise<PaginatedListResult<ConversionHistoryEntry>> => {
+      const { entries, meta } = await fetchGlobalConversionHistory({
+        page,
+        per_page: perPage,
+      });
+      return { data: entries, meta };
+    },
+    []
+  );
 
-  useEffect(() => {
-    fetchGlobalConversionHistory({ per_page: 100 })
-      .then(({ entries: data }) => setEntries(data))
-      .catch(() => setEntries([]))
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    items: entries,
+    meta,
+    loading,
+    error,
+    setPage,
+    setPerPage,
+  } = usePaginatedList(fetcher);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -29,11 +46,13 @@ export function ConversionHistoryView() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>{entries.length} conversions</CardTitle>
+          <CardTitle>{meta?.total ?? 0} conversions</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : error ? (
+            <p className="text-sm text-destructive">{error}</p>
           ) : entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">No conversion history yet.</p>
           ) : (
@@ -61,6 +80,12 @@ export function ConversionHistoryView() {
               </TableBody>
             </Table>
           )}
+          <PaginationControls
+            meta={meta}
+            disabled={loading}
+            onPageChange={setPage}
+            onPerPageChange={setPerPage}
+          />
         </CardContent>
       </Card>
     </div>

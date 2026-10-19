@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -21,6 +21,9 @@ import {
   fetchUsers,
 } from "../lib/api/services";
 import type { ServerRoomVisitor, User, VisitorStatus } from "../types";
+import { PaginationControls } from "./PaginationControls";
+import { usePaginatedList, useDebouncedValue } from "../lib/api/hooks";
+import type { PaginatedListParams, PaginatedListResult } from "../lib/api/hooks";
 
 const STATUS_LABEL: Record<VisitorStatus, string> = {
   inside: "Inside",
@@ -44,9 +47,7 @@ export function ServerRoomVisitors() {
   const { state } = useApp();
   const canManage =
     state.currentUser?.role === "admin" || state.currentUser?.role === "it_staff";
-  const [records, setRecords] = useState<ServerRoomVisitor[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selected, setSelected] = useState<ServerRoomVisitor | null>(null);
@@ -59,25 +60,32 @@ export function ServerRoomVisitors() {
   const [exitAt, setExitAt] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const params: Record<string, string | number> = {};
-      if (search) params.search = search;
-      if (statusFilter !== "all") params.status = statusFilter;
-      const { records: data } = await fetchServerRoomVisitors(params);
-      setRecords(data);
-    } catch {
-      toast.error("Failed to load visitor log");
-      setRecords([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Paginasi + filter (search/status) dikerjakan backend.
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  useEffect(() => {
-    load();
-  }, [statusFilter]);
+  const fetcher = useCallback(
+    async ({
+      page,
+      perPage,
+    }: PaginatedListParams): Promise<PaginatedListResult<ServerRoomVisitor>> => {
+      const params: Record<string, string | number> = { page, per_page: perPage };
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (statusFilter !== "all") params.status = statusFilter;
+      const { records, meta } = await fetchServerRoomVisitors(params);
+      return { data: records, meta };
+    },
+    [debouncedSearch, statusFilter]
+  );
+
+  const {
+    items: records,
+    meta,
+    loading,
+    error,
+    setPage,
+    setPerPage,
+    refetch,
+  } = usePaginatedList(fetcher, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
     if (!canManage) return;
@@ -93,18 +101,6 @@ export function ServerRoomVisitors() {
       )
       .catch(() => setUsers([]));
   }, [canManage]);
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return records;
-    const q = search.toLowerCase();
-    return records.filter(
-      (r) =>
-        r.id.toLowerCase().includes(q) ||
-        r.visitorName.toLowerCase().includes(q) ||
-        r.unitOrVendor.toLowerCase().includes(q) ||
-        r.purpose.toLowerCase().includes(q)
-    );
-  }, [records, search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -156,7 +152,7 @@ export function ServerRoomVisitors() {
         toast.success("Visitor recorded");
       }
       setFormOpen(false);
-      load();
+      refetch();
     } catch {
       toast.error("Failed to save");
     } finally {
@@ -190,7 +186,7 @@ export function ServerRoomVisitors() {
       setSelected(updated);
       setCheckoutOpen(false);
       setCheckoutTarget(null);
-      load();
+      refetch();
     } catch {
       toast.error("Checkout failed");
     } finally {
@@ -204,7 +200,7 @@ export function ServerRoomVisitors() {
       await deleteServerRoomVisitor(row.id);
       toast.success("Deleted");
       if (selected?.id === row.id) setSelected(null);
-      load();
+      refetch();
     } catch {
       toast.error("Failed to delete");
     }
@@ -236,7 +232,6 @@ export function ServerRoomVisitors() {
             placeholder="Search name / unit / purpose…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
             className="max-w-xs"
           />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -249,7 +244,7 @@ export function ServerRoomVisitors() {
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={load}>
+          <Button variant="outline" onClick={refetch}>
             Apply
           </Button>
         </CardContent>
@@ -257,12 +252,14 @@ export function ServerRoomVisitors() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{filtered.length} visits</CardTitle>
+          <CardTitle>{meta?.total ?? 0} visits</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : filtered.length === 0 ? (
+          ) : error ? (
+            <p className="text-sm text-destructive">{error}</p>
+          ) : records.length === 0 ? (
             <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
             <Table>
@@ -278,7 +275,7 @@ export function ServerRoomVisitors() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((row) => (
+                {records.map((row) => (
                   <TableRow
                     key={row.id}
                     className="cursor-pointer"
@@ -302,6 +299,12 @@ export function ServerRoomVisitors() {
               </TableBody>
             </Table>
           )}
+          <PaginationControls
+            meta={meta}
+            disabled={loading}
+            onPageChange={setPage}
+            onPerPageChange={setPerPage}
+          />
         </CardContent>
       </Card>
 

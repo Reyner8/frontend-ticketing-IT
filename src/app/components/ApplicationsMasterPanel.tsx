@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
@@ -14,32 +14,41 @@ import {
   deactivateApplication,
   deleteApplication,
 } from "../lib/api/services";
+import { usePaginatedList } from "../lib/api/hooks";
+import type { PaginatedListParams, PaginatedListResult } from "../lib/api/hooks";
+import { PaginationControls } from "./PaginationControls";
 import type { CatalogApplication } from "../types";
 
 export function ApplicationsMasterPanel() {
-  const [rows, setRows] = useState<CatalogApplication[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const { applications } = await fetchApplications({ per_page: 100 });
-      setRows(applications);
-    } catch {
-      toast.error("Failed to load application master data");
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Paginasi dikerjakan backend (cap per_page 100 di endpoint applications).
+  const fetcher = useCallback(
+    async ({
+      page,
+      perPage,
+    }: PaginatedListParams): Promise<PaginatedListResult<CatalogApplication>> => {
+      const { applications, meta } = await fetchApplications({
+        page,
+        per_page: perPage,
+      });
+      return { data: applications, meta };
+    },
+    []
+  );
 
-  useEffect(() => {
-    load();
-  }, []);
+  const {
+    items: rows,
+    meta,
+    loading,
+    error,
+    setPage,
+    setPerPage,
+    refetch,
+  } = usePaginatedList(fetcher);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -53,7 +62,7 @@ export function ApplicationsMasterPanel() {
       setName("");
       setCode("");
       setDescription("");
-      await load();
+      refetch();
       toast.success("Application added");
     } catch {
       toast.error("Failed to add application");
@@ -69,7 +78,7 @@ export function ApplicationsMasterPanel() {
       } else {
         await updateApplication(row.id, { is_active: true });
       }
-      await load();
+      refetch();
       toast.success(row.isActive ? "Application deactivated" : "Application activated");
     } catch {
       toast.error("Failed to change status");
@@ -80,7 +89,7 @@ export function ApplicationsMasterPanel() {
     if (!confirm(`Delete ${row.name}?`)) return;
     try {
       await deleteApplication(row.id);
-      await load();
+      refetch();
       toast.success("Application deleted");
     } catch {
       toast.error("Cannot delete (still in use). Deactivate it instead.");
@@ -129,6 +138,8 @@ export function ApplicationsMasterPanel() {
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : error ? (
+          <p className="text-sm text-destructive">{error}</p>
         ) : rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No data yet. Run the ApplicationSeeder seeder.</p>
         ) : (
@@ -169,6 +180,12 @@ export function ApplicationsMasterPanel() {
             </TableBody>
           </Table>
         )}
+        <PaginationControls
+          meta={meta}
+          disabled={loading}
+          onPageChange={setPage}
+          onPerPageChange={setPerPage}
+        />
       </CardContent>
     </Card>
   );

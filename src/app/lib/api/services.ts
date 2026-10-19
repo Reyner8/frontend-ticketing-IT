@@ -558,6 +558,7 @@ export async function createDowntimeRecord(payload: {
 export async function fetchDowntimeLocations(params?: Record<string, string | number | boolean>): Promise<{
   locations: DowntimeLocation[];
   total: number;
+  meta: PaginationMeta;
 }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/downtime-locations', {
     per_page: 100,
@@ -566,6 +567,7 @@ export async function fetchDowntimeLocations(params?: Record<string, string | nu
   return {
     locations: (data as unknown as Record<string, unknown>[]).map(mapDowntimeLocation),
     total: meta.total,
+    meta: toPaginationMeta(meta),
   };
 }
 
@@ -607,6 +609,7 @@ export async function deleteDowntimeLocation(id: string): Promise<void> {
 export async function fetchDowntimeComponents(params?: Record<string, string | number | boolean>): Promise<{
   components: DowntimeComponent[];
   total: number;
+  meta: PaginationMeta;
 }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/downtime-components', {
     per_page: 100,
@@ -615,6 +618,7 @@ export async function fetchDowntimeComponents(params?: Record<string, string | n
   return {
     components: (data as unknown as Record<string, unknown>[]).map(mapDowntimeComponent),
     total: meta.total,
+    meta: toPaginationMeta(meta),
   };
 }
 
@@ -822,12 +826,20 @@ export async function convertTicketToFeature(
   await apiPost(`/tickets/${ticketId}/convert/feature-request`, payload);
 }
 
-export async function fetchSystemConfigs(params?: Record<string, string | number>): Promise<SystemConfigItem[]> {
-  const { data } = await apiGetPaginated<Record<string, unknown>[]>('/system-configuration', {
-    per_page: 100,
+export async function fetchSystemConfigs(params?: Record<string, string | number>): Promise<{
+  configs: SystemConfigItem[];
+  total: number;
+  meta: PaginationMeta;
+}> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/system-configuration', {
+    per_page: 50,
     ...params,
   });
-  return (data as unknown as Record<string, unknown>[]).map(mapSystemConfigItem);
+  return {
+    configs: (data as unknown as Record<string, unknown>[]).map(mapSystemConfigItem),
+    total: meta.total,
+    meta: toPaginationMeta(meta),
+  };
 }
 
 export async function createSystemConfig(payload: {
@@ -966,6 +978,7 @@ export async function unmergeTicket(ticketId: string, mergedTicketId: string): P
 export async function fetchGlobalConversionHistory(params?: Record<string, string | number>): Promise<{
   entries: ConversionHistoryEntry[];
   total: number;
+  meta: PaginationMeta;
 }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/conversion-history', {
     per_page: 50,
@@ -974,6 +987,7 @@ export async function fetchGlobalConversionHistory(params?: Record<string, strin
   return {
     entries: (data as unknown as Record<string, unknown>[]).map(mapConversionHistory),
     total: meta.total,
+    meta: toPaginationMeta(meta),
   };
 }
 
@@ -1093,6 +1107,7 @@ export async function resetPassword(payload: {
 export async function fetchApplications(params?: Record<string, string | number | boolean>): Promise<{
   applications: CatalogApplication[];
   total: number;
+  meta: PaginationMeta;
 }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/applications', {
     per_page: 100,
@@ -1101,6 +1116,7 @@ export async function fetchApplications(params?: Record<string, string | number 
   return {
     applications: (data as unknown as Record<string, unknown>[]).map(mapCatalogApplication),
     total: meta.total,
+    meta: toPaginationMeta(meta),
   };
 }
 
@@ -1144,7 +1160,7 @@ export async function deleteApplication(id: string): Promise<void> {
 
 export async function fetchBackupRestoreTests(
   params?: Record<string, string | number>
-): Promise<{ records: BackupRestoreTest[]; total: number }> {
+): Promise<{ records: BackupRestoreTest[]; total: number; meta: PaginationMeta }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>(
     '/backup-restore-tests',
     { per_page: 50, ...params }
@@ -1152,6 +1168,7 @@ export async function fetchBackupRestoreTests(
   return {
     records: (data as unknown as Record<string, unknown>[]).map(mapBackupRestoreTest),
     total: meta?.total ?? 0,
+    meta: toPaginationMeta(meta),
   };
 }
 
@@ -1182,7 +1199,7 @@ export async function deleteBackupRestoreTest(id: string): Promise<void> {
 
 export async function fetchServerRoomVisitors(
   params?: Record<string, string | number>
-): Promise<{ records: ServerRoomVisitor[]; total: number }> {
+): Promise<{ records: ServerRoomVisitor[]; total: number; meta: PaginationMeta }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>(
     '/server-room-visitors',
     { per_page: 50, ...params }
@@ -1190,6 +1207,7 @@ export async function fetchServerRoomVisitors(
   return {
     records: (data as unknown as Record<string, unknown>[]).map(mapServerRoomVisitor),
     total: meta?.total ?? 0,
+    meta: toPaginationMeta(meta),
   };
 }
 
@@ -1231,7 +1249,7 @@ export async function deleteServerRoomVisitor(id: string): Promise<void> {
 
 export async function fetchServerRoomInspections(
   params?: Record<string, string | number>
-): Promise<{ records: ServerRoomInspection[]; total: number }> {
+): Promise<{ records: ServerRoomInspection[]; total: number; meta: PaginationMeta }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>(
     '/server-room-inspections',
     { per_page: 50, ...params }
@@ -1239,6 +1257,7 @@ export async function fetchServerRoomInspections(
   return {
     records: (data as unknown as Record<string, unknown>[]).map(mapServerRoomInspection),
     total: meta?.total ?? 0,
+    meta: toPaginationMeta(meta),
   };
 }
 

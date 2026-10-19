@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -21,6 +21,9 @@ import {
 } from "../lib/api/services";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApplicationSelect } from "./ApplicationSelect";
+import { PaginationControls } from "./PaginationControls";
+import { usePaginatedList, useDebouncedValue } from "../lib/api/hooks";
+import type { PaginatedListParams, PaginatedListResult } from "../lib/api/hooks";
 import type {
   BackupRestoreTest,
   BackupSource,
@@ -78,9 +81,7 @@ export function BackupRestoreTests() {
   const { state } = useApp();
   const canManage =
     state.currentUser?.role === "admin" || state.currentUser?.role === "it_staff";
-  const [records, setRecords] = useState<BackupRestoreTest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [resultFilter, setResultFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -90,26 +91,33 @@ export function BackupRestoreTests() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const params: Record<string, string | number> = {};
-      if (search) params.search = search;
+  // Paginasi + filter (search/result/restore_type) dikerjakan backend.
+  const debouncedSearch = useDebouncedValue(search, 300);
+
+  const fetcher = useCallback(
+    async ({
+      page,
+      perPage,
+    }: PaginatedListParams): Promise<PaginatedListResult<BackupRestoreTest>> => {
+      const params: Record<string, string | number> = { page, per_page: perPage };
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (resultFilter !== "all") params.result = resultFilter;
       if (typeFilter !== "all") params.restore_type = typeFilter;
-      const { records: data } = await fetchBackupRestoreTests(params);
-      setRecords(data);
-    } catch {
-      toast.error("Failed to load restore tests");
-      setRecords([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const { records, meta } = await fetchBackupRestoreTests(params);
+      return { data: records, meta };
+    },
+    [debouncedSearch, resultFilter, typeFilter]
+  );
 
-  useEffect(() => {
-    load();
-  }, [resultFilter, typeFilter]);
+  const {
+    items: records,
+    meta,
+    loading,
+    error,
+    setPage,
+    setPerPage,
+    refetch,
+  } = usePaginatedList(fetcher, [debouncedSearch, resultFilter, typeFilter]);
 
   useEffect(() => {
     if (!canManage) return;
@@ -117,19 +125,6 @@ export function BackupRestoreTests() {
       .then((list) => setUsers(list.filter((u) => u.isActive && (u.role === "it_staff" || u.role === "admin" || u.role === "team_lead"))))
       .catch(() => setUsers([]));
   }, [canManage]);
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return records;
-    const q = search.toLowerCase();
-    return records.filter(
-      (r) =>
-        r.id.toLowerCase().includes(q) ||
-        r.applicationSystem.toLowerCase().includes(q) ||
-        r.applicationLabel.toLowerCase().includes(q) ||
-        (r.testEnvironmentLabel || r.testEnvironment).toLowerCase().includes(q) ||
-        (r.backupSourceLabel || r.backupSource || "").toLowerCase().includes(q)
-    );
-  }, [records, search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -188,7 +183,7 @@ export function BackupRestoreTests() {
         toast.success("Restore test recorded");
       }
       setFormOpen(false);
-      load();
+      refetch();
     } catch {
       toast.error("Failed to save");
     } finally {
@@ -202,7 +197,7 @@ export function BackupRestoreTests() {
       await deleteBackupRestoreTest(row.id);
       toast.success("Deleted");
       if (selected?.id === row.id) setSelected(null);
-      load();
+      refetch();
     } catch {
       toast.error("Failed to delete");
     }
@@ -240,7 +235,6 @@ export function BackupRestoreTests() {
             placeholder="Search ID / application / environment…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
             className="max-w-xs"
           />
           <Select value={resultFilter} onValueChange={setResultFilter}>
@@ -265,7 +259,7 @@ export function BackupRestoreTests() {
               <SelectItem value="both">Both</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={load}>
+          <Button variant="outline" onClick={refetch}>
             Apply
           </Button>
         </CardContent>
@@ -273,12 +267,14 @@ export function BackupRestoreTests() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{filtered.length} records</CardTitle>
+          <CardTitle>{meta?.total ?? 0} records</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : filtered.length === 0 ? (
+          ) : error ? (
+            <p className="text-sm text-destructive">{error}</p>
+          ) : records.length === 0 ? (
             <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
             <Table>
@@ -293,7 +289,7 @@ export function BackupRestoreTests() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((row) => (
+                {records.map((row) => (
                   <TableRow
                     key={row.id}
                     className="cursor-pointer"
@@ -310,6 +306,12 @@ export function BackupRestoreTests() {
               </TableBody>
             </Table>
           )}
+          <PaginationControls
+            meta={meta}
+            disabled={loading}
+            onPageChange={setPage}
+            onPerPageChange={setPerPage}
+          />
         </CardContent>
       </Card>
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -48,6 +48,9 @@ import type {
   ServerRoomInspection,
   User,
 } from "../types";
+import { PaginationControls } from "./PaginationControls";
+import { usePaginatedList, useDebouncedValue } from "../lib/api/hooks";
+import type { PaginatedListParams, PaginatedListResult } from "../lib/api/hooks";
 
 const TYPE_LABEL: Record<InspectionType, string> = {
   weekly: "Weekly",
@@ -96,9 +99,7 @@ export function ServerRoomInspections() {
   const canManage =
     state.currentUser?.role === "admin" ||
     state.currentUser?.role === "it_staff";
-  const [records, setRecords] = useState<ServerRoomInspection[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [conclusionFilter, setConclusionFilter] = useState<string>("all");
@@ -108,26 +109,33 @@ export function ServerRoomInspections() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const params: Record<string, string | number> = {};
-      if (search) params.search = search;
+  // Paginasi + filter (search/inspection_type/conclusion) dikerjakan backend.
+  const debouncedSearch = useDebouncedValue(search, 300);
+
+  const fetcher = useCallback(
+    async ({
+      page,
+      perPage,
+    }: PaginatedListParams): Promise<PaginatedListResult<ServerRoomInspection>> => {
+      const params: Record<string, string | number> = { page, per_page: perPage };
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (typeFilter !== "all") params.inspection_type = typeFilter;
       if (conclusionFilter !== "all") params.conclusion = conclusionFilter;
-      const { records: data } = await fetchServerRoomInspections(params);
-      setRecords(data);
-    } catch {
-      toast.error("Failed to load inspections");
-      setRecords([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const { records, meta } = await fetchServerRoomInspections(params);
+      return { data: records, meta };
+    },
+    [debouncedSearch, typeFilter, conclusionFilter]
+  );
 
-  useEffect(() => {
-    load();
-  }, [typeFilter, conclusionFilter]);
+  const {
+    items: records,
+    meta,
+    loading,
+    error,
+    setPage,
+    setPerPage,
+    refetch,
+  } = usePaginatedList(fetcher, [debouncedSearch, typeFilter, conclusionFilter]);
 
   useEffect(() => {
     if (!canManage) return;
@@ -145,17 +153,6 @@ export function ServerRoomInspections() {
       )
       .catch(() => setUsers([]));
   }, [canManage]);
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return records;
-    const q = search.toLowerCase();
-    return records.filter(
-      (r) =>
-        r.id.toLowerCase().includes(q) ||
-        (r.notes ?? "").toLowerCase().includes(q) ||
-        (r.followUp ?? "").toLowerCase().includes(q),
-    );
-  }, [records, search]);
 
   const openCreate = () => {
     setEditing(null);
@@ -239,7 +236,7 @@ export function ServerRoomInspections() {
         toast.success("Inspection recorded");
       }
       setFormOpen(false);
-      load();
+      refetch();
     } catch {
       toast.error("Failed to save");
     } finally {
@@ -253,7 +250,7 @@ export function ServerRoomInspections() {
       await deleteServerRoomInspection(row.id);
       toast.success("Deleted");
       if (selected?.id === row.id) setSelected(null);
-      load();
+      refetch();
     } catch {
       toast.error("Failed to delete");
     }
@@ -285,7 +282,6 @@ export function ServerRoomInspections() {
             placeholder="Search ID / notes…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
             className="max-w-xs"
           />
           <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -308,7 +304,7 @@ export function ServerRoomInspections() {
               <SelectItem value="findings">Findings</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={load}>
+          <Button variant="outline" onClick={refetch}>
             Apply
           </Button>
         </CardContent>
@@ -316,12 +312,14 @@ export function ServerRoomInspections() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{filtered.length} inspections</CardTitle>
+          <CardTitle>{meta?.total ?? 0} inspections</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : filtered.length === 0 ? (
+          ) : error ? (
+            <p className="text-sm text-destructive">{error}</p>
+          ) : records.length === 0 ? (
             <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
             <Table>
@@ -336,7 +334,7 @@ export function ServerRoomInspections() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((row) => (
+                {records.map((row) => (
                   <TableRow
                     key={row.id}
                     className="cursor-pointer"
@@ -369,6 +367,12 @@ export function ServerRoomInspections() {
               </TableBody>
             </Table>
           )}
+          <PaginationControls
+            meta={meta}
+            disabled={loading}
+            onPageChange={setPage}
+            onPerPageChange={setPerPage}
+          />
         </CardContent>
       </Card>
 

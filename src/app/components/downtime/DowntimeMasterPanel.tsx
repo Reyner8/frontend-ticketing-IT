@@ -28,6 +28,9 @@ import {
 import { DowntimeComponent, DowntimeComponentCategory, DowntimeLocation } from "../../types";
 import { getComponentCategoryColor } from "../../lib/downtime-utils";
 import { ComponentMultiSelect } from "./ComponentMultiSelect";
+import { PaginationControls } from "../PaginationControls";
+import type { PaginationMeta } from "../../lib/api/client";
+import { PAGINATION } from "../../lib/constants";
 import { Plus, MoreHorizontal, Pencil, Link2, Power, PowerOff, Trash2 } from "lucide-react";
 
 const CATEGORIES: Array<{ value: DowntimeComponentCategory; label: string }> = [
@@ -90,6 +93,40 @@ export function DowntimeMasterPanel() {
   }, []);
 
   const activeComponents = useMemo(() => components.filter((c) => c.isActive), [components]);
+
+  // Paginasi tampilan client-side: data tetap dimuat penuh (cap 100 backend)
+  // karena daftar komponen juga dipakai sebagai opsi form dependencies.
+  const [pageSize, setPageSize] = useState<number>(PAGINATION.defaultPageSize);
+  const [componentPage, setComponentPage] = useState(1);
+  const [locationPage, setLocationPage] = useState(1);
+
+  const componentMeta: PaginationMeta = {
+    currentPage: componentPage,
+    lastPage: Math.max(1, Math.ceil(components.length / pageSize)),
+    perPage: pageSize,
+    total: components.length,
+  };
+  const pagedComponents = components.slice(
+    (componentPage - 1) * pageSize,
+    componentPage * pageSize
+  );
+
+  const locationMeta: PaginationMeta = {
+    currentPage: locationPage,
+    lastPage: Math.max(1, Math.ceil(locations.length / pageSize)),
+    perPage: pageSize,
+    total: locations.length,
+  };
+  const pagedLocations = locations.slice(
+    (locationPage - 1) * pageSize,
+    locationPage * pageSize
+  );
+
+  const changePageSize = (n: number) => {
+    setPageSize(n);
+    setComponentPage(1);
+    setLocationPage(1);
+  };
 
   const openCreateLocation = () => {
     setEditingLocation(null);
@@ -258,7 +295,7 @@ export function DowntimeMasterPanel() {
                       <TableCell colSpan={5}>No components yet.</TableCell>
                     </TableRow>
                   ) : (
-                    components.map((component) => (
+                    pagedComponents.map((component) => (
                       <TableRow key={component.id}>
                         <TableCell>
                           <div className="font-medium">{component.name}</div>
@@ -371,6 +408,13 @@ export function DowntimeMasterPanel() {
                   )}
                 </TableBody>
               </Table>
+              <PaginationControls
+                meta={componentMeta}
+                disabled={loading}
+                onPageChange={setComponentPage}
+                onPerPageChange={changePageSize}
+                className="px-4 pb-4"
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -403,7 +447,7 @@ export function DowntimeMasterPanel() {
                       <TableCell colSpan={4}>No locations yet.</TableCell>
                     </TableRow>
                   ) : (
-                    locations.map((location) => (
+                    pagedLocations.map((location) => (
                       <TableRow key={location.id}>
                         <TableCell>
                           <div className="font-medium">{location.name}</div>
@@ -492,6 +536,13 @@ export function DowntimeMasterPanel() {
                   )}
                 </TableBody>
               </Table>
+              <PaginationControls
+                meta={locationMeta}
+                disabled={loading}
+                onPageChange={setLocationPage}
+                onPerPageChange={changePageSize}
+                className="px-4 pb-4"
+              />
             </CardContent>
           </Card>
         </TabsContent>

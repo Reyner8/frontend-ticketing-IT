@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
@@ -10,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
 import { useApp } from "../lib/store";
 import { updatePreferences, fetchSystemConfigs, createSystemConfig, updateSystemConfig, deleteSystemConfig } from "../lib/api/services";
+import { usePaginatedList } from "../lib/api/hooks";
+import type { PaginatedListParams, PaginatedListResult } from "../lib/api/hooks";
+import { PaginationControls } from "./PaginationControls";
 import type { UserPreferences, SystemConfigItem } from "../types";
 import { User, Trash2, Plus } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
@@ -246,27 +249,32 @@ export function Settings() {
 }
 
 function SystemConfigPanel() {
-  const [configs, setConfigs] = useState<SystemConfigItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      setConfigs(await fetchSystemConfigs());
-    } catch {
-      toast.error("Failed to load system configuration");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Paginasi dikerjakan backend (cap per_page 50 di endpoint system-configuration).
+  const fetcher = useCallback(
+    async ({
+      page,
+      perPage,
+    }: PaginatedListParams): Promise<PaginatedListResult<SystemConfigItem>> => {
+      const { configs, meta } = await fetchSystemConfigs({ page, per_page: perPage });
+      return { data: configs, meta };
+    },
+    []
+  );
 
-  useEffect(() => {
-    load();
-  }, []);
+  const {
+    items: configs,
+    meta,
+    loading,
+    error,
+    setPage,
+    setPerPage,
+    refetch,
+  } = usePaginatedList(fetcher);
 
   const handleCreate = async () => {
     if (!newKey.trim() || !newValue.trim()) return;
@@ -280,7 +288,7 @@ function SystemConfigPanel() {
       setNewKey("");
       setNewValue("");
       setNewDescription("");
-      await load();
+      refetch();
       toast.success("Configuration created successfully");
     } catch {
       toast.error("Failed to create configuration");
@@ -292,7 +300,7 @@ function SystemConfigPanel() {
   const handleUpdate = async (item: SystemConfigItem, value: string) => {
     try {
       await updateSystemConfig(item.id, { config_value: value });
-      await load();
+      refetch();
       toast.success("Configuration updated");
     } catch {
       toast.error("Failed to update configuration");
@@ -302,7 +310,7 @@ function SystemConfigPanel() {
   const handleDelete = async (id: string) => {
     try {
       await deleteSystemConfig(id);
-      await load();
+      refetch();
       toast.success("Configuration deleted");
     } catch {
       toast.error("Failed to delete configuration");
@@ -339,6 +347,8 @@ function SystemConfigPanel() {
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : error ? (
+          <p className="text-sm text-destructive">{error}</p>
         ) : configs.length === 0 ? (
           <p className="text-sm text-muted-foreground">No configuration entries yet</p>
         ) : (
@@ -380,6 +390,12 @@ function SystemConfigPanel() {
             </TableBody>
           </Table>
         )}
+        <PaginationControls
+          meta={meta}
+          disabled={loading}
+          onPageChange={setPage}
+          onPerPageChange={setPerPage}
+        />
       </CardContent>
     </Card>
   );
