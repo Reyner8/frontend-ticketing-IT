@@ -30,6 +30,9 @@ import { toast } from "sonner";
 import { ErrorReport, ErrorReportStatus, TicketPriority, TicketCategory, TeamType, Comment, ActivityLogEntry, StatusHistoryEntry } from "../types";
 import { labelStatus, labelPriority, labelTeam } from "../lib/ui-labels";
 import { TableSkeleton, NoTicketsFound } from "./LoadingStates";
+import { PaginationControls } from "./PaginationControls";
+import { PAGINATION } from "../lib/constants";
+import type { PaginationMeta } from "../lib/api/client";
 
 const ERROR_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "pending_approval", label: labelStatus("pending_approval") },
@@ -146,11 +149,11 @@ export function ErrorReports() {
   const [isLoading, setIsLoading] = useState(true);
   const [showNewReportDialog, setShowNewReportDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGINATION.defaultPageSize);
   const [sortBy, setSortBy] = useState<'dateReported' | 'priority' | 'status' | 'sla' | 'dueDate'>('dateReported');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [dateRange, setDateRange] = useState<{start?: Date; end?: Date}>({});
 
-  const pageSize = 10;
   const currentUser = state.currentUser;
   const mockUsers = getCachedUsers();
 
@@ -158,7 +161,7 @@ export function ErrorReports() {
     const load = async () => {
       setIsLoading(true);
       try {
-        const { reports: data } = await fetchErrorReports({ per_page: 100 });
+        const { reports: data } = await fetchErrorReports({ per_page: 50 });
         setReports(data);
       } catch {
         setReports([]);
@@ -207,7 +210,7 @@ export function ErrorReports() {
 
   const refreshReports = async () => {
     try {
-      const { reports: data } = await fetchErrorReports({ per_page: 100 });
+      const { reports: data } = await fetchErrorReports({ per_page: 50 });
       setReports(data);
     } catch {
       /* noop */
@@ -294,12 +297,22 @@ export function ErrorReports() {
     return filtered;
   }, [reports, searchTerm, statusFilter, priorityFilter, categoryFilter, teamFilter, dateRange, currentUser, sortBy, sortOrder]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredReports.length / pageSize);
+  // Pagination (client-side: sort, date range, dan scope it_staff belum didukung param backend;
+  // data dibatasi per_page 50 dari server)
+  const paginationMeta: PaginationMeta = {
+    currentPage,
+    lastPage: Math.max(1, Math.ceil(filteredReports.length / pageSize)),
+    perPage: pageSize,
+    total: filteredReports.length,
+  };
   const paginatedReports = filteredReports.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, priorityFilter, categoryFilter, teamFilter, dateRange, sortBy, sortOrder, pageSize]);
 
   // Summary statistics
   const summaryStats = useMemo(() => {
@@ -734,31 +747,12 @@ export function ErrorReports() {
       </Card>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <PaginationControls
+        meta={paginationMeta}
+        disabled={isLoading}
+        onPageChange={setCurrentPage}
+        onPerPageChange={setPageSize}
+      />
 
       {/* Error Report Detail Dialog */}
       {selectedReport && (

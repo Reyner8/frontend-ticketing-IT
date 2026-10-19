@@ -9,7 +9,9 @@ import {
   apiDownload,
   setToken,
   clearToken,
+  toPaginationMeta,
 } from './client';
+import type { PaginationMeta } from './client';
 import {
   mapUser,
   mapTicketListItem,
@@ -127,6 +129,26 @@ export async function fetchUsers(params?: Record<string, string | number>): Prom
   return usersCache;
 }
 
+/**
+ * Versi paginasi untuk halaman list user. Tidak menyentuh usersCache agar
+ * cache nama-user (dipakai searchUsers dll.) tidak tertimpa satu halaman saja.
+ */
+export async function fetchUsersPage(params?: Record<string, string | number>): Promise<{
+  users: User[];
+  total: number;
+  meta: PaginationMeta;
+}> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/users', {
+    per_page: 20,
+    ...params,
+  });
+  return {
+    users: (data as unknown as Record<string, unknown>[]).map(mapUser),
+    total: meta.total,
+    meta: toPaginationMeta(meta),
+  };
+}
+
 export interface UserPayload {
   name: string;
   username: string;
@@ -174,13 +196,14 @@ export async function toggleUserActive(id: string): Promise<User> {
 export async function fetchTickets(params?: Record<string, string | number>): Promise<{
   tickets: Ticket[];
   total: number;
+  meta: PaginationMeta;
 }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/tickets', {
     per_page: 50,
     ...params,
   });
   const tickets = (data as unknown as Record<string, unknown>[]).map(mapTicketListItem);
-  return { tickets, total: meta.total };
+  return { tickets, total: meta.total, meta: toPaginationMeta(meta) };
 }
 
 export async function createTicket(payload: {
@@ -232,13 +255,14 @@ export async function fetchGlobalActivityLogs(params?: {
 export async function fetchErrorReports(params?: Record<string, string | number>): Promise<{
   reports: ErrorReport[];
   total: number;
+  meta: PaginationMeta;
 }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/error-reports', {
     per_page: 50,
     ...params,
   });
   const reports = (data as unknown as Record<string, unknown>[]).map(mapErrorReportListItem);
-  return { reports, total: meta.total };
+  return { reports, total: meta.total, meta: toPaginationMeta(meta) };
 }
 
 export async function fetchErrorReportDetail(id: string): Promise<ErrorReport> {
@@ -436,13 +460,14 @@ export async function deleteAttachment(
 export async function fetchFeatureRequests(params?: Record<string, string | number>): Promise<{
   features: FeatureRequest[];
   total: number;
+  meta: PaginationMeta;
 }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/feature-requests', {
     per_page: 50,
     ...params,
   });
   const features = (data as unknown as Record<string, unknown>[]).map(mapFeatureListItem);
-  return { features, total: meta.total };
+  return { features, total: meta.total, meta: toPaginationMeta(meta) };
 }
 
 export async function fetchFeatureDetail(id: string): Promise<FeatureRequest> {
@@ -497,13 +522,14 @@ export async function fetchUpcomingEvents(days = 7): Promise<CalendarEvent[]> {
 export async function fetchDowntimeRecords(params?: Record<string, string | number>): Promise<{
   records: DowntimeRecord[];
   total: number;
+  meta: PaginationMeta;
 }> {
   const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>('/downtime-records', {
-    per_page: 100,
+    per_page: 50,
     ...params,
   });
   const records = (data as unknown as Record<string, unknown>[]).map(mapDowntimeRecord);
-  return { records, total: meta.total };
+  return { records, total: meta.total, meta: toPaginationMeta(meta) };
 }
 
 export async function createDowntimeRecord(payload: {

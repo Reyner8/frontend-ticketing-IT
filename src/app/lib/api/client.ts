@@ -21,6 +21,22 @@ export interface PaginatedMeta {
   total: number;
 }
 
+export interface PaginationMeta {
+  currentPage: number;
+  lastPage: number;
+  perPage: number;
+  total: number;
+}
+
+export function toPaginationMeta(meta: PaginatedMeta): PaginationMeta {
+  return {
+    currentPage: meta.current_page,
+    lastPage: meta.last_page,
+    perPage: meta.per_page,
+    total: meta.total,
+  };
+}
+
 export interface ApiSuccessResponse<T> {
   success: true;
   message: string;

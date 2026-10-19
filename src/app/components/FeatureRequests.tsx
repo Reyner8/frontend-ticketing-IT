@@ -58,6 +58,9 @@ import type {
   TicketPriority,
 } from "../types";
 import { labelStatus, labelPriority, labelTeam } from "../lib/ui-labels";
+import { PaginationControls } from "./PaginationControls";
+import { PAGINATION } from "../lib/constants";
+import type { PaginationMeta } from "../lib/api/client";
 import { CommentThread } from "./CommentThread";
 import { FeatureMilestoneDialog } from "./FeatureMilestoneDialog";
 import { ResourceEditActions } from "./ResourceEditActions";
@@ -229,6 +232,7 @@ export function FeatureRequests() {
   const [isLoading, setIsLoading] = useState(true);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGINATION.defaultPageSize);
   const [sortBy, setSortBy] = useState<
     "createdAt" | "priority" | "status" | "dueDate" | "progress"
   >("createdAt");
@@ -237,7 +241,6 @@ export function FeatureRequests() {
     "all" | "not_started" | "in_progress" | "completed"
   >("all");
 
-  const pageSize = 10;
   const currentUser = state.currentUser;
   const mockUsers = getCachedUsers();
   const { applications: applicationOptions } = useActiveApplications();
@@ -245,7 +248,7 @@ export function FeatureRequests() {
   const loadFeatures = async () => {
     setIsLoading(true);
     try {
-      const { features: data } = await fetchFeatureRequests({ per_page: 100 });
+      const { features: data } = await fetchFeatureRequests({ per_page: 50 });
       setFeatures(data);
     } catch {
       setFeatures([]);
@@ -406,12 +409,22 @@ export function FeatureRequests() {
     sortOrder,
   ]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredTickets.length / pageSize);
+  // Pagination (client-side: sort, progress, scope it_staff, dan filter application
+  // belum didukung param backend; data dibatasi per_page 50 dari server)
+  const paginationMeta: PaginationMeta = {
+    currentPage,
+    lastPage: Math.max(1, Math.ceil(filteredTickets.length / pageSize)),
+    perPage: pageSize,
+    total: filteredTickets.length,
+  };
   const paginatedTickets = filteredTickets.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, priorityFilter, typeFilter, applicationFilter, progressFilter, sortBy, sortOrder, pageSize]);
 
   // Progress diambil langsung dari nilai backend (rata-rata milestone; 100% saat status selesai).
   const calculateProgress = (ticket: FeatureRequest) => {
@@ -1057,33 +1070,12 @@ export function FeatureRequests() {
       </Card>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage(Math.min(totalPages, currentPage + 1))
-              }
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <PaginationControls
+        meta={paginationMeta}
+        disabled={isLoading}
+        onPageChange={setCurrentPage}
+        onPerPageChange={setPageSize}
+      />
 
       {/* Feature Request Detail Dialog */}
       {selectedTicket && (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -22,6 +22,17 @@ import {
   updateTicket,
   deleteTicket,
 } from "../lib/api/services";
+import {
+  usePaginatedList,
+  useDebouncedValue,
+} from "../lib/api/hooks";
+import type {
+  PaginatedListParams,
+  PaginatedListResult,
+} from "../lib/api/hooks";
+import type { PaginationMeta } from "../lib/api/client";
+import { PAGINATION } from "../lib/constants";
+import { PaginationControls } from "./PaginationControls";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { ApprovalActions } from "./ApprovalActions";
 import { AssignmentActions } from "./AssignmentActions";
@@ -81,45 +92,102 @@ function priorityColor(priority: TicketPriority) {
 export function Tickets() {
   const { state } = useApp();
   const currentUser = state.currentUser;
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Scoping role it_staff/team_lead (assigned-to-me OR unassigned) belum didukung
+  // param backend → dua role ini memakai jalur client-side.
+  const isClientScoped =
+    currentUser?.role === "it_staff" || currentUser?.role === "team_lead";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | "all">("all");
   const [publicOnlyFilter, setPublicOnlyFilter] = useState(false);
   const [selected, setSelected] = useState<Ticket | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const loadTickets = async () => {
-    setLoading(true);
-    try {
-      const { tickets: data } = await fetchTickets({ per_page: 100 });
-      setTickets(data);
-    } catch {
-      setTickets([]);
-      toast.error("Failed to load tickets");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
+
+  // Jalur server-side (admin & reporter): filter + paginasi dikerjakan backend.
+  const fetcher = useCallback(
+    async ({
+      page,
+      perPage,
+    }: PaginatedListParams): Promise<PaginatedListResult<Ticket>> => {
+      const params: Record<string, string | number> = { page, per_page: perPage };
+      if (statusFilter !== "all") params.status = statusFilter;
+      if (priorityFilter !== "all") params.priority = priorityFilter;
+      if (publicOnlyFilter) params.is_public_submission = 1;
+      if (currentUser?.role === "reporter" && currentUser.id) {
+        params.reporter_id = currentUser.id;
+      }
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      const { tickets, meta } = await fetchTickets(params);
+      return { data: tickets, meta };
+    },
+    [
+      statusFilter,
+      priorityFilter,
+      publicOnlyFilter,
+      debouncedSearch,
+      currentUser?.role,
+      currentUser?.id,
+    ]
+  );
+
+  const serverList = usePaginatedList(
+    fetcher,
+    [
+      statusFilter,
+      priorityFilter,
+      publicOnlyFilter,
+      debouncedSearch,
+      currentUser?.role,
+      currentUser?.id,
+      refreshKey,
+    ],
+    !isClientScoped
+  );
+
+  // Jalur client-side (it_staff & team_lead): fetch maks. 50 baris lalu filter + paginasi lokal.
+  const [clientTickets, setClientTickets] = useState<Ticket[]>([]);
+  const [clientLoading, setClientLoading] = useState(true);
+  const [clientPage, setClientPage] = useState(1);
+  const [clientPerPage, setClientPerPage] = useState<number>(PAGINATION.defaultPageSize);
 
   useEffect(() => {
-    loadTickets();
-  }, []);
+    if (!isClientScoped) return;
+    let cancelled = false;
+    const load = async () => {
+      setClientLoading(true);
+      try {
+        const { tickets } = await fetchTickets({ per_page: 50 });
+        if (!cancelled) setClientTickets(tickets);
+      } catch {
+        if (!cancelled) {
+          setClientTickets([]);
+          toast.error("Failed to load tickets");
+        }
+      } finally {
+        if (!cancelled) setClientLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isClientScoped, refreshKey]);
 
-  const filtered = useMemo(() => {
-    let list = [...tickets];
+  const clientFiltered = useMemo(() => {
+    let list = [...clientTickets];
 
     if (currentUser?.role === "it_staff") {
       list = list.filter((t) => t.assignedToId === currentUser.id || !t.assignedToId);
     } else if (currentUser?.role === "team_lead") {
       list = list.filter((t) => t.assignedTeam === currentUser.team || !t.assignedTeam);
-    } else if (currentUser?.role === "reporter") {
-      list = list.filter((t) => t.reporterId === currentUser.id);
     }
 
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       list = list.filter(
         (t) =>
           t.title.toLowerCase().includes(q) ||
@@ -135,7 +203,26 @@ export function Tickets() {
     return list.sort(
       (a, b) => b.dateReported.getTime() - a.dateReported.getTime()
     );
-  }, [tickets, searchTerm, statusFilter, priorityFilter, publicOnlyFilter, currentUser]);
+  }, [clientTickets, debouncedSearch, statusFilter, priorityFilter, publicOnlyFilter, currentUser]);
+
+  useEffect(() => {
+    setClientPage(1);
+  }, [debouncedSearch, statusFilter, priorityFilter, publicOnlyFilter]);
+
+  const clientMeta: PaginationMeta = {
+    currentPage: clientPage,
+    lastPage: Math.max(1, Math.ceil(clientFiltered.length / clientPerPage)),
+    perPage: clientPerPage,
+    total: clientFiltered.length,
+  };
+  const clientPaged = clientFiltered.slice(
+    (clientPage - 1) * clientPerPage,
+    clientPage * clientPerPage
+  );
+
+  const loading = isClientScoped ? clientLoading : serverList.loading;
+  const tickets: Ticket[] = isClientScoped ? clientPaged : serverList.items;
+  const displayMeta: PaginationMeta | null = isClientScoped ? clientMeta : serverList.meta;
 
   const openDetail = async (ticket: Ticket) => {
     try {
@@ -186,7 +273,7 @@ export function Tickets() {
             Antrian laporan masuk — termasuk form publik (PUB-*). IT meninjau, lalu convert ke Error Report / Feature Request
           </p>
         </div>
-        <Badge variant="outline">{filtered.length} shown</Badge>
+        <Badge variant="outline">{displayMeta?.total ?? 0} shown</Badge>
       </div>
 
       <Card>
@@ -246,7 +333,7 @@ export function Tickets() {
         <CardContent>
           {loading ? (
             <TableSkeleton />
-          ) : filtered.length === 0 ? (
+          ) : tickets.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">No tickets found</p>
           ) : (
             <Table>
@@ -262,7 +349,7 @@ export function Tickets() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((ticket) => (
+                {tickets.map((ticket) => (
                   <TableRow key={ticket.id} className="cursor-pointer" onClick={() => openDetail(ticket)}>
                     <TableCell className="font-mono text-sm">
                       <div className="flex items-center gap-2">
@@ -299,6 +386,16 @@ export function Tickets() {
               </TableBody>
             </Table>
           )}
+          <PaginationControls
+            meta={displayMeta}
+            disabled={loading}
+            onPageChange={(p) =>
+              isClientScoped ? setClientPage(p) : serverList.setPage(p)
+            }
+            onPerPageChange={(n) =>
+              isClientScoped ? setClientPerPage(n) : serverList.setPerPage(n)
+            }
+          />
         </CardContent>
       </Card>
 
@@ -310,7 +407,7 @@ export function Tickets() {
             setDetailOpen(open);
             if (!open) {
               setSelected(null);
-              loadTickets();
+              setRefreshKey((k) => k + 1);
             }
           }}
         />

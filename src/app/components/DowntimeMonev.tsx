@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useApp } from "../lib/store";
 import { toast } from "sonner";
 import { ApiError } from "../lib/api/client";
+import type { PaginationMeta } from "../lib/api/client";
+import { PaginationControls } from "./PaginationControls";
 import {
   createDowntimeComponent,
   createDowntimeRecord,
@@ -90,12 +92,12 @@ export function DowntimeMonev() {
   const [isLoading, setIsLoading] = useState(true);
   const [showNewDowntimeDialog, setShowNewDowntimeDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGINATION.defaultPageSize);
   const [activeTab, setActiveTab] = useState("list");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState<"month" | "week">("month");
   const [summary, setSummary] = useState<DowntimeAnalyticsSummary | null>(null);
 
-  const pageSize = PAGINATION.defaultPageSize;
   const currentUser = state.currentUser;
   const canManage =
     currentUser?.role === "it_staff" || currentUser?.role === "admin";
@@ -104,7 +106,7 @@ export function DowntimeMonev() {
     setIsLoading(true);
     try {
       const [{ records }, analytics] = await Promise.all([
-        fetchDowntimeRecords({ per_page: 100 }),
+        fetchDowntimeRecords({ per_page: 50 }),
         fetchDowntimeAnalytics().catch(() => null),
       ]);
       setDowntimes(records);
@@ -175,11 +177,22 @@ export function DowntimeMonev() {
     return filtered;
   }, [downtimes, searchTerm, typeFilter, statusFilter, currentUser]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredDowntimes.length / pageSize));
+  // Pagination client-side: search multi-field, scope reporter, dan feed calendar
+  // memakai data terfilter; server membatasi per_page 50.
+  const paginationMeta: PaginationMeta = {
+    currentPage,
+    lastPage: Math.max(1, Math.ceil(filteredDowntimes.length / pageSize)),
+    perPage: pageSize,
+    total: filteredDowntimes.length,
+  };
   const paginatedDowntimes = filteredDowntimes.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, typeFilter, statusFilter, pageSize]);
 
   const calendarEvents = useMemo(
     () => generateCalendarEvents(filteredDowntimes),
@@ -378,31 +391,12 @@ export function DowntimeMonev() {
             </CardContent>
           </Card>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
+          <PaginationControls
+            meta={paginationMeta}
+            disabled={isLoading}
+            onPageChange={setCurrentPage}
+            onPerPageChange={setPageSize}
+          />
         </TabsContent>
 
         <TabsContent value="calendar" className="space-y-4">

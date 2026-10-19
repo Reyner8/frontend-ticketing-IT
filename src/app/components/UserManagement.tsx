@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
@@ -23,14 +23,22 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Plus, Search, Pencil, Trash2, UserCog } from "lucide-react";
 import { useApp } from "../lib/store";
 import {
-  fetchUsers,
+  fetchUsersPage,
   createUser,
   updateUser,
   deleteUser,
   toggleUserActive,
-  setCachedUsers,
   type UserPayload,
 } from "../lib/api/services";
+import {
+  usePaginatedList,
+  useDebouncedValue,
+} from "../lib/api/hooks";
+import type {
+  PaginatedListParams,
+  PaginatedListResult,
+} from "../lib/api/hooks";
+import { PaginationControls } from "./PaginationControls";
 import { ApiError } from "../lib/api/client";
 import type { User, UserRole, TeamType } from "../types";
 
@@ -50,8 +58,6 @@ export function UserManagement() {
   const { state } = useApp();
   const currentUser = state.currentUser;
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [teamFilter, setTeamFilter] = useState<TeamType | "all">("all");
@@ -59,43 +65,39 @@ export function UserManagement() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
-  const loadUsers = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchUsers({ per_page: 200 });
-      setUsers(data);
-      setCachedUsers(data);
-    } catch {
-      toast.error("Failed to load users");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  // Paginasi + filter dikerjakan backend (role, team, search).
+  const fetcher = useCallback(
+    async ({
+      page,
+      perPage,
+    }: PaginatedListParams): Promise<PaginatedListResult<User>> => {
+      const params: Record<string, string | number> = { page, per_page: perPage };
+      if (roleFilter !== "all") params.role = roleFilter;
+      if (teamFilter !== "all") params.team = teamFilter;
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      const { users, meta } = await fetchUsersPage(params);
+      return { data: users, meta };
+    },
+    [roleFilter, teamFilter, debouncedSearch]
+  );
 
-  const filtered = useMemo(() => {
-    return users.filter((u) => {
-      if (roleFilter !== "all" && u.role !== roleFilter) return false;
-      if (teamFilter !== "all" && u.team !== teamFilter) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        if (
-          !u.name.toLowerCase().includes(q) &&
-          !u.email.toLowerCase().includes(q)
-        )
-          return false;
-      }
-      return true;
-    });
-  }, [users, search, roleFilter, teamFilter]);
+  const isAdmin = currentUser?.role === "admin";
+  const {
+    items: users,
+    meta,
+    loading,
+    setPage,
+    setPerPage,
+    refetch,
+    setItems,
+  } = usePaginatedList(fetcher, [roleFilter, teamFilter, debouncedSearch], isAdmin);
 
   const handleToggleActive = async (user: User) => {
     try {
       const updated = await toggleUserActive(user.id);
-      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      setItems((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
       toast.success(`User ${updated.isActive ? "activated" : "deactivated"}`);
     } catch {
       toast.error("Failed to change user status");
@@ -106,8 +108,8 @@ export function UserManagement() {
     if (!deletingUser) return;
     try {
       await deleteUser(deletingUser.id);
-      setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
       toast.success("User deleted");
+      refetch();
     } catch {
       toast.error("Failed to delete user");
     } finally {
@@ -200,7 +202,7 @@ export function UserManagement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Users ({filtered.length})</CardTitle>
+          <CardTitle>Users ({meta?.total ?? 0})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -219,7 +221,7 @@ export function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((user) => (
+                {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -289,7 +291,7 @@ export function UserManagement() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filtered.length === 0 && (
+                {users.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       <UserCog className="mx-auto h-8 w-8 mb-2 opacity-40" />
@@ -300,6 +302,12 @@ export function UserManagement() {
               </TableBody>
             </Table>
           )}
+          <PaginationControls
+            meta={meta}
+            disabled={loading}
+            onPageChange={setPage}
+            onPerPageChange={setPerPage}
+          />
         </CardContent>
       </Card>
 
@@ -310,7 +318,7 @@ export function UserManagement() {
           if (!o) setEditingUser(null);
         }}
         user={editingUser}
-        onSaved={loadUsers}
+        onSaved={refetch}
       />
 
       <AlertDialog
