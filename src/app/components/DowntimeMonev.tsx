@@ -1006,6 +1006,10 @@ function NewDowntimeDialog({
     startTime: toLocalInput(new Date()),
     endTime: "",
     description: "",
+    rootCause: "",
+    preventiveMeasures: "",
+    affectedUsers: "",
+    estimatedCost: "",
   });
   const [locationIds, setLocationIds] = useState<string[]>([]);
   const [sourceIds, setSourceIds] = useState<string[]>([]);
@@ -1077,6 +1081,10 @@ function NewDowntimeDialog({
       toast.error("Select at least one directly down component");
       return;
     }
+    if (formData.endTime && (!formData.rootCause.trim() || !formData.preventiveMeasures.trim())) {
+      toast.error("Root cause and preventive measures are required when end time is filled");
+      return;
+    }
     setSubmitting(true);
     try {
       await createDowntimeRecord({
@@ -1087,6 +1095,10 @@ function NewDowntimeDialog({
         start_time: toApiDateTime(formData.startTime),
         end_time: formData.endTime ? toApiDateTime(formData.endTime) : undefined,
         description: formData.description || undefined,
+        root_cause: formData.rootCause.trim() || undefined,
+        preventive_measures: formData.preventiveMeasures.trim() || undefined,
+        affected_users: formData.affectedUsers ? Number(formData.affectedUsers) : undefined,
+        estimated_cost: formData.estimatedCost ? Number(formData.estimatedCost) : undefined,
         location_ids: locationIds.map(Number),
         source_component_ids: sourceIds.map(Number),
         affected_component_ids: affectedIds.map(Number),
@@ -1102,6 +1114,10 @@ function NewDowntimeDialog({
         startTime: toLocalInput(new Date()),
         endTime: "",
         description: "",
+        rootCause: "",
+        preventiveMeasures: "",
+        affectedUsers: "",
+        estimatedCost: "",
       });
       setLocationIds([]);
       setSourceIds([]);
@@ -1202,6 +1218,9 @@ function NewDowntimeDialog({
                 value={formData.endTime}
                 onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground">
+                Jika diisi, status langsung resolved — root cause & preventive measures wajib.
+              </p>
             </div>
           </div>
 
@@ -1274,6 +1293,50 @@ function NewDowntimeDialog({
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
             />
+          </div>
+
+          <Separator />
+          <h4 className="font-medium text-sm text-muted-foreground">Resolution details (opsional)</h4>
+          <p className="text-xs text-muted-foreground">
+            Boleh dikosongkan jika downtime masih berjalan — akan diminta saat Resolve. Wajib jika
+            End time diisi di atas.
+          </p>
+
+          <div className="space-y-1">
+            <Label>Root cause</Label>
+            <Textarea
+              value={formData.rootCause}
+              onChange={(e) => setFormData({ ...formData, rootCause: e.target.value })}
+              rows={2}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Preventive measures</Label>
+            <Textarea
+              value={formData.preventiveMeasures}
+              onChange={(e) => setFormData({ ...formData, preventiveMeasures: e.target.value })}
+              rows={2}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Affected users</Label>
+              <Input
+                type="number"
+                min={0}
+                value={formData.affectedUsers}
+                onChange={(e) => setFormData({ ...formData, affectedUsers: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Estimated cost</Label>
+              <Input
+                type="number"
+                min={0}
+                value={formData.estimatedCost}
+                onChange={(e) => setFormData({ ...formData, estimatedCost: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
