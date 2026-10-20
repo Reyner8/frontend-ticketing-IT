@@ -120,20 +120,20 @@ export function DowntimeTable({ downtimes, onViewDetails, onEdit, onDelete, canE
                       <Eye className="mr-2 h-4 w-4" />
                       View details
                     </DropdownMenuItem>
+                    {canEdit && (
+                      <DropdownMenuItem onClick={() => onEdit(downtime)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                    )}
                     {canEdit && downtime.status === "ongoing" && (
-                      <>
-                        <DropdownMenuItem onClick={() => onEdit(downtime)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-600 focus:text-red-600"
-                          onClick={() => onDelete(downtime)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </>
+                      <DropdownMenuItem
+                        className="text-red-600 focus:text-red-600"
+                        onClick={() => onDelete(downtime)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>

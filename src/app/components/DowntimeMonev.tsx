@@ -467,7 +467,6 @@ function DowntimeDetailDialog({
 }) {
   const [editing, setEditing] = useState(initialEditing);
   const [resolving, setResolving] = useState(false);
-  const [editingResolution, setEditingResolution] = useState(false);
   const [title, setTitle] = useState(downtime.title);
   const [type, setType] = useState<DowntimeType>(downtime.type);
   const [impact, setImpact] = useState<DowntimeRecord["impact"]>(downtime.impact);
@@ -507,7 +506,6 @@ function DowntimeDetailDialog({
     setAffectedIds(downtime.affectedComponents.map((c) => c.id));
     setEditing(initialEditing);
     setResolving(false);
-    setEditingResolution(false);
   }, [downtime, initialEditing]);
 
   useEffect(() => {
@@ -614,26 +612,6 @@ function DowntimeDetailDialog({
     }
   };
 
-  const saveResolution = async () => {
-    setBusy(true);
-    try {
-      await updateDowntimeRecord(downtime.id, {
-        root_cause: rootCause.trim() || null,
-        preventive_measures: preventiveMeasures.trim() || null,
-        affected_users: affectedUsers ? Number(affectedUsers) : null,
-        estimated_cost: estimatedCost ? Number(estimatedCost) : null,
-      });
-      toast.success("Resolution updated");
-      setEditingResolution(false);
-      onOpenChange(false);
-      onUpdated?.();
-    } catch (err) {
-      toast.error(firstError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const deleteRecord = async () => {
     if (!window.confirm(`Delete downtime record "${downtime.title}"?`)) return;
     setBusy(true);
@@ -693,8 +671,8 @@ function DowntimeDetailDialog({
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Actions
             </span>
-            <Button size="sm" variant="outline" onClick={() => setEditingResolution((v) => !v)}>
-              {editingResolution ? "Cancel edit" : "Edit resolution"}
+            <Button size="sm" variant="outline" onClick={() => setEditing((v) => !v)}>
+              {editing ? "Cancel edit" : "Edit"}
             </Button>
           </div>
         )}
@@ -882,52 +860,6 @@ function DowntimeDetailDialog({
                 {busy ? "Resolving..." : "Confirm resolve"}
               </Button>
               <Button variant="outline" onClick={() => setResolving(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {editingResolution && downtime.status === "resolved" && (
-          <div className="space-y-3 mb-4 border rounded-md p-3">
-            <h4 className="font-medium text-sm">Edit resolution</h4>
-            <div className="space-y-1">
-              <Label>Root cause</Label>
-              <Textarea value={rootCause} onChange={(e) => setRootCause(e.target.value)} rows={2} />
-            </div>
-            <div className="space-y-1">
-              <Label>Preventive measures</Label>
-              <Textarea
-                value={preventiveMeasures}
-                onChange={(e) => setPreventiveMeasures(e.target.value)}
-                rows={2}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Affected users</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={affectedUsers}
-                  onChange={(e) => setAffectedUsers(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Estimated cost</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={estimatedCost}
-                  onChange={(e) => setEstimatedCost(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={saveResolution} disabled={busy}>
-                {busy ? "Saving..." : "Save resolution"}
-              </Button>
-              <Button variant="outline" onClick={() => setEditingResolution(false)}>
                 Cancel
               </Button>
             </div>
