@@ -38,6 +38,7 @@ import {
   DatabaseBackup,
   DoorOpen,
   ClipboardCheck,
+  ShieldCheck,
 } from "lucide-react";
 
 interface AppSidebarProps {
@@ -133,6 +134,12 @@ export function AppSidebar({ activeView, onNavigate }: AppSidebarProps) {
                 title: 'Server Room Inspections',
                 icon: ClipboardCheck,
                 description: 'Periodic inspection checklist (INSP)',
+              },
+              {
+                id: '/security-audits',
+                title: 'Audit Keamanan',
+                icon: ShieldCheck,
+                description: 'Catat audit keamanan: hak akses, data, jaringan, insiden (AUD)',
               },
             ]
           : []),

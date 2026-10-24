@@ -808,6 +808,47 @@ export function mapServerRoomVisitor(data: Record<string, unknown>): import('../
   };
 }
 
+export function mapSecurityAuditFinding(data: Record<string, unknown>): import('../../types').SecurityAuditFinding {
+  return {
+    id: Number(data.id),
+    securityAuditId: String(data.security_audit_id ?? ''),
+    description: String(data.description ?? ''),
+    severity: unwrapEnumValue(data.severity, 'sedang') as import('../../types').FindingSeverity,
+    recommendation: data.recommendation ? String(data.recommendation) : undefined,
+    correctiveAction: data.corrective_action ? String(data.corrective_action) : undefined,
+    status: unwrapEnumValue(data.status, 'open') as import('../../types').AuditFindingStatus,
+    dueDate: data.due_date ? parseDate(data.due_date as string) : undefined,
+    completedAt: data.completed_at ? parseDate(data.completed_at as string) : undefined,
+    createdAt: parseDate(data.created_at as string),
+    updatedAt: parseDate(data.updated_at as string),
+  };
+}
+
+export function mapSecurityAudit(data: Record<string, unknown>): import('../../types').SecurityAudit {
+  const findings = Array.isArray(data.findings) ? data.findings : undefined;
+  return {
+    id: String(data.id),
+    title: String(data.title ?? ''),
+    type: unwrapEnumValue(data.type, 'hak_akses') as import('../../types').SecurityAuditType,
+    auditDate: parseDate(data.audit_date as string),
+    period: data.period ? String(data.period) : undefined,
+    performedBy: mapOpsUser(data.performed_by as Record<string, unknown>),
+    externalAuditor: data.external_auditor ? String(data.external_auditor) : undefined,
+    scope: data.scope ? String(data.scope) : undefined,
+    summary: data.summary ? String(data.summary) : undefined,
+    status: unwrapEnumValue(data.status, 'planned') as import('../../types').SecurityAuditStatus,
+    findings: findings
+      ? (findings as Record<string, unknown>[]).map(mapSecurityAuditFinding)
+      : undefined,
+    findingsCount: typeof data.findings_count === 'number' ? data.findings_count : undefined,
+    openFindingsCount:
+      typeof data.open_findings_count === 'number' ? data.open_findings_count : undefined,
+    createdBy: mapOpsUser(data.created_by as Record<string, unknown>),
+    createdAt: parseDate(data.created_at as string),
+    updatedAt: parseDate(data.updated_at as string),
+  };
+}
+
 const INSPECTION_CHECKLIST_KEYS = [
   'ups',
   'cable',

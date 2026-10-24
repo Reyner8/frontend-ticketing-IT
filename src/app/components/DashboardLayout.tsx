@@ -18,6 +18,7 @@ import { MentionsView } from "./MentionsView";
 import { BackupRestoreTests } from "./BackupRestoreTests";
 import { ServerRoomVisitors } from "./ServerRoomVisitors";
 import { ServerRoomInspections } from "./ServerRoomInspections";
+import { SecurityAudits } from "./securityaudit/SecurityAudits";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -99,6 +100,8 @@ export default function DashboardLayout() {
         return <ServerRoomVisitors />;
       case "/server-room-inspections":
         return <ServerRoomInspections />;
+      case "/security-audits":
+        return <SecurityAudits />;
       case "/settings":
         return <Settings />;
       case "/users":

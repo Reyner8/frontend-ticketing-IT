@@ -604,6 +604,51 @@ export interface ServerRoomVisitor {
   updatedAt: Date;
 }
 
+/** Audit keamanan SIMRS (modul AUD) */
+export type SecurityAuditType =
+  | 'hak_akses'
+  | 'log_aktivitas'
+  | 'keamanan_data'
+  | 'jaringan_infrastruktur'
+  | 'insiden_keamanan'
+  | 'kepatuhan_sop';
+export type SecurityAuditStatus = 'planned' | 'ongoing' | 'completed';
+export type FindingSeverity = 'rendah' | 'sedang' | 'tinggi' | 'kritis';
+export type AuditFindingStatus = 'open' | 'in_progress' | 'completed';
+
+export interface SecurityAuditFinding {
+  id: number;
+  securityAuditId: string;
+  description: string;
+  severity: FindingSeverity;
+  recommendation?: string;
+  correctiveAction?: string;
+  status: AuditFindingStatus;
+  dueDate?: Date;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SecurityAudit {
+  id: string;
+  title: string;
+  type: SecurityAuditType;
+  auditDate: Date;
+  period?: string;
+  performedBy?: OpsUserRef;
+  externalAuditor?: string;
+  scope?: string;
+  summary?: string;
+  status: SecurityAuditStatus;
+  findings?: SecurityAuditFinding[];
+  findingsCount?: number;
+  openFindingsCount?: number;
+  createdBy?: OpsUserRef;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface InspectionChecklistItem {
   ok: boolean;
   notes?: string | null;

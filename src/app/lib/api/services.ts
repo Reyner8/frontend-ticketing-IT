@@ -41,6 +41,8 @@ import {
   mapServerRoomVisitor,
   mapServerRoomInspection,
   mapCatalogApplication,
+  mapSecurityAudit,
+  mapSecurityAuditFinding,
 } from './mappers';
 import {
   User,
@@ -70,6 +72,8 @@ import {
   ServerRoomVisitor,
   ServerRoomInspection,
   CatalogApplication,
+  SecurityAudit,
+  SecurityAuditFinding,
 } from '../../types';
 
 let usersCache: User[] = [];
@@ -1284,4 +1288,76 @@ export async function updateServerRoomInspection(
 
 export async function deleteServerRoomInspection(id: string): Promise<void> {
   await apiDelete(`/server-room-inspections/${id}`);
+}
+
+export async function fetchSecurityAudits(
+  params?: Record<string, string | number>
+): Promise<{ records: SecurityAudit[]; total: number; meta: PaginationMeta }> {
+  const { data, meta } = await apiGetPaginated<Record<string, unknown>[]>(
+    '/security-audits',
+    { per_page: 50, ...params }
+  );
+  return {
+    records: (data as unknown as Record<string, unknown>[]).map(mapSecurityAudit),
+    total: meta?.total ?? 0,
+    meta: toPaginationMeta(meta),
+  };
+}
+
+export async function fetchSecurityAuditDetail(id: string): Promise<SecurityAudit> {
+  const response = await apiGet<{ success: boolean; data: Record<string, unknown> }>(
+    `/security-audits/${id}`
+  );
+  return mapSecurityAudit(response.data);
+}
+
+export async function createSecurityAudit(
+  payload: Record<string, unknown>
+): Promise<SecurityAudit> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    '/security-audits',
+    payload
+  );
+  return mapSecurityAudit(response.data);
+}
+
+export async function updateSecurityAudit(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<SecurityAudit> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/security-audits/${id}`,
+    payload
+  );
+  return mapSecurityAudit(response.data);
+}
+
+export async function deleteSecurityAudit(id: string): Promise<void> {
+  await apiDelete(`/security-audits/${id}`);
+}
+
+export async function createAuditFinding(
+  auditId: string,
+  payload: Record<string, unknown>
+): Promise<SecurityAuditFinding> {
+  const response = await apiPost<{ success: boolean; data: Record<string, unknown> }>(
+    `/security-audits/${auditId}/findings`,
+    payload
+  );
+  return mapSecurityAuditFinding(response.data);
+}
+
+export async function updateAuditFinding(
+  findingId: number,
+  payload: Record<string, unknown>
+): Promise<SecurityAuditFinding> {
+  const response = await apiPut<{ success: boolean; data: Record<string, unknown> }>(
+    `/security-audit-findings/${findingId}`,
+    payload
+  );
+  return mapSecurityAuditFinding(response.data);
+}
+
+export async function deleteAuditFinding(findingId: number): Promise<void> {
+  await apiDelete(`/security-audit-findings/${findingId}`);
 }
